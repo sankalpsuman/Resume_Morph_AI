@@ -360,7 +360,7 @@ export default function ResumeBuilder() {
           
           <div className="flex items-center gap-2 md:gap-4">
             {generatedHtml && (
-              <div className="relative">
+              <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 z-50">
                 <button 
                   onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                   className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-gray-900 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
