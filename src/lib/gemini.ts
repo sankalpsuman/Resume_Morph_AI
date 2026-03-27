@@ -1,8 +1,6 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 
 function getAI() {
-  // Try multiple ways to get the API key, prioritizing process.env as per guidelines
-  // but falling back to other common locations in Vite/AI Studio environments.
   const apiKey = 
     (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) || 
     (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
@@ -16,12 +14,12 @@ function getAI() {
   return new GoogleGenAI({ apiKey });
 }
 
-export async function analyzeLayout(fileBase64: string, mimeType: string) {
+export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawText?: string) {
   const ai = getAI();
   const model = "gemini-3-flash-preview";
   
-  const prompt = `Analyze the visual and structural layout of this resume. 
-  Describe in detail:
+  const prompt = `Analyze the layout of this resume. 
+  ${rawText ? `The following text was extracted from a document: \n\n${rawText}\n\nBased on the structure of this text, infer and describe:` : "Describe in detail based on the provided file:"}
   1. Typography (font styles, weights, sizes for headers vs body).
   2. Layout (single column, double column, sidebar, margins, spacing).
   3. Visual elements (lines, icons, colors, bullet points style).
@@ -29,16 +27,25 @@ export async function analyzeLayout(fileBase64: string, mimeType: string) {
   
   Provide a structured description that can be used to recreate this style in HTML/Tailwind CSS.`;
 
-  const part = {
-    inlineData: {
-      data: fileBase64,
-      mimeType: mimeType,
-    },
-  };
+  const contents: any[] = [];
+  if (fileBase64 && mimeType) {
+    contents.push({
+      parts: [
+        { inlineData: { data: fileBase64, mimeType } },
+        { text: prompt }
+      ]
+    });
+  } else if (rawText) {
+    contents.push({
+      parts: [{ text: prompt }]
+    });
+  } else {
+    throw new Error("No input provided for layout analysis");
+  }
 
   const response = await ai.models.generateContent({
     model,
-    contents: [{ parts: [part, { text: prompt }] }],
+    contents,
   });
 
   return response.text;

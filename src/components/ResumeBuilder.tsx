@@ -37,18 +37,27 @@ export default function ResumeBuilder() {
   const [needsApiKey, setNeedsApiKey] = useState(false);
 
   useEffect(() => {
-    // Check if API key is missing on mount
-    const apiKey = 
-      (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) || 
-      (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
-      ((import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-      (window as any).GEMINI_API_KEY ||
-      "";
+    const checkKey = async () => {
+      const apiKey = 
+        (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) || 
+        (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
+        ((import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+        (window as any).GEMINI_API_KEY ||
+        "";
+      
+      if (!apiKey) {
+        const hasKey = await (window as any).aistudio?.hasSelectedApiKey?.();
+        if (!hasKey) {
+          setNeedsApiKey(true);
+          setError("Gemini API Key is missing. Please select your API key to enable the Morph Engine.");
+        }
+      } else {
+        setNeedsApiKey(false);
+        setError(null);
+      }
+    };
     
-    if (!apiKey) {
-      setNeedsApiKey(true);
-      setError("Gemini API Key is missing. Please configure it to use the Morph Engine.");
-    }
+    checkKey();
   }, []);
 
   const previewRef = useRef<HTMLDivElement>(null);
@@ -62,8 +71,17 @@ export default function ResumeBuilder() {
     setError(null);
     setNeedsApiKey(false);
     try {
+      let analysis = '';
       const base64 = await fileToBase64(file);
-      const analysis = await analyzeLayout(base64.split(',')[1], file.type);
+      
+      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        analysis = await analyzeLayout(undefined, undefined, result.value);
+      } else {
+        analysis = await analyzeLayout(base64.split(',')[1], file.type);
+      }
+      
       setReferenceFile({ file, base64, type: file.type });
       setLayoutAnalysis(analysis);
     } catch (err: any) {
@@ -194,13 +212,15 @@ export default function ResumeBuilder() {
   const handleSelectKey = async () => {
     const aistudio = (window as any).aistudio;
     if (aistudio?.openSelectKey) {
-      await aistudio.openSelectKey();
-      // After selecting, the app will refresh or the key will be injected
-      // In AI Studio, it usually refreshes the preview.
-      setError(null);
-      setNeedsApiKey(false);
+      try {
+        await aistudio.openSelectKey();
+        // After selection, we reload to ensure the new key is active
+        window.location.reload();
+      } catch (err) {
+        console.error("Failed to open key selector", err);
+      }
     } else {
-      alert("Please configure your GEMINI_API_KEY in the Secrets panel.");
+      setError("Please configure your GEMINI_API_KEY in the Secrets panel.");
     }
   };
 
