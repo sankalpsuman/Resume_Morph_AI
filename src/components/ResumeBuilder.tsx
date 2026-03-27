@@ -344,30 +344,31 @@ export default function ResumeBuilder() {
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-indigo-100">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[1440px] mx-auto px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-200 rotate-3 hover:rotate-0 transition-transform duration-300">
-              <RefreshCw className="text-white w-7 h-7" />
+        <div className="max-w-[1440px] mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-200 rotate-3 hover:rotate-0 transition-transform duration-300">
+              <RefreshCw className="text-white w-5 h-5 md:w-7 md:h-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-gray-900">Resume Morph</h1>
-              <div className="flex items-center gap-2">
+              <h1 className="text-lg md:text-2xl font-black tracking-tight text-gray-900 leading-tight">Resume Morph</h1>
+              <div className="hidden sm:flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold">AI Style Cloning Engine</p>
+                <p className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold">AI Style Cloning Engine</p>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             {generatedHtml && (
               <div className="relative">
                 <button 
                   onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                  className="flex items-center gap-3 px-6 py-3 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
+                  className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-gray-900 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
                 >
-                  <Download className="w-4 h-4" />
-                  Export Resume
-                  <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
+                  <Download className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden xs:inline">Export</span>
+                  <span className="hidden sm:inline">Resume</span>
+                  <ChevronDown className={cn("w-3 h-3 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-180")} />
                 </button>
 
                 <AnimatePresence>
@@ -440,12 +441,12 @@ export default function ResumeBuilder() {
         </div>
       </header>
 
-      <main className="max-w-[1440px] mx-auto px-8 py-12">
-        <div className="grid lg:grid-cols-12 gap-12 items-start">
+      <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* Left Column: Controls */}
-          <div className="lg:col-span-4 space-y-8">
-            <div className="bg-white p-8 rounded-[32px] border border-gray-200 shadow-sm space-y-10">
+          <div className="lg:col-span-4 space-y-6 md:space-y-8">
+            <div className="bg-white p-6 md:p-8 rounded-[24px] md:rounded-[32px] border border-gray-200 shadow-sm space-y-8 md:space-y-10">
               
               <section>
                 <div className="flex items-center gap-3 mb-6">
@@ -606,38 +607,38 @@ export default function ResumeBuilder() {
 
           {/* Right Column: Preview */}
           <div className={cn(
-            "transition-all duration-700 ease-in-out",
+            "transition-all duration-700 ease-in-out w-full",
             isPreviewFull 
-              ? "fixed inset-0 z-[200] bg-[#F8F9FA] p-8 overflow-y-auto" 
-              : "lg:col-span-8 sticky top-32"
+              ? "fixed inset-0 z-[200] bg-[#F8F9FA] p-4 md:p-8 overflow-y-auto" 
+              : "lg:col-span-8 lg:sticky lg:top-32"
           )}>
             <div className={cn(
-              "bg-white rounded-[40px] border border-gray-200 shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
-              isPreviewFull ? "min-h-screen w-full max-w-5xl mx-auto" : "min-h-[850px]"
+              "bg-white rounded-[24px] md:rounded-[40px] border border-gray-200 shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
+              isPreviewFull ? "min-h-screen w-full max-w-5xl mx-auto" : "min-h-[500px] md:min-h-[850px]"
             )}>
-              <div className="h-16 border-b border-gray-100 px-10 flex items-center justify-between bg-gray-50/50">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-3">
+              <div className="h-14 md:h-16 border-b border-gray-100 px-4 md:px-10 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-3 md:gap-6">
+                  <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Live Preview Engine</span>
+                    <span className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Preview</span>
                   </div>
                   
                   {atsScore !== null && (
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-3 pl-6 border-l border-gray-200"
+                      className="flex items-center gap-2 md:gap-3 pl-3 md:pl-6 border-l border-gray-200"
                     >
                       <div className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2",
+                        "px-2 md:px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2",
                         atsScore >= 80 ? "bg-green-100 text-green-700" : 
                         atsScore >= 50 ? "bg-yellow-100 text-yellow-700" : 
                         "bg-red-100 text-red-700"
                       )}>
-                        ATS Score: {atsScore}%
+                        ATS: {atsScore}%
                       </div>
                       {atsFeedback && (
-                        <span className="text-[10px] font-bold text-gray-400 truncate max-w-[200px]" title={atsFeedback}>
+                        <span className="hidden sm:inline text-[10px] font-bold text-gray-400 truncate max-w-[100px] md:max-w-[200px]" title={atsFeedback}>
                           {atsFeedback}
                         </span>
                       )}
@@ -645,39 +646,39 @@ export default function ResumeBuilder() {
                         <button
                           onClick={handleMaximizeAts}
                           disabled={isGenerating || isPlanning}
-                          className="ml-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-100 disabled:opacity-50"
+                          className="px-2 md:px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 md:gap-1.5 shadow-lg shadow-indigo-100 disabled:opacity-50"
                         >
                           {isPlanning ? (
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            <Loader2 className="w-2 h-2 md:w-2.5 md:h-2.5 animate-spin" />
                           ) : (
-                            <Zap className="w-2.5 h-2.5 fill-white" />
+                            <Zap className="w-2 h-2 md:w-2.5 md:h-2.5 fill-white" />
                           )}
-                          {isPlanning ? "Analyzing..." : "Maximize to 100%"}
+                          <span className="hidden xs:inline">{isPlanning ? "Analyzing..." : "Maximize"}</span>
                         </button>
                       )}
                     </motion.div>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 md:gap-4">
                   {generatedHtml && (
                     <button 
                       onClick={() => setIsPreviewFull(!isPreviewFull)}
-                      className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
                     >
                       {isPreviewFull ? (
                         <>
                           <Minimize2 className="w-3 h-3" />
-                          Exit Full View
+                          <span className="hidden sm:inline">Exit Full View</span>
                         </>
                       ) : (
                         <>
                           <Maximize2 className="w-3 h-3" />
-                          Full View
+                          <span className="hidden sm:inline">Full View</span>
                         </>
                       )}
                     </button>
                   )}
-                  <div className="flex gap-2">
+                  <div className="hidden sm:flex gap-2">
                     <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-red-400 transition-colors" />
                     <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-yellow-400 transition-colors" />
                     <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-green-400 transition-colors" />
@@ -715,7 +716,7 @@ export default function ResumeBuilder() {
                       animate={{ opacity: 1, scale: 1 }}
                       className={cn(
                         "w-full border-none",
-                        isPreviewFull ? "min-h-[1200px]" : "h-[784px]"
+                        isPreviewFull ? "min-h-[1200px]" : "h-[500px] md:h-[784px]"
                       )}
                       srcDoc={`
                         <!DOCTYPE html>
