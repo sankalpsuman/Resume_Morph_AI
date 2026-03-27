@@ -1,0 +1,238 @@
+import React from 'react';
+import { motion } from 'motion/react';
+import { 
+  Github, Linkedin, Mail, ExternalLink, Award, Zap, Shield, 
+  Globe, Cpu, Sparkles, RefreshCw 
+} from 'lucide-react';
+
+export default function About() {
+  return (
+    <div className="min-h-screen bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100">
+      {/* Navigation / Logo Top */}
+      <nav className="py-6 px-8 flex justify-center border-b border-gray-50">
+        <div className="flex items-center gap-3 group cursor-default">
+          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100 group-hover:rotate-12 transition-transform duration-300">
+            <RefreshCw className="text-white w-5 h-5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-black text-xl tracking-tighter leading-none">RESUME</span>
+            <span className="font-black text-xl tracking-tighter leading-none text-indigo-600">MORPH</span>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-indigo-50/30 -z-10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-full">
+          <div className="absolute top-20 left-10 w-64 h-64 bg-indigo-200/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl animate-pulse delay-700" />
+        </div>
+
+        <div className="max-w-5xl mx-auto px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-indigo-600 text-xs font-black uppercase tracking-widest mb-8">
+              <Sparkles className="w-3 h-3" />
+              The Future of Career Tech
+            </div>
+            <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-gray-900 mb-8 leading-[0.9]">
+              Morphing Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Professional DNA.</span>
+            </h1>
+            <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto leading-relaxed">
+              Resume Morph isn't just a builder. It's a style-cloning engine that bridges the gap between your experience and your dream role's aesthetic.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Purpose & Features */}
+      <section className="py-24 border-y border-gray-100 bg-gray-50/30">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="grid md:grid-cols-3 gap-12">
+            <div className="space-y-6">
+              <div className="w-14 h-14 bg-white rounded-2xl shadow-xl shadow-indigo-100 flex items-center justify-center">
+                <Cpu className="w-7 h-7 text-indigo-600" />
+              </div>
+              <h3 className="text-2xl font-black tracking-tight">Style Cloning</h3>
+              <p className="text-gray-500 font-medium leading-relaxed">
+                Our AI analyzes the visual DNA of any reference resume—layout, typography, and spacing—and applies it to your data instantly.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <div className="w-14 h-14 bg-white rounded-2xl shadow-xl shadow-purple-100 flex items-center justify-center">
+                <Zap className="w-7 h-7 text-purple-600" />
+              </div>
+              <h3 className="text-2xl font-black tracking-tight">Role Optimization</h3>
+              <p className="text-gray-500 font-medium leading-relaxed">
+                Targeted morphing ensures your skills are emphasized for specific job descriptions without ever compromising the truth of your experience.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <div className="w-14 h-14 bg-white rounded-2xl shadow-xl shadow-blue-100 flex items-center justify-center">
+                <Shield className="w-7 h-7 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-black tracking-tight">Data Integrity</h3>
+              <p className="text-gray-500 font-medium leading-relaxed">
+                We strictly enforce a "No Hallucination" policy. Your original projects and responsibilities are preserved, just presented better.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The Story Section */}
+      <section className="py-24 overflow-hidden bg-white">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="grid md:grid-cols-2 gap-20 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="space-y-8"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-full text-purple-600 text-[10px] font-black uppercase tracking-widest">
+                <Globe className="w-3 h-3" />
+                The Origin Story
+              </div>
+              <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-[1.1]">
+                Born from <br />
+                <span className="text-indigo-600">Frustration.</span> <br />
+                Built for <br />
+                <span className="text-purple-600">Precision.</span>
+              </h2>
+              <div className="space-y-6 text-gray-500 font-medium text-lg leading-relaxed">
+                <p>
+                  The idea for Resume Morph didn't come from a boardroom—it came from a personal struggle. While updating his own resume, Sankalp Suman realized how broken the process was.
+                </p>
+                <p>
+                  As a Software Test Specialist at Amdocs, he applied his QA mindset to the problem: Why manually format when you can build a system that 'tests' and 'morphs' design automatically?
+                </p>
+                <p className="text-indigo-600 font-bold">
+                  Today, Resume Morph is a premium, paid service designed for those who refuse to settle for generic templates and demand professional-grade precision.
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="relative"
+            >
+              <div className="bg-indigo-50 rounded-[40px] p-12 space-y-8 relative z-10">
+                <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                  <Cpu className="text-white w-6 h-6" />
+                </div>
+                <h3 className="text-2xl font-black tracking-tight text-gray-900">The Technology</h3>
+                <p className="text-gray-600 font-medium leading-relaxed">
+                  Powered by advanced Large Language Models and a custom "Visual DNA" extraction engine, Resume Morph doesn't just fill templates. It understands the structural essence of high-performing resumes and reconstructs your professional history with surgical accuracy.
+                </p>
+                <div className="pt-6 border-t border-indigo-100 flex items-center gap-4">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-indigo-200" />
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Trusted by 500+ Users</span>
+                </div>
+              </div>
+              {/* Decorative background blur */}
+              <div className="absolute -top-10 -right-10 w-64 h-64 bg-purple-200/30 rounded-full blur-3xl -z-10" />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Developer Profile */}
+      <section className="py-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="bg-gray-900 rounded-[48px] p-12 md:p-20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/10 to-transparent" />
+            
+            <div className="grid md:grid-cols-2 gap-16 items-center relative z-10">
+              <div className="space-y-8">
+                <div>
+                  <div className="inline-block px-4 py-1 bg-indigo-500/20 rounded-full text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-4">
+                    Founder & SW Test Specialist
+                  </div>
+                  <h2 className="text-5xl font-black text-white tracking-tight mb-6">Sankalp Suman</h2>
+                  <p className="text-gray-400 text-lg font-medium leading-relaxed">
+                    A dedicated QA Test Engineer currently working as a Software Test Specialist at Amdocs. Sankalp combines his expertise in software quality with a passion for building high-impact tools that solve real-world professional challenges.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <a href="https://in.linkedin.com/in/sankalpsuman" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white text-sm font-bold transition-all">
+                    <Linkedin className="w-4 h-4" />
+                    LinkedIn
+                  </a>
+                  <a href="mailto:sankalpsmn@gmail.com" className="flex items-center gap-3 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl text-white text-sm font-bold transition-all shadow-xl shadow-indigo-500/20">
+                    <Mail className="w-4 h-4" />
+                    Get in Touch
+                  </a>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
+                  <div>
+                    <div className="text-3xl font-black text-white mb-1">500+</div>
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">Resumes Morphed</div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-black text-white mb-1">99%</div>
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">User Satisfaction</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative flex items-center justify-center">
+                <div className="w-full max-w-md aspect-square bg-gradient-to-br from-indigo-600/20 to-purple-600/20 rounded-[48px] border border-white/10 flex items-center justify-center relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.1),transparent_70%)]" />
+                  <div className="relative z-10 flex flex-col items-center gap-6">
+                    <div className="w-32 h-32 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-500/40 group-hover:scale-110 transition-transform duration-500">
+                      <RefreshCw className="text-white w-16 h-16" />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-black text-white tracking-tighter">RESUME</div>
+                      <div className="text-3xl font-black text-indigo-400 tracking-tighter -mt-2">MORPH</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Decorative elements */}
+                <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-indigo-600 rounded-3xl -z-10 rotate-12 opacity-50" />
+                <div className="absolute -top-6 -left-6 w-24 h-24 border-4 border-indigo-500/30 rounded-full -z-10" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
+              <RefreshCw className="text-white w-4 h-4" />
+            </div>
+            <span className="font-black text-lg tracking-tight">Resume Morph</span>
+          </div>
+          <p className="text-sm text-gray-400 font-medium">
+            © 2026 Resume Morph. Built with passion by Sankalp Suman.
+          </p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</a>
+            <a href="#" className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Terms</a>
+            <a href="#" className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Support</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

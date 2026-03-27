@@ -1,0 +1,8 @@
+{
+  "name": "Resume Morph AI",
+  "description": "Clone the layout of any resume and apply it to your own content using AI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
