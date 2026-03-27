@@ -3,9 +3,9 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   FileUp, RefreshCw, ChevronDown, FileCode, FileType, Printer, 
-  Maximize2, Minimize2 
+  Maximize2, Minimize2, Zap
 } from 'lucide-react';
-import { analyzeLayout, generateResume, extractTextFromAny } from '../lib/gemini';
+import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan } from '../lib/gemini';
 import mammoth from 'mammoth';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -28,6 +28,9 @@ export default function ResumeBuilder() {
   const [resumeMetadata, setResumeMetadata] = useState<{ name: string; yoe: string; profile: string } | null>(null);
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [atsFeedback, setAtsFeedback] = useState<string | null>(null);
+  const [optimizationPlan, setOptimizationPlan] = useState<string[] | null>(null);
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
@@ -138,6 +141,50 @@ export default function ResumeBuilder() {
         setError("API Key required. Please select your Gemini API key to continue.");
       } else {
         setError("Failed to re-optimize resume. Please try again.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleMaximizeAts = async () => {
+    if (!layoutAnalysis || !contentFile?.text) return;
+    
+    setIsPlanning(true);
+    setError(null);
+    setNeedsApiKey(false);
+    try {
+      const plan = await getOptimizationPlan(contentFile.text, jobDescription);
+      setOptimizationPlan(plan);
+      setShowPlanModal(true);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to generate optimization plan. Please try again.");
+    } finally {
+      setIsPlanning(false);
+    }
+  };
+
+  const confirmMaximizeAts = async () => {
+    if (!layoutAnalysis || !contentFile?.text) return;
+    
+    setShowPlanModal(false);
+    setIsGenerating(true);
+    setError(null);
+    setNeedsApiKey(false);
+    try {
+      const result = await generateResume(layoutAnalysis, contentFile.text, jobDescription, true);
+      setGeneratedHtml(result.html);
+      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
+      setAtsScore(result.atsScore);
+      setAtsFeedback(result.atsFeedback);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
+        setNeedsApiKey(true);
+        setError("API Key required. Please select your Gemini API key to continue.");
+      } else {
+        setError("Failed to maximize ATS score. Please try again.");
       }
     } finally {
       setIsGenerating(false);
@@ -574,6 +621,20 @@ export default function ResumeBuilder() {
                           {atsFeedback}
                         </span>
                       )}
+                      {atsScore < 100 && (
+                        <button
+                          onClick={handleMaximizeAts}
+                          disabled={isGenerating || isPlanning}
+                          className="ml-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-100 disabled:opacity-50"
+                        >
+                          {isPlanning ? (
+                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          ) : (
+                            <Zap className="w-2.5 h-2.5 fill-white" />
+                          )}
+                          {isPlanning ? "Analyzing..." : "Maximize to 100%"}
+                        </button>
+                      )}
                     </motion.div>
                   )}
                 </div>
@@ -687,6 +748,73 @@ export default function ResumeBuilder() {
 
         </div>
       </main>
+
+      <AnimatePresence>
+        {showPlanModal && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPlanModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-8 sm:p-12 flex flex-col h-full overflow-y-auto">
+                <div className="flex items-center gap-5 mb-10">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100 shrink-0">
+                    <Zap className="w-8 h-8 fill-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-3xl tracking-tight">Optimization Plan</h3>
+                    <p className="text-base text-gray-500 font-medium">Proposed changes for 100% ATS score</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5 mb-12 flex-1">
+                  {optimizationPlan?.map((step, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-start gap-5 p-6 bg-gray-50 rounded-3xl border border-gray-100"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                        {i + 1}
+                      </div>
+                      <p className="text-base font-bold text-gray-700 leading-relaxed">
+                        {step}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="flex gap-5 mt-auto">
+                  <button 
+                    onClick={() => setShowPlanModal(false)}
+                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={confirmMaximizeAts}
+                    className="flex-[2] py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Confirm & Apply
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -56,64 +56,93 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
   return response.text;
 }
 
-export async function generateResume(layoutDesc: string, userContent: string, jobDescription?: string) {
+export async function getOptimizationPlan(userContent: string, jobDescription?: string) {
+  const ai = getAI();
+  const model = "gemini-3-flash-preview";
+  
+  const prompt = `Expert ATS Strategist.
+  
+  CONTENT: ${userContent}
+  TARGET: ${jobDescription || "Standard High-Level Professional"}
+  
+  TASK: Propose specific changes to make this resume 100% ATS friendly.
+  
+  RULES:
+  1. List 3-5 high-impact changes.
+  2. Focus on: Keyword alignment, Heading standardization, Bullet point rephrasing, and Structure.
+  3. Be concise.
+  
+  OUTPUT: JSON array of strings.
+  
+  Return ONLY JSON.`;
+
+  const response = await ai.models.generateContent({
+    model,
+    config: { 
+      responseMimeType: "application/json",
+      temperature: 0.1
+    },
+    contents: [{ parts: [{ text: prompt }] }],
+  });
+
+  try {
+    return JSON.parse(response.text);
+  } catch (e) {
+    return ["Standardize headings", "Optimize keyword density", "Improve bullet point structure"];
+  }
+}
+
+export async function generateResume(layoutDesc: string, userContent: string, jobDescription?: string, maximizeAts: boolean = false) {
   const ai = getAI();
   const model = "gemini-3-flash-preview";
   
   const optimizationPrompt = jobDescription 
-    ? `\n\nOPTIMIZATION TARGET (Requirements/Context):\n${jobDescription}\n\nCRITICAL OPTIMIZATION RULES:
-    1. ANALYZE the target requirements and MODIFY the USER CONTENT to align with them.
-    2. DO NOT REMOVE any existing information, experiences, or details from the user's original content. Every project, role, and responsibility must be preserved.
-    3. ONLY add or emphasize details that directly help the profile match the requirements (e.g., highlighting specific tools or methodologies already mentioned in the content).
-    4. DO NOT add "extra skills", certifications, or experiences that the user does not explicitly have. Avoid hallucinating any information that would be hard to justify in an interview.
-    5. Focus on rephrasing existing bullet points to use relevant keywords from the requirements, and adjust the emphasis of existing experiences to match the target role while remaining 100% truthful to the original content.`
+    ? `\n\nOPTIMIZATION TARGET:\n${jobDescription}\n\nRULES:
+    1. Align USER CONTENT to target.
+    2. PRESERVE all original details.
+    3. Only add details that help match requirements truthfully.
+    4. Focus on keywords and emphasis.`
     : "";
 
-  const prompt = `You are an expert resume designer and career coach specializing in ATS (Applicant Tracking System) optimization. 
+  const atsMaxPrompt = maximizeAts 
+    ? `\n\nCRITICAL: MAXIMIZE ATS SCORE TO 100%. 
+    - Prioritize standard structure and keyword density over complex visual styling.
+    - Use the most standard headings.
+    - Ensure 100% parseability.
+    - Set "atsScore" to 100.`
+    : "";
+
+  const prompt = `Expert ATS Resume Builder.
   
-  REFERENCE LAYOUT DESCRIPTION:
-  ${layoutDesc}
-  
-  USER CONTENT TO FORMAT:
-  ${userContent}${optimizationPrompt}
+  LAYOUT: ${layoutDesc}
+  CONTENT: ${userContent}${optimizationPrompt}${atsMaxPrompt}
   
   TASK:
-  1. Generate a high-fidelity, professional resume using HTML and Tailwind CSS that matches the REFERENCE LAYOUT exactly.
-  2. Use the USER CONTENT provided. If an OPTIMIZATION TARGET is provided, follow the CRITICAL OPTIMIZATION RULES strictly: modify the content to align with the requirements without removing any original data or adding unsubstantiated skills.
-  3. Extract the candidate's Name, Years of Experience (YOE), and Job Profile/Title.
-  4. Calculate an ATS Score (0-100) based on how well the resume matches standard ATS rules (clean structure, keyword density, standard headings) and the OPTIMIZATION TARGET (if provided).
+  1. Generate professional HTML/Tailwind resume matching LAYOUT.
+  2. If OPTIMIZATION TARGET exists, align content strictly.
+  3. Extract Name, YOE, Profile.
+  4. Calculate ATS Score (0-100).
   
-  CRITICAL ATS FRIENDLINESS RULES:
-  - Use standard section headings (e.g., "Experience", "Education", "Skills", "Projects").
-  - Ensure a logical, linear reading order in the HTML structure.
-  - Avoid complex CSS hacks that might obscure text.
-  - Use clear, searchable text (no images for text).
-  - If a job description is provided, ensure high keyword relevance.
+  ATS RULES: Standard headings, linear structure, no complex CSS hacks, searchable text.
   
-  CRITICAL FILENAME METADATA RULES:
-  - "name": The candidate's full name.
-  - "yoe": Total years of professional experience.
-  - "profile": This MUST be the primary professional domain or job title derived from the candidate's MOST RECENT and EXTENSIVE experience (e.g., "Full_Stack_Developer", "Marketing_Manager", "Data_Scientist"). Do not use generic terms like "Resume" or "Profile".
+  METADATA: "name", "yoe", "profile" (use underscores).
   
-  REQUIREMENTS:
-  - Use only Tailwind CSS classes for styling.
-  - The output must be a single self-contained HTML <div> block.
-  - Ensure the design is clean, professional, and readable.
-  - Match the typography, spacing, and structure described in the layout analysis.
-  - For better Word/PDF compatibility, prefer standard CSS properties (like padding, margin, font-size) within the Tailwind classes or as inline styles if necessary.
-  - Return the result as a JSON object with the following keys:
-    - "html": The generated HTML string.
-    - "name": The candidate's full name (e.g., "John_Doe").
-    - "yoe": The total years of experience (e.g., "5_Years").
-    - "profile": The job title or profile (e.g., "Software_Engineer").
-    - "atsScore": A number from 0 to 100.
-    - "atsFeedback": A short string (max 150 chars) explaining the score or suggesting one key improvement.
+  OUTPUT: JSON object with:
+  - "html": HTML string (Tailwind only).
+  - "name": Full name.
+  - "yoe": Years of experience.
+  - "profile": Job title.
+  - "atsScore": 0-100.
+  - "atsFeedback": Max 150 chars.
   
-  Return ONLY the JSON object, no markdown blocks or extra text. Ensure the strings for name, yoe, and profile use underscores instead of spaces for filename compatibility.`;
+  Return ONLY JSON. No markdown.`;
 
   const response = await ai.models.generateContent({
     model,
-    config: { responseMimeType: "application/json" },
+    config: { 
+      responseMimeType: "application/json",
+      temperature: 0.1 // Lower temperature for faster, more consistent results
+    },
     contents: [{ parts: [{ text: prompt }] }],
   });
 
