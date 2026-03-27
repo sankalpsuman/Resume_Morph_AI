@@ -10,7 +10,7 @@ function getAI() {
     (window as any).GEMINI_API_KEY ||
     "";
 
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+  if (!apiKey) {
     throw new Error("API_KEY_MISSING");
   }
   return new GoogleGenAI({ apiKey });
@@ -69,7 +69,7 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
     5. Focus on rephrasing existing bullet points to use relevant keywords from the requirements, and adjust the emphasis of existing experiences to match the target role while remaining 100% truthful to the original content.`
     : "";
 
-  const prompt = `You are an expert resume designer and career coach. 
+  const prompt = `You are an expert resume designer and career coach specializing in ATS (Applicant Tracking System) optimization. 
   
   REFERENCE LAYOUT DESCRIPTION:
   ${layoutDesc}
@@ -81,6 +81,14 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
   1. Generate a high-fidelity, professional resume using HTML and Tailwind CSS that matches the REFERENCE LAYOUT exactly.
   2. Use the USER CONTENT provided. If an OPTIMIZATION TARGET is provided, follow the CRITICAL OPTIMIZATION RULES strictly: modify the content to align with the requirements without removing any original data or adding unsubstantiated skills.
   3. Extract the candidate's Name, Years of Experience (YOE), and Job Profile/Title.
+  4. Calculate an ATS Score (0-100) based on how well the resume matches standard ATS rules (clean structure, keyword density, standard headings) and the OPTIMIZATION TARGET (if provided).
+  
+  CRITICAL ATS FRIENDLINESS RULES:
+  - Use standard section headings (e.g., "Experience", "Education", "Skills", "Projects").
+  - Ensure a logical, linear reading order in the HTML structure.
+  - Avoid complex CSS hacks that might obscure text.
+  - Use clear, searchable text (no images for text).
+  - If a job description is provided, ensure high keyword relevance.
   
   CRITICAL FILENAME METADATA RULES:
   - "name": The candidate's full name.
@@ -98,6 +106,8 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
     - "name": The candidate's full name (e.g., "John_Doe").
     - "yoe": The total years of experience (e.g., "5_Years").
     - "profile": The job title or profile (e.g., "Software_Engineer").
+    - "atsScore": A number from 0 to 100.
+    - "atsFeedback": A short string (max 150 chars) explaining the score or suggesting one key improvement.
   
   Return ONLY the JSON object, no markdown blocks or extra text. Ensure the strings for name, yoe, and profile use underscores instead of spaces for filename compatibility.`;
 

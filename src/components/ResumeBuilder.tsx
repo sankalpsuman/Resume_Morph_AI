@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
@@ -26,10 +26,27 @@ export default function ResumeBuilder() {
   const [jobDescription, setJobDescription] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [resumeMetadata, setResumeMetadata] = useState<{ name: string; yoe: string; profile: string } | null>(null);
+  const [atsScore, setAtsScore] = useState<number | null>(null);
+  const [atsFeedback, setAtsFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+
+  useEffect(() => {
+    // Check if API key is missing on mount
+    const apiKey = 
+      (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) || 
+      (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
+      ((import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+      (window as any).GEMINI_API_KEY ||
+      "";
+    
+    if (!apiKey) {
+      setNeedsApiKey(true);
+      setError("Gemini API Key is missing. Please configure it to use the Morph Engine.");
+    }
+  }, []);
 
   const previewRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -86,6 +103,8 @@ export default function ResumeBuilder() {
         const result = await generateResume(layoutAnalysis, text, jobDescription);
         setGeneratedHtml(result.html);
         setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
+        setAtsScore(result.atsScore);
+        setAtsFeedback(result.atsFeedback);
       }
     } catch (err: any) {
       console.error(err);
@@ -223,6 +242,8 @@ export default function ResumeBuilder() {
     setLayoutAnalysis(null);
     setGeneratedHtml(null);
     setResumeMetadata(null);
+    setAtsScore(null);
+    setAtsFeedback(null);
     setJobDescription('');
     setError(null);
   };
@@ -427,6 +448,33 @@ export default function ResumeBuilder() {
                 />
               </section>
 
+              <section className="pt-6 border-t border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-green-100">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <h2 className="font-black text-lg tracking-tight">ATS Morph Engine</h2>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
+                    Our engine now automatically optimizes your resume for **Applicant Tracking Systems (ATS)**. 
+                  </p>
+                  <ul className="space-y-2">
+                    {[
+                      "Standardized section headings",
+                      "Linear HTML structure for parsing",
+                      "Keyword density optimization",
+                      "Clean, searchable typography"
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        <div className="w-1 h-1 rounded-full bg-green-500" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
               {error && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
@@ -459,9 +507,33 @@ export default function ResumeBuilder() {
               isPreviewFull ? "min-h-screen w-full max-w-5xl mx-auto" : "min-h-[850px]"
             )}>
               <div className="h-16 border-b border-gray-100 px-10 flex items-center justify-between bg-gray-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                  <span className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Live Preview Engine</span>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Live Preview Engine</span>
+                  </div>
+                  
+                  {atsScore !== null && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-3 pl-6 border-l border-gray-200"
+                    >
+                      <div className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2",
+                        atsScore >= 80 ? "bg-green-100 text-green-700" : 
+                        atsScore >= 50 ? "bg-yellow-100 text-yellow-700" : 
+                        "bg-red-100 text-red-700"
+                      )}>
+                        ATS Score: {atsScore}%
+                      </div>
+                      {atsFeedback && (
+                        <span className="text-[10px] font-bold text-gray-400 truncate max-w-[200px]" title={atsFeedback}>
+                          {atsFeedback}
+                        </span>
+                      )}
+                    </motion.div>
+                  )}
                 </div>
                 <div className="flex items-center gap-4">
                   {generatedHtml && (
