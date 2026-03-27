@@ -119,6 +119,31 @@ export default function ResumeBuilder() {
     }
   };
 
+  const handleOptimize = async () => {
+    if (!layoutAnalysis || !contentFile?.text) return;
+    
+    setIsGenerating(true);
+    setError(null);
+    setNeedsApiKey(false);
+    try {
+      const result = await generateResume(layoutAnalysis, contentFile.text, jobDescription);
+      setGeneratedHtml(result.html);
+      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
+      setAtsScore(result.atsScore);
+      setAtsFeedback(result.atsFeedback);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
+        setNeedsApiKey(true);
+        setError("API Key required. Please select your Gemini API key to continue.");
+      } else {
+        setError("Failed to re-optimize resume. Please try again.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSelectKey = async () => {
     const aistudio = (window as any).aistudio;
     if (aistudio?.openSelectKey) {
@@ -428,6 +453,23 @@ export default function ResumeBuilder() {
                 <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
                   * AI will emphasize relevant skills without removing your original data or adding fake skills.
                 </p>
+
+                {generatedHtml && jobDescription && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleOptimize}
+                    disabled={isGenerating}
+                    className="w-full py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                    )}
+                    {isGenerating ? "Optimizing..." : "Re-Morph with Optimization"}
+                  </motion.button>
+                )}
               </section>
 
               <section className={cn("transition-all duration-500", !layoutAnalysis && "opacity-30 pointer-events-none blur-[1px]")}>
