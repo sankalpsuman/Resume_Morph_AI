@@ -3,9 +3,9 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   FileUp, RefreshCw, ChevronDown, FileCode, FileType, Printer, 
-  Maximize2, Minimize2, Zap
+  Maximize2, Minimize2, Zap, Target, AlertCircle
 } from 'lucide-react';
-import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan } from '../lib/gemini';
+import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import mammoth from 'mammoth';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -35,6 +35,10 @@ export default function ResumeBuilder() {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [matchDescription, setMatchDescription] = useState('');
+  const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
+  const [isMatching, setIsMatching] = useState(false);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -67,33 +71,26 @@ export default function ResumeBuilder() {
     const file = acceptedFiles[0];
     if (!file) return;
 
-    setIsAnalyzing(true);
     setError(null);
     setNeedsApiKey(false);
     try {
-      let analysis = '';
-      const base64 = await fileToBase64(file);
-      
+      let text = '';
       if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
-        analysis = await analyzeLayout(undefined, undefined, result.value);
-      } else {
-        analysis = await analyzeLayout(base64.split(',')[1], file.type);
+        text = result.value;
+      } else if (file.type === 'text/plain') {
+        text = await file.text();
       }
       
-      setReferenceFile({ file, base64, type: file.type });
-      setLayoutAnalysis(analysis);
+      const base64 = await fileToBase64(file);
+      setReferenceFile({ file, base64, text, type: file.type });
+      // Reset layout analysis and generated HTML when a new reference is uploaded
+      setLayoutAnalysis(null);
+      setGeneratedHtml(null);
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
-        setNeedsApiKey(true);
-        setError("API Key required. Please select your Gemini API key to continue.");
-      } else {
-        setError("Failed to analyze reference resume. Please try a different file.");
-      }
-    } finally {
-      setIsAnalyzing(false);
+      setError("Failed to load reference file. Please try again.");
     }
   };
 
@@ -101,7 +98,6 @@ export default function ResumeBuilder() {
     const file = acceptedFiles[0];
     if (!file) return;
 
-    setIsGenerating(true);
     setError(null);
     setNeedsApiKey(false);
     try {
@@ -113,30 +109,104 @@ export default function ResumeBuilder() {
       } else if (file.type === 'text/plain') {
         text = await file.text();
       } else {
-        // For PDF/Images, we'll let Gemini extract the content text too
-        const base64 = await fileToBase64(file);
-        text = await extractTextFromAny(base64.split(',')[1], file.type);
+        // For PDF/Images, we'll need to extract text later via AI
+        // but we don't do it automatically now to save quota
       }
 
-      setContentFile({ file, text, type: file.type });
-      
-      if (layoutAnalysis) {
-        const result = await generateResume(layoutAnalysis, text, jobDescription);
-        setGeneratedHtml(result.html);
-        setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
-        setAtsScore(result.atsScore);
-        setAtsFeedback(result.atsFeedback);
+      const base64 = await fileToBase64(file);
+      setContentFile({ file, base64, text, type: file.type });
+      // Reset generated HTML when new content is uploaded
+      setGeneratedHtml(null);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to load content file. Please try again.");
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!referenceFile || !contentFile) return;
+    
+    setIsGenerating(true);
+    setError(null);
+    setNeedsApiKey(false);
+    
+    try {
+      let currentLayout = layoutAnalysis;
+      let currentContentText = contentFile.text;
+
+      // 1. Analyze Layout if not already done
+      if (!currentLayout) {
+        setIsAnalyzing(true);
+        if (referenceFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || referenceFile.type === 'text/plain') {
+          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
+        } else if (referenceFile.base64) {
+          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
+        }
+        setLayoutAnalysis(currentLayout);
+        setIsAnalyzing(false);
+      }
+
+      // 2. Extract Content Text if not already done (for PDF/Images)
+      if (!currentContentText && contentFile.base64) {
+        currentContentText = await extractTextFromAny(contentFile.base64.split(',')[1], contentFile.type);
+        setContentFile(prev => prev ? { ...prev, text: currentContentText } : null);
+      }
+
+      if (!currentLayout || !currentContentText) {
+        throw new Error("Missing layout or content information.");
+      }
+
+      // 3. Generate Resume
+      const result = await generateResume(currentLayout, currentContentText, jobDescription);
+      setGeneratedHtml(result.html);
+      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
+      setAtsScore(result.atsScore);
+      setAtsFeedback(result.atsFeedback);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === "API_KEY_MISSING") {
+        setNeedsApiKey(true);
+        setError("API Key required. Please select your Gemini API key to continue.");
+      } else if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later or use a different API key.");
+      } else {
+        setError("Failed to generate resume. Please try again.");
+      }
+    } finally {
+      setIsAnalyzing(false);
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAnalyzeStyle = async () => {
+    if (!referenceFile) return;
+    
+    setIsAnalyzing(true);
+    setError(null);
+    setNeedsApiKey(false);
+    
+    try {
+      let currentLayout = layoutAnalysis;
+      if (!currentLayout) {
+        if (referenceFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || referenceFile.type === 'text/plain') {
+          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
+        } else if (referenceFile.base64) {
+          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
+        }
+        setLayoutAnalysis(currentLayout);
       }
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
+      if (err.message === "API_KEY_MISSING") {
         setNeedsApiKey(true);
         setError("API Key required. Please select your Gemini API key to continue.");
+      } else if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later.");
       } else {
-        setError("Failed to process your content. Please try again.");
+        setError("Failed to analyze style. Please try again.");
       }
     } finally {
-      setIsGenerating(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -154,14 +224,44 @@ export default function ResumeBuilder() {
       setAtsFeedback(result.atsFeedback);
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
+      if (err.message === "API_KEY_MISSING") {
         setNeedsApiKey(true);
         setError("API Key required. Please select your Gemini API key to continue.");
+      } else if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later.");
       } else {
         setError("Failed to re-optimize resume. Please try again.");
       }
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCheckMatch = async () => {
+    if (!matchDescription) {
+      setError("Please paste a job description first.");
+      return;
+    }
+    if (!contentFile?.text) {
+      setError("Please upload your resume first.");
+      return;
+    }
+
+    setIsMatching(true);
+    setError(null);
+    try {
+      const result = await checkMatch(contentFile.text, matchDescription);
+      setMatchScore(result.score);
+      setMissingKeywords(result.missing);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later.");
+      } else {
+        setError("Failed to analyze match. Please try again.");
+      }
+    } finally {
+      setIsMatching(false);
     }
   };
 
@@ -177,7 +277,11 @@ export default function ResumeBuilder() {
       setShowPlanModal(true);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to generate optimization plan. Please try again.");
+      if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later.");
+      } else {
+        setError("Failed to generate optimization plan. Please try again.");
+      }
     } finally {
       setIsPlanning(false);
     }
@@ -198,9 +302,11 @@ export default function ResumeBuilder() {
       setAtsFeedback(result.atsFeedback);
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING" || err.message?.includes("API key not valid")) {
+      if (err.message === "API_KEY_MISSING") {
         setNeedsApiKey(true);
         setError("API Key required. Please select your Gemini API key to continue.");
+      } else if (err.message === "QUOTA_EXCEEDED") {
+        setError("Daily AI limit reached. Please try again later.");
       } else {
         setError("Failed to maximize ATS score. Please try again.");
       }
@@ -360,7 +466,7 @@ export default function ResumeBuilder() {
           
           <div className="flex items-center gap-2 md:gap-4">
             {generatedHtml && (
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <button 
                   onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                   className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-gray-900 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
@@ -431,7 +537,8 @@ export default function ResumeBuilder() {
             {(referenceFile || contentFile) && (
               <button 
                 onClick={reset}
-                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
+                disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
+                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all disabled:opacity-30"
                 title="Reset All"
               >
                 <RefreshCw className="w-5 h-5" />
@@ -464,6 +571,19 @@ export default function ResumeBuilder() {
                   label="Drop reference resume"
                   color="indigo"
                 />
+                
+                {referenceFile && !layoutAnalysis && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleAnalyzeStyle}
+                    disabled={isAnalyzing || isGenerating}
+                    className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Layout className="w-3 h-3" />}
+                    {isAnalyzing ? "Analyzing Style..." : "Analyze Style"}
+                  </motion.button>
+                )}
                 
                 {layoutAnalysis && (
                   <motion.div 
@@ -540,7 +660,7 @@ export default function ResumeBuilder() {
                 )}
               </section>
 
-              <section className={cn("transition-all duration-500", !layoutAnalysis && "opacity-30 pointer-events-none blur-[1px]")}>
+              <section className="transition-all duration-500">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">3</div>
                   <h2 className="font-black text-xl tracking-tight">Your Content</h2>
@@ -556,6 +676,81 @@ export default function ResumeBuilder() {
                   label="Drop your content file"
                   color="indigo"
                 />
+
+                {referenceFile && contentFile && !generatedHtml && (
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleGenerate}
+                    disabled={isGenerating || isAnalyzing}
+                    className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isGenerating || isAnalyzing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Zap className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
+                    )}
+                    {isGenerating ? "Morphing..." : isAnalyzing ? "Analyzing Style..." : "Generate Resume"}
+                  </motion.button>
+                )}
+              </section>
+
+              <section className={cn("transition-all duration-500 pt-6 border-t border-gray-100", !contentFile && "opacity-30 pointer-events-none blur-[1px]")}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">4</div>
+                  <h2 className="font-black text-xl tracking-tight">Match Analysis</h2>
+                </div>
+                <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
+                  Paste a specific job description to check your match score.
+                </p>
+                <div className="space-y-4">
+                  <textarea 
+                    value={matchDescription}
+                    onChange={(e) => setMatchDescription(e.target.value)}
+                    placeholder="Paste job description here..."
+                    className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none"
+                  />
+                  <button 
+                    onClick={handleCheckMatch}
+                    disabled={isMatching || !matchDescription}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
+                    {isMatching ? "Analyzing Match..." : "Check Match Score"}
+                  </button>
+
+                  {matchScore !== null && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Match Score</span>
+                        <span className={cn(
+                          "text-2xl font-black",
+                          matchScore >= 80 ? "text-green-600" : matchScore >= 50 ? "text-yellow-600" : "text-red-600"
+                        )}>{matchScore}%</span>
+                      </div>
+                      
+                      {missingKeywords.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                            <AlertCircle className="w-2.5 h-2.5" />
+                            Missing Keywords
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {missingKeywords.map((kw, i) => (
+                              <span key={i} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-[9px] font-bold text-indigo-600">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
               </section>
 
               <section className="pt-6 border-t border-gray-100">
@@ -595,7 +790,8 @@ export default function ResumeBuilder() {
                   {needsApiKey && (
                     <button 
                       onClick={handleSelectKey}
-                      className="w-full py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+                      className="w-full py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
+                      disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
                     >
                       Select API Key
                     </button>
@@ -834,6 +1030,78 @@ export default function ResumeBuilder() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {generatedHtml && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-[150] md:hidden p-4 bg-white/80 backdrop-blur-lg border-t border-gray-100 shadow-2xl"
+          >
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+              >
+                <Download className="w-5 h-5" />
+                Export Resume
+                <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
+              </button>
+            </div>
+            
+            <AnimatePresence>
+              {showDownloadMenu && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute bottom-full left-4 right-4 mb-4 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-3 z-20"
+                >
+                  <div className="grid grid-cols-1 gap-2">
+                    <button 
+                      onClick={() => { handleDownloadHTML(); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                        <FileCode className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-700">HTML</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Web format</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => { handleDownloadWord(); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <FileType className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-700">Word</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Editable .doc</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => { handlePrintPDF(); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                        <Printer className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-700">PDF</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Print ready</span>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
