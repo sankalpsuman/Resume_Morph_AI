@@ -213,26 +213,6 @@ export default function About() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
-              <RefreshCw className="text-white w-4 h-4" />
-            </div>
-            <span className="font-black text-lg tracking-tight">Resume Morph</span>
-          </div>
-          <p className="text-sm text-gray-400 font-medium text-center md:text-left">
-            © 2026 Resume Morph. Built with passion by Sankalp Suman.
-          </p>
-          <div className="flex items-center gap-6">
-            <button className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</button>
-            <button className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Terms</button>
-            <button className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Support</button>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

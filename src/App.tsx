@@ -8,11 +8,12 @@ import ResumeBuilder from './components/ResumeBuilder';
 import About from './components/About';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Contact from './components/Contact';
-import { RefreshCw, Layout, Info, Shield, Send, Menu, X } from 'lucide-react';
+import Feedback from './components/Feedback';
+import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
-type Tab = 'builder' | 'about' | 'privacy' | 'contact';
+type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -23,6 +24,7 @@ export default function App() {
     { id: 'about', label: 'About & Founder', icon: Info },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'contact', label: 'Contact', icon: Send },
+    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   ];
 
   const handleTabChange = (tab: Tab) => {
@@ -106,6 +108,7 @@ export default function App() {
         {activeTab === 'about' && <About />}
         {activeTab === 'privacy' && <PrivacyPolicy />}
         {activeTab === 'contact' && <Contact />}
+        {activeTab === 'feedback' && <Feedback />}
       </main>
 
       {/* Global Footer */}
@@ -121,6 +124,7 @@ export default function App() {
             © 2026 Resume Morph. Built with passion by Sankalp Suman.
           </p>
           <div className="flex items-center gap-6">
+            <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Feedback</button>
             <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</button>
             <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">About</button>
             <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Contact</button>

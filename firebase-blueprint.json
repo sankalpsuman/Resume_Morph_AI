@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Feedback": {
+      "title": "Feedback",
+      "description": "User feedback and admin replies",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the user providing feedback"
+        },
+        "message": {
+          "type": "string",
+          "description": "Feedback message"
+        },
+        "reply": {
+          "type": "string",
+          "description": "Admin reply to the feedback"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when feedback was created"
+        },
+        "uid": {
+          "type": "string",
+          "description": "User ID of the feedback author"
+        }
+      },
+      "required": ["name", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Collection of user feedbacks"
+    }
+  }
+}

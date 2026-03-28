@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
-  FileUp, RefreshCw, ChevronDown, FileCode, FileType, Printer, 
-  Maximize2, Minimize2, Zap, Target, AlertCircle
+  RefreshCw, FileCode, FileType, Printer, 
+  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand
 } from 'lucide-react';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import mammoth from 'mammoth';
@@ -361,8 +361,8 @@ export default function ResumeBuilder() {
             body { font-family: 'Inter', sans-serif; margin: 0; padding: 2rem; background: white; }
             .resume-container { max-width: 800px; margin: 0 auto; }
             @media print {
-              @page { margin: 0; }
-              body { margin: 1.6cm; padding: 0; }
+              @page { margin: 0; size: auto; }
+              body { margin: 1.6cm; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               .resume-container { max-width: none; width: 100%; }
             }
           </style>
@@ -474,7 +474,7 @@ export default function ResumeBuilder() {
                   <Download className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="hidden xs:inline">Export</span>
                   <span className="hidden sm:inline">Resume</span>
-                  <ChevronDown className={cn("w-3 h-3 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-180")} />
+                  <Hand className={cn("w-3 h-3 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-12")} />
                 </button>
 
                 <AnimatePresence>
@@ -541,7 +541,7 @@ export default function ResumeBuilder() {
                 className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all disabled:opacity-30"
                 title="Reset All"
               >
-                <RefreshCw className="w-5 h-5" />
+                <MousePointerClick className="w-5 h-5" />
               </button>
             )}
           </div>
@@ -580,7 +580,7 @@ export default function ResumeBuilder() {
                     disabled={isAnalyzing || isGenerating}
                     className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Layout className="w-3 h-3" />}
+                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <MousePointerClick className="w-3 h-3" />}
                     {isAnalyzing ? "Analyzing Style..." : "Analyze Style"}
                   </motion.button>
                 )}
@@ -653,7 +653,7 @@ export default function ResumeBuilder() {
                     {isGenerating ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                      <MousePointerClick className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                     )}
                     {isGenerating ? "Optimizing..." : "Re-Morph with Optimization"}
                   </motion.button>
@@ -688,7 +688,7 @@ export default function ResumeBuilder() {
                     {isGenerating || isAnalyzing ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <Zap className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
+                      <MousePointerClick className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
                     )}
                     {isGenerating ? "Morphing..." : isAnalyzing ? "Analyzing Style..." : "Generate Resume"}
                   </motion.button>
@@ -715,7 +715,7 @@ export default function ResumeBuilder() {
                     disabled={isMatching || !matchDescription}
                     className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {isMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Target className="w-3 h-3" />}
+                    {isMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <MousePointerClick className="w-3 h-3" />}
                     {isMatching ? "Analyzing Match..." : "Check Match Score"}
                   </button>
 
@@ -923,12 +923,28 @@ export default function ResumeBuilder() {
                             <script src="https://cdn.tailwindcss.com"></script>
                             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                             <style>
-                              body { font-family: 'Inter', sans-serif; margin: 0; padding: 3rem; background: white; color: #1a1a1a; }
-                              .resume-container { max-width: 800px; margin: 0 auto; }
+                              body { 
+                                font-family: 'Inter', sans-serif; 
+                                margin: 0; 
+                                padding: 3rem; 
+                                background: white; 
+                                color: #1a1a1a; 
+                                overflow-x: hidden;
+                              }
+                              .resume-container { 
+                                max-width: 800px; 
+                                margin: 0 auto; 
+                                transform-origin: top center;
+                                transition: transform 0.2s ease;
+                              }
                               @media print {
-                                @page { margin: 0; }
-                                body { margin: 1.6cm; padding: 0; }
-                                .resume-container { max-width: none; width: 100%; }
+                                @page { margin: 0; size: auto; }
+                                body { margin: 1.6cm; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                                .resume-container { max-width: none; width: 100%; transform: none !important; }
+                              }
+                              @media screen and (max-width: 800px) {
+                                body { padding: 1.5rem; }
+                                .resume-container { width: 800px; }
                               }
                             </style>
                           </head>
@@ -936,6 +952,23 @@ export default function ResumeBuilder() {
                             <div class="resume-container">
                               ${generatedHtml}
                             </div>
+                            <script>
+                              function adjustScale() {
+                                const container = document.querySelector('.resume-container');
+                                if (!container) return;
+                                const width = window.innerWidth;
+                                const padding = width < 800 ? 48 : 96; // 1.5rem vs 3rem total padding
+                                if (width < 800) {
+                                  const scale = (width - padding) / 800;
+                                  container.style.transform = 'scale(' + scale + ')';
+                                } else {
+                                  container.style.transform = 'none';
+                                }
+                              }
+                              window.addEventListener('resize', adjustScale);
+                              window.addEventListener('load', adjustScale);
+                              setTimeout(adjustScale, 100);
+                            </script>
                           </body>
                         </html>
                       `}
@@ -1048,7 +1081,7 @@ export default function ResumeBuilder() {
               >
                 <Download className="w-5 h-5" />
                 Export Resume
-                <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
+                <Hand className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-12")} />
               </button>
             </div>
             
@@ -1104,6 +1137,21 @@ export default function ResumeBuilder() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Marquee Warning Message */}
+      <div className="bg-indigo-600 text-white py-2 overflow-hidden whitespace-nowrap border-t border-indigo-500">
+        <motion.div 
+          animate={{ x: ["100%", "-100%"] }}
+          transition={{ 
+            duration: 25, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
+          className="inline-block px-4 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]"
+        >
+          We’re currently running on the free AI API plan, so request limits may be reached during high usage. If it doesn’t work right now, please try again after some time.
+        </motion.div>
+      </div>
     </div>
   );
 }
@@ -1150,7 +1198,7 @@ function Dropzone({ onDrop, isProcessing, file, label, color }: {
           ) : file ? (
             <CheckCircle className="w-8 h-8" />
           ) : (
-            <FileUp className="w-8 h-8" />
+            <MousePointerClick className="w-8 h-8" />
           )}
         </div>
         

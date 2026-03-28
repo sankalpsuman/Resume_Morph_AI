@@ -70,17 +70,6 @@ export default function Contact() {
             </div>
           </div>
 
-          <div className="pt-12 border-t border-gray-100 text-center">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
-                <RefreshCw className="text-white w-4 h-4" />
-              </div>
-              <span className="font-black text-lg tracking-tight">Resume Morph</span>
-            </div>
-            <p className="text-sm text-gray-400 font-medium">
-              © 2026 Resume Morph. Built with passion by Sankalp Suman.
-            </p>
-          </div>
         </motion.div>
       </div>
     </div>
