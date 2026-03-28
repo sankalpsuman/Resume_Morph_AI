@@ -34,6 +34,8 @@ export default function Feedback() {
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setUser(user);
@@ -58,6 +60,8 @@ export default function Feedback() {
         ...doc.data()
       })) as FeedbackItem[];
       setFeedbacks(items);
+    }, (error) => {
+      console.error("Firestore Error: ", error);
     });
 
     return () => {
@@ -67,11 +71,20 @@ export default function Feedback() {
   }, []);
 
   const handleLogin = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, no need to log as a critical error
+        console.log('Login popup closed by user');
+      } else {
+        console.error('Login failed:', error);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -160,10 +173,20 @@ export default function Feedback() {
                 </div>
                 <button 
                   onClick={handleLogin}
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100"
+                  disabled={isLoggingIn}
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <LogIn className="w-5 h-5" />
-                  Sign in with Google
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-5 h-5" />
+                      Sign in with Google
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
