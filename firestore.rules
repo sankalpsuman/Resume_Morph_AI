@@ -19,11 +19,34 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.email is string &&
+             data.email.size() > 0 &&
+             (data.createdAt is timestamp || data.createdAt == serverTimestamp()) &&
+             (!('morphCount' in data) || data.morphCount is number) &&
+             (!('hasReviewed' in data) || data.hasReviewed is bool) &&
+             (!('resumeHistory' in data) || data.resumeHistory is list);
+    }
+
     function isValidFeedback(data) {
-      return data.keys().hasAll(['name', 'message', 'createdAt']) &&
+      return data.keys().hasAll(['name', 'message', 'createdAt', 'uid']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
-             data.message is string && data.message.size() > 0 && data.message.size() < 1000 &&
-             data.createdAt is timestamp;
+             data.message is string && data.message.size() > 0 && data.message.size() < 2000 &&
+             (data.createdAt is timestamp || data.createdAt == serverTimestamp()) &&
+             data.uid == request.auth.uid &&
+             (!('email' in data) || data.email is string) &&
+             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('rating' in data) || data.rating is number);
+    }
+
+    function isValidPremiumInterest(data) {
+      return data.keys().hasAll(['email', 'uid', 'timestamp']) &&
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             data.email.size() > 0 &&
+             (data.timestamp is timestamp || data.timestamp == serverTimestamp());
     }
 
     // ===============================================================
@@ -32,7 +55,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow create, update: if isAuthenticated() && isOwner(userId) && 
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(userId) && 
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isAdmin());
     }
 
@@ -48,6 +72,11 @@ service cloud.firestore {
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reply']);
       
       allow delete: if isAdmin();
+    }
+
+    match /premium_interest/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create, update: if isAuthenticated() && isOwner(userId) && isValidPremiumInterest(request.resource.data);
     }
   }
 }

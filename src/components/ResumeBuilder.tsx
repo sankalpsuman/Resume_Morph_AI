@@ -3,12 +3,16 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, Printer, 
-  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand
+  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock
 } from 'lucide-react';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import mammoth from 'mammoth';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { auth, db, storage } from '../firebase';
+import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment } from 'firebase/firestore';
+import { ref, uploadString, deleteObject } from 'firebase/storage';
+import { handleFirestoreError, OperationType } from '../lib/firestore';
 
 interface FileData {
   file: File;
@@ -17,7 +21,12 @@ interface FileData {
   type: string;
 }
 
-export default function ResumeBuilder() {
+interface ResumeBuilderProps {
+  userData: any;
+  onUpgrade: () => void;
+}
+
+export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProps) {
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
@@ -39,6 +48,17 @@ export default function ResumeBuilder() {
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
   const [isMatching, setIsMatching] = useState(false);
+
+  // New state for limits and feedback
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  // New state for Smart Save Flow
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -123,9 +143,103 @@ export default function ResumeBuilder() {
     }
   };
 
+  const saveResumeToHistory = async (html: string, name: string, replaceId?: string) => {
+    if (!auth.currentUser || !userData) return;
+    setIsSaving(true);
+    
+    // Optimistically close modal to make it feel instant
+    setShowSaveModal(false);
+    
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      let currentHistory = userData.resumeHistory || [];
+      
+      const resumeId = replaceId || crypto.randomUUID();
+      const storagePath = `resumes/${auth.currentUser.uid}/${resumeId}.html`;
+      const resumeRef = ref(storage, storagePath);
+
+      const newResume = {
+        id: resumeId,
+        name: name || 'Untitled Resume',
+        timestamp: new Date().toISOString(),
+        html: html, // Keep HTML in Firestore for quick access as well
+        storagePath: storagePath
+      };
+
+      let updatedHistory;
+      if (replaceId) {
+        // Replace existing
+        updatedHistory = currentHistory.map((r: any) => r.id === replaceId ? newResume : r);
+      } else {
+        // Add new, but user should only call this if < 2
+        updatedHistory = [newResume, ...currentHistory].slice(0, 2);
+      }
+
+      // Parallelize Storage and Firestore updates for maximum speed
+      await Promise.all([
+        uploadString(resumeRef, html, 'raw', { contentType: 'text/html' }),
+        updateDoc(userRef, {
+          morphCount: increment(1),
+          resumeHistory: updatedHistory,
+          lastActivityAt: serverTimestamp()
+        })
+      ]);
+      
+      setPendingResume(null);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
+      setError("Background save failed. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!auth.currentUser || rating === 0) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      // 1. Save feedback to feedbacks collection
+      await addDoc(collection(db, 'feedbacks'), {
+        uid: auth.currentUser.uid,
+        name: auth.currentUser.displayName,
+        email: auth.currentUser.email,
+        photoURL: auth.currentUser.photoURL,
+        rating,
+        message: feedbackText || `Rating: ${rating} stars`,
+        createdAt: serverTimestamp()
+      });
+
+      // 2. Update user status to unlock 2nd morph
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        hasReviewed: true
+      });
+
+      setShowFeedbackModal(false);
+      // Now user can try morphing again
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'feedbacks/users');
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!referenceFile || !contentFile) return;
     
+    // Check limits
+    if (userData) {
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      if (userData.morphCount >= 2) {
+        onUpgrade();
+        return;
+      }
+    }
+
     setIsGenerating(true);
     setError(null);
     setNeedsApiKey(false);
@@ -152,6 +266,10 @@ export default function ResumeBuilder() {
       if (!contentFile.text && result.extractedText) {
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
+
+      // Trigger Smart Save Flow
+      setPendingResume({ html: result.html, name: result.name });
+      setShowSaveModal(true);
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -203,6 +321,18 @@ export default function ResumeBuilder() {
   const handleOptimize = async () => {
     if (!referenceFile || !contentFile) return;
     
+    // Check limits
+    if (userData) {
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      if (userData.morphCount >= 2) {
+        onUpgrade();
+        return;
+      }
+    }
+
     setIsGenerating(true);
     setError(null);
     setNeedsApiKey(false);
@@ -226,6 +356,10 @@ export default function ResumeBuilder() {
       if (!contentFile.text && result.extractedText) {
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
+
+      // Trigger Smart Save Flow
+      setPendingResume({ html: result.html, name: result.name });
+      setShowSaveModal(true);
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -294,6 +428,18 @@ export default function ResumeBuilder() {
   const confirmMaximizeAts = async () => {
     if (!referenceFile || !contentFile) return;
     
+    // Check limits
+    if (userData) {
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      if (userData.morphCount >= 2) {
+        onUpgrade();
+        return;
+      }
+    }
+
     setShowPlanModal(false);
     setIsGenerating(true);
     setError(null);
@@ -318,6 +464,10 @@ export default function ResumeBuilder() {
       if (!contentFile.text && result.extractedText) {
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
+
+      // Trigger Smart Save Flow
+      setPendingResume({ html: result.html, name: result.name });
+      setShowSaveModal(true);
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -696,20 +846,32 @@ export default function ResumeBuilder() {
                 />
 
                 {referenceFile && contentFile && !generatedHtml && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={handleGenerate}
-                    disabled={isGenerating || isAnalyzing}
-                    className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGenerating || isAnalyzing ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <MousePointerClick className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
-                    )}
-                    {isGenerating ? "Morphing..." : isAnalyzing ? "Analyzing Style..." : "Generate Resume"}
-                  </motion.button>
+                  userData?.morphCount >= 2 ? (
+                    <motion.button
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={onUpgrade}
+                      className="w-full mt-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
+                    >
+                      <Zap className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
+                      Upgrade to Premium
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={handleGenerate}
+                      disabled={isGenerating || isAnalyzing}
+                      className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isGenerating || isAnalyzing ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <MousePointerClick className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
+                      )}
+                      {isGenerating ? "Morphing..." : isAnalyzing ? "Analyzing Style..." : "Generate Resume"}
+                    </motion.button>
+                  )
                 )}
               </section>
 
@@ -1156,20 +1318,160 @@ export default function ResumeBuilder() {
         )}
       </AnimatePresence>
 
-      {/* Marquee Warning Message */}
-      <div className="bg-indigo-600 text-white py-2 overflow-hidden whitespace-nowrap border-t border-indigo-500">
-        <motion.div 
-          animate={{ x: ["100%", "-100%"] }}
-          transition={{ 
-            duration: 25, 
-            repeat: Infinity, 
-            ease: "linear" 
-          }}
-          className="inline-block px-4 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]"
-        >
-          We’re currently running on the free AI API plan, so request limits may be reached during high usage. If it doesn’t work right now, please try again after some time.
-        </motion.div>
-      </div>
+      {/* Feedback Unlock Modal */}
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFeedbackModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100"
+            >
+              <div className="p-8 md:p-10 text-center">
+                <div className="w-20 h-20 bg-indigo-50 rounded-[28px] flex items-center justify-center mx-auto mb-8">
+                  <Star className="w-10 h-10 text-indigo-600 fill-indigo-600" />
+                </div>
+                
+                <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Unlock 1 More Morph!</h2>
+                <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+                  You've used your free morph. Share your feedback to unlock one more resume morph for free!
+                </p>
+
+                <div className="flex justify-center gap-3 mb-8">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className="transition-transform hover:scale-110 active:scale-95"
+                    >
+                      <Star 
+                        className={cn(
+                          "w-10 h-10 transition-colors",
+                          rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                        )} 
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="Tell us what you think... (optional)"
+                  className="w-full h-32 px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-[24px] text-sm font-medium transition-all outline-none resize-none mb-8"
+                />
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleFeedbackSubmit}
+                    disabled={rating === 0 || isSubmittingFeedback}
+                    className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3"
+                  >
+                    {isSubmittingFeedback ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      "Unlock Now"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowFeedbackModal(false)}
+                    className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
+                  >
+                    Maybe Later
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade Modal */}
+      {/* Smart Save Modal */}
+      <AnimatePresence>
+        {showSaveModal && pendingResume && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowSaveModal(false);
+                setPendingResume(null);
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100 space-y-8"
+            >
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-100">
+                  <Download className="w-10 h-10 text-indigo-600" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-black text-gray-900 tracking-tight">Save Resume?</h3>
+                  <p className="text-gray-500 font-medium">Do you want to save this resume for later download? You can save up to 2 resumes.</p>
+                </div>
+              </div>
+
+              {userData.resumeHistory?.length >= 2 ? (
+                <div className="space-y-4">
+                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest text-center">Select a resume to replace</p>
+                  <div className="grid gap-3">
+                    {userData.resumeHistory.map((resume: any) => (
+                      <button
+                        key={resume.id}
+                        onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name, resume.id)}
+                        disabled={isSaving}
+                        className="flex items-center justify-between p-4 bg-gray-50 hover:bg-indigo-50 rounded-2xl border border-gray-100 hover:border-indigo-200 transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+                          <span className="text-sm font-bold text-gray-700">{resume.name}</span>
+                        </div>
+                        <RefreshCw className="w-4 h-4 text-gray-300 group-hover:text-indigo-400" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name)}
+                    disabled={isSaving}
+                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+                  >
+                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                    Yes, Save it
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setPendingResume(null);
+                }}
+                disabled={isSaving}
+                className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
+              >
+                No, Don't Save
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

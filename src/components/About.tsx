@@ -7,20 +7,7 @@ import {
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100">
-      {/* Navigation / Logo Top */}
-      <nav className="py-4 md:py-6 px-4 md:px-8 flex justify-center border-b border-gray-50">
-        <div className="flex items-center gap-3 group cursor-default">
-          <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100 group-hover:rotate-12 transition-transform duration-300">
-            <RefreshCw className="text-white w-4 h-4 md:w-5 md:h-5" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-lg md:text-xl tracking-tighter leading-none">RESUME</span>
-            <span className="font-black text-lg md:text-xl tracking-tighter leading-none text-indigo-600">MORPH</span>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 pt-24 md:pt-32 pb-16 md:pb-24">
       {/* Hero Section */}
       <section className="relative py-16 md:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-indigo-50/30 -z-10" />

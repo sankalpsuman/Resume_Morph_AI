@@ -1,39 +1,73 @@
 {
   "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and usage tracking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "photo": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "morphCount": { "type": "number" },
+        "hasReviewed": { "type": "boolean" },
+        "resumeHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "profile": { "type": "string" },
+              "atsScore": { "type": "number" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
     "Feedback": {
       "title": "Feedback",
       "description": "User feedback and admin replies",
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the user providing feedback"
-        },
-        "message": {
-          "type": "string",
-          "description": "Feedback message"
-        },
-        "reply": {
-          "type": "string",
-          "description": "Admin reply to the feedback"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp when feedback was created"
-        },
-        "uid": {
-          "type": "string",
-          "description": "User ID of the feedback author"
-        }
+        "name": { "type": "string" },
+        "message": { "type": "string" },
+        "reply": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "rating": { "type": "number" }
       },
-      "required": ["name", "message", "createdAt"]
+      "required": ["name", "message", "createdAt", "uid"]
+    },
+    "PremiumInterest": {
+      "title": "Premium Interest",
+      "description": "Users interested in premium features",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "uid": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "uid", "timestamp"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and usage tracking"
+    },
     "/feedbacks/{feedbackId}": {
       "schema": "Feedback",
       "description": "Collection of user feedbacks"
+    },
+    "/premium_interest/{userId}": {
+      "schema": "PremiumInterest",
+      "description": "Users interested in premium features"
     }
   }
 }

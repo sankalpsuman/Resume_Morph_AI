@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { cn } from '../lib/utils';
+import { handleFirestoreError, OperationType } from '../lib/firestore';
 
 interface FeedbackItem {
   id: string;
@@ -41,12 +42,16 @@ export default function Feedback() {
       setUser(user);
       if (user) {
         // Check if user is admin
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const userData = userDoc.data();
-        if (userData?.role === 'admin' || user.email === 'sankalpsmn@gmail.com') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.data();
+          if (userData?.role === 'admin' || user.email === 'sankalpsmn@gmail.com') {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
         }
       } else {
         setIsAdmin(false);
@@ -61,7 +66,7 @@ export default function Feedback() {
       })) as FeedbackItem[];
       setFeedbacks(items);
     }, (error) => {
-      console.error("Firestore Error: ", error);
+      handleFirestoreError(error, OperationType.LIST, 'feedbacks');
     });
 
     return () => {
@@ -106,7 +111,7 @@ export default function Feedback() {
       setName('');
       setMessage('');
     } catch (error) {
-      console.error('Failed to add feedback:', error);
+      handleFirestoreError(error, OperationType.CREATE, 'feedbacks');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,7 +123,7 @@ export default function Feedback() {
     try {
       await deleteDoc(doc(db, 'feedbacks', id));
     } catch (error) {
-      console.error('Failed to delete feedback:', error);
+      handleFirestoreError(error, OperationType.DELETE, `feedbacks/${id}`);
     }
   };
 
@@ -132,7 +137,7 @@ export default function Feedback() {
       setReplyingTo(null);
       setReplyText('');
     } catch (error) {
-      console.error('Failed to reply:', error);
+      handleFirestoreError(error, OperationType.UPDATE, `feedbacks/${id}`);
     } finally {
       setIsReplying(false);
     }
