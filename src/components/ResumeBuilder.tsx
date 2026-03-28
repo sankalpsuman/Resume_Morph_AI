@@ -131,37 +131,27 @@ export default function ResumeBuilder() {
     setNeedsApiKey(false);
     
     try {
-      let currentLayout = layoutAnalysis;
-      let currentContentText = contentFile.text;
+      // Unified call: Merges layout analysis, text extraction, JD matching, and resume generation
+      const result = await generateResume(
+        { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
+        { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
+        jobDescription,
+        false,
+        layoutAnalysis
+      );
 
-      // 1. Analyze Layout if not already done
-      if (!currentLayout) {
-        setIsAnalyzing(true);
-        if (referenceFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || referenceFile.type === 'text/plain') {
-          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
-        } else if (referenceFile.base64) {
-          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
-        }
-        setLayoutAnalysis(currentLayout);
-        setIsAnalyzing(false);
-      }
-
-      // 2. Extract Content Text if not already done (for PDF/Images)
-      if (!currentContentText && contentFile.base64) {
-        currentContentText = await extractTextFromAny(contentFile.base64.split(',')[1], contentFile.type);
-        setContentFile(prev => prev ? { ...prev, text: currentContentText } : null);
-      }
-
-      if (!currentLayout || !currentContentText) {
-        throw new Error("Missing layout or content information.");
-      }
-
-      // 3. Generate Resume
-      const result = await generateResume(currentLayout, currentContentText, jobDescription);
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
       setAtsFeedback(result.atsFeedback);
+      setMatchScore(result.matchScore);
+      setMissingKeywords(result.missingKeywords);
+      setLayoutAnalysis(result.layoutAnalysis);
+      
+      // If content text was extracted by AI, update it locally to avoid re-extraction
+      if (!contentFile.text && result.extractedText) {
+        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -211,17 +201,31 @@ export default function ResumeBuilder() {
   };
 
   const handleOptimize = async () => {
-    if (!layoutAnalysis || !contentFile?.text) return;
+    if (!referenceFile || !contentFile) return;
     
     setIsGenerating(true);
     setError(null);
     setNeedsApiKey(false);
     try {
-      const result = await generateResume(layoutAnalysis, contentFile.text, jobDescription);
+      const result = await generateResume(
+        { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
+        { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
+        jobDescription,
+        false,
+        layoutAnalysis
+      );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
       setAtsFeedback(result.atsFeedback);
+      setMatchScore(result.matchScore);
+      setMissingKeywords(result.missingKeywords);
+      setLayoutAnalysis(result.layoutAnalysis);
+
+      // Update content text if extracted
+      if (!contentFile.text && result.extractedText) {
+        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -288,18 +292,32 @@ export default function ResumeBuilder() {
   };
 
   const confirmMaximizeAts = async () => {
-    if (!layoutAnalysis || !contentFile?.text) return;
+    if (!referenceFile || !contentFile) return;
     
     setShowPlanModal(false);
     setIsGenerating(true);
     setError(null);
     setNeedsApiKey(false);
     try {
-      const result = await generateResume(layoutAnalysis, contentFile.text, jobDescription, true);
+      const result = await generateResume(
+        { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
+        { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
+        jobDescription,
+        true,
+        layoutAnalysis
+      );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
       setAtsFeedback(result.atsFeedback);
+      setMatchScore(result.matchScore);
+      setMissingKeywords(result.missingKeywords);
+      setLayoutAnalysis(result.layoutAnalysis);
+
+      // Update content text if extracted
+      if (!contentFile.text && result.extractedText) {
+        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {

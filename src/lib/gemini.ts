@@ -179,7 +179,13 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
   });
 }
 
-export async function generateResume(layoutDesc: string, userContent: string, jobDescription?: string, maximizeAts: boolean = false) {
+export async function generateResume(
+  reference: { base64?: string; mimeType?: string; text?: string },
+  content: { base64?: string; mimeType?: string; text?: string },
+  jobDescription: string = "",
+  maximizeAts: boolean = false,
+  existingLayout: string | null = null
+) {
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
@@ -199,16 +205,18 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
       - Set "atsScore" to 100.`
       : "";
 
-    const prompt = `Expert ATS Resume Builder.
-    
-    LAYOUT: ${layoutDesc}
-    CONTENT: ${userContent}${optimizationPrompt}${atsMaxPrompt}
+    const prompt = `Expert ATS Resume Builder & Career Strategist.
     
     TASK:
-    1. Generate professional HTML/Tailwind resume matching LAYOUT.
-    2. If OPTIMIZATION TARGET exists, align content strictly.
-    3. Extract Name, YOE, Profile.
-    4. Calculate ATS Score (0-100).
+    1. ANALYZE LAYOUT: Analyze the visual structure of the REFERENCE. If text/analysis is provided, use it. If an image/PDF is provided, describe its typography, layout, and visual elements.
+    2. EXTRACT CONTENT: Extract all professional details from the USER CONTENT.
+    3. GENERATE RESUME: Create a professional HTML/Tailwind resume matching the analyzed layout and optimized for the JOB DESCRIPTION.
+    4. CALCULATE SCORES: 
+       - Calculate ATS Score (0-100) based on standard parsing rules.
+       - Calculate Match Score (0-100) specifically against the JOB DESCRIPTION.
+       - Identify missing keywords from the JD.
+    
+    ${optimizationPrompt}${atsMaxPrompt}
     
     ATS RULES: Standard headings, linear structure, no complex CSS hacks, searchable text.
     
@@ -221,8 +229,41 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
     - "profile": Job title.
     - "atsScore": 0-100.
     - "atsFeedback": Max 150 chars.
+    - "matchScore": 0-100.
+    - "missingKeywords": Array of strings.
+    - "layoutAnalysis": Concise description of the layout style.
+    - "extractedText": The full text extracted from the USER CONTENT (if it was an image/PDF).
     
     Return ONLY JSON. No markdown.`;
+
+    const contents: any[] = [];
+    const parts: any[] = [];
+
+    // Add Reference Info
+    if (existingLayout) {
+      parts.push({ text: `EXISTING LAYOUT ANALYSIS: ${existingLayout}` });
+    } else if (reference.text) {
+      parts.push({ text: `REFERENCE RESUME TEXT: ${reference.text}` });
+    } else if (reference.base64 && reference.mimeType) {
+      parts.push({ inlineData: { data: reference.base64.split(',')[1] || reference.base64, mimeType: reference.mimeType } });
+      parts.push({ text: "REFERENCE RESUME (Analyze this layout)" });
+    }
+
+    // Add Content Info
+    if (content.text) {
+      parts.push({ text: `USER CONTENT TEXT: ${content.text}` });
+    } else if (content.base64 && content.mimeType) {
+      parts.push({ inlineData: { data: content.base64.split(',')[1] || content.base64, mimeType: content.mimeType } });
+      parts.push({ text: "USER CONTENT (Extract details from this)" });
+    }
+
+    // Add JD
+    if (jobDescription) {
+      parts.push({ text: `JOB DESCRIPTION: ${jobDescription}` });
+    }
+
+    // Add Final Prompt
+    parts.push({ text: prompt });
 
     const response = await ai.models.generateContent({
       model,
@@ -236,13 +277,20 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
             yoe: { type: Type.STRING },
             profile: { type: Type.STRING },
             atsScore: { type: Type.NUMBER },
-            atsFeedback: { type: Type.STRING }
+            atsFeedback: { type: Type.STRING },
+            matchScore: { type: Type.NUMBER },
+            missingKeywords: { 
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            layoutAnalysis: { type: Type.STRING },
+            extractedText: { type: Type.STRING }
           },
-          required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback"]
+          required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
         },
-        temperature: 0.1 // Lower temperature for faster, more consistent results
+        temperature: 0.1
       },
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ parts }],
     });
 
     try {
@@ -250,8 +298,18 @@ export async function generateResume(layoutDesc: string, userContent: string, jo
       return JSON.parse(text);
     } catch (e) {
       console.error("Failed to parse AI response as JSON", e);
-      // Fallback if JSON parsing fails
-      return { html: response.text, name: "Resume", yoe: "0", profile: "Profile", atsScore: 0, atsFeedback: "Parsing error" };
+      return { 
+        html: response.text, 
+        name: "Resume", 
+        yoe: "0", 
+        profile: "Profile", 
+        atsScore: 0, 
+        atsFeedback: "Parsing error",
+        matchScore: 0,
+        missingKeywords: [],
+        layoutAnalysis: "Error parsing layout",
+        extractedText: ""
+      };
     }
   });
 }
