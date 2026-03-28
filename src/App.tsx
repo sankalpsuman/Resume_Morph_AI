@@ -103,12 +103,22 @@ export default function App() {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-grow">
-        {activeTab === 'builder' && <ResumeBuilder />}
-        {activeTab === 'about' && <About />}
-        {activeTab === 'privacy' && <PrivacyPolicy />}
-        {activeTab === 'contact' && <Contact />}
-        {activeTab === 'feedback' && <Feedback />}
+      <main className="flex-grow relative">
+        <div className={cn(activeTab !== 'builder' && "hidden")}>
+          <ResumeBuilder />
+        </div>
+        <div className={cn(activeTab !== 'about' && "hidden")}>
+          <About />
+        </div>
+        <div className={cn(activeTab !== 'privacy' && "hidden")}>
+          <PrivacyPolicy />
+        </div>
+        <div className={cn(activeTab !== 'contact' && "hidden")}>
+          <Contact />
+        </div>
+        <div className={cn(activeTab !== 'feedback' && "hidden")}>
+          <Feedback />
+        </div>
       </main>
 
       {/* Global Footer */}
