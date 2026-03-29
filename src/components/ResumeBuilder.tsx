@@ -967,8 +967,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                             Missing Keywords
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            {missingKeywords.map((kw, i) => (
-                              <span key={i} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-[9px] font-bold text-indigo-600">
+                            {missingKeywords.map((kw) => (
+                              <span key={kw} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-[9px] font-bold text-indigo-600">
                                 {kw}
                               </span>
                             ))}
@@ -997,8 +997,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       "Linear HTML structure for parsing",
                       "Keyword density optimization",
                       "Clean, searchable typography"
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                         <div className="w-1 h-1 rounded-full bg-green-500" />
                         {item}
                       </li>
@@ -1256,7 +1256,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 <div className="space-y-5 mb-12 flex-1">
                   {optimizationPlan?.map((step, i) => (
                     <motion.div 
-                      key={i}
+                      key={step}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 }}

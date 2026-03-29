@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw } from 'lucide-react';
+import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 import { cn } from '../lib/utils';
 
@@ -44,13 +44,19 @@ const PLANS = [
 ];
 
 export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
+  const [activeTab, setActiveTab] = useState<'admin' | 'users' | 'requests'>('admin');
   const [users, setUsers] = useState<UserData[]>([]);
   const [requests, setRequests] = useState<PremiumRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Record<string, { planId: string; limit: number }>>({});
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalMorphs: 0,
+    pendingRequests: 0,
+    activePremium: 0
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -229,6 +235,17 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   };
 
+  useEffect(() => {
+    if (users.length > 0 || requests.length > 0) {
+      setStats({
+        totalUsers: users.length,
+        totalMorphs: users.reduce((acc, user) => acc + (user.usedMorphs || 0), 0),
+        pendingRequests: requests.filter(r => r.status === 'Pending').length,
+        activePremium: users.filter(u => u.plan && u.plan !== 'free').length
+      });
+    }
+  }, [users, requests]);
+
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
     u.name.toLowerCase().includes(search.toLowerCase())
@@ -269,6 +286,15 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               </div>
               <div className="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-gray-100">
                 <button
+                  onClick={() => setActiveTab('admin')}
+                  className={cn(
+                    "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    activeTab === 'admin' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-gray-400 hover:text-gray-600"
+                  )}
+                >
+                  Admin
+                </button>
+                <button
                   onClick={() => setActiveTab('users')}
                   className={cn(
                     "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
@@ -300,19 +326,21 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               </button>
             </div>
 
-            {/* Search Bar */}
-            <div className="p-8 border-b border-gray-50 bg-white">
-              <div className="relative max-w-2xl">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                <input 
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={activeTab === 'users' ? "Search users by name or email..." : "Search requests..."}
-                  className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
-                />
+            {/* Search Bar - Only for Users and Requests */}
+            {activeTab !== 'admin' && (
+              <div className="p-8 border-b border-gray-50 bg-white">
+                <div className="relative max-w-2xl">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                  <input 
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={activeTab === 'users' ? "Search users by name or email..." : "Search requests..."}
+                    className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Content List */}
             <div className="flex-grow overflow-y-auto p-8 bg-gray-50/30">
@@ -320,6 +348,65 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
                   <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
                   <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Data...</p>
+                </div>
+              ) : activeTab === 'admin' ? (
+                <div className="space-y-8">
+                  {/* Admin Profile Card */}
+                  <div className="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-6">
+                      <div className="w-20 h-20 bg-indigo-100 rounded-3xl flex items-center justify-center">
+                        <Shield className="w-10 h-10 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-gray-900">Super Admin Profile</h3>
+                        <p className="text-gray-500 font-medium">{auth.currentUser?.email}</p>
+                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider">
+                          <Crown className="w-3 h-3" />
+                          Unlimited Access
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
+                          <Users className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Users</span>
+                      </div>
+                      <div className="text-3xl font-black text-gray-900">{stats.totalUsers}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center">
+                          <Zap className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Morphs</span>
+                      </div>
+                      <div className="text-3xl font-black text-gray-900">{stats.totalMorphs}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-10 h-10 bg-orange-50 rounded-2xl flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pending Requests</span>
+                      </div>
+                      <div className="text-3xl font-black text-gray-900">{stats.pendingRequests}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
+                          <Crown className="w-5 h-5 text-green-600" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Premium Users</span>
+                      </div>
+                      <div className="text-3xl font-black text-gray-900">{stats.activePremium}</div>
+                    </div>
+                  </div>
                 </div>
               ) : activeTab === 'users' ? (
                 <div className="grid gap-6">
