@@ -36,6 +36,7 @@ export default function Feedback() {
   const [isReplying, setIsReplying] = useState(false);
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<{id: string, uid: string} | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -117,13 +118,19 @@ export default function Feedback() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!isAdmin) return;
-    if (!confirm('Are you sure you want to delete this feedback?')) return;
+  const handleDelete = async (id: string, itemUid: string) => {
+    const isOwner = user && user.uid === itemUid;
+    if (!isAdmin && !isOwner) return;
+    setDeletingItem({ id, uid: itemUid });
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingItem) return;
     try {
-      await deleteDoc(doc(db, 'feedbacks', id));
+      await deleteDoc(doc(db, 'feedbacks', deletingItem.id));
+      setDeletingItem(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `feedbacks/${id}`);
+      handleFirestoreError(error, OperationType.DELETE, `feedbacks/${deletingItem.id}`);
     }
   };
 
@@ -287,9 +294,9 @@ export default function Feedback() {
                           </p>
                         </div>
                       </div>
-                      {isAdmin && (
+                      {(isAdmin || (user && user.uid === item.uid)) && (
                         <button 
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item.id, item.uid)}
                           className="p-2 text-gray-300 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
@@ -363,6 +370,49 @@ export default function Feedback() {
           </div>
         </motion.div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingItem(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[32px] p-8 shadow-2xl space-y-6"
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <div className="text-center space-y-2">
+                <h3 className="text-xl font-black tracking-tight text-gray-900">Delete Feedback?</h3>
+                <p className="text-gray-500 font-medium">This action cannot be undone. Are you sure you want to remove this feedback?</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeletingItem(null)}
+                  className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-100"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -10,8 +10,13 @@
         "email": { "type": "string" },
         "photo": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "morphCount": { "type": "number" },
-        "hasReviewed": { "type": "boolean" },
+        "morphCount": { "type": "number", "description": "Total morphs ever performed" },
+        "usedMorphs": { "type": "number", "description": "Morphs used in current plan" },
+        "remainingMorphs": { "type": "number", "description": "Morphs remaining in current plan" },
+        "plan": { "type": "string", "description": "User's current plan (free, 5_morphs, 10_morphs, unlimited)" },
+        "planLimit": { "type": "number", "description": "Max morphs allowed for the user (-1 for unlimited)" },
+        "premiumExpiryDate": { "type": "string", "format": "date-time", "description": "Expiry for unlimited plan" },
+        "role": { "type": "string", "description": "user or admin" },
         "resumeHistory": {
           "type": "array",
           "items": {
@@ -27,6 +32,21 @@
         }
       },
       "required": ["userId", "email", "createdAt"]
+    },
+    "PremiumRequest": {
+      "title": "Premium Request",
+      "description": "Manual premium plan requests",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "selectedPlan": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "selectedPlan", "price", "status", "timestamp"]
     },
     "Feedback": {
       "title": "Feedback",
@@ -64,6 +84,10 @@
     "/feedbacks/{feedbackId}": {
       "schema": "Feedback",
       "description": "Collection of user feedbacks"
+    },
+    "/premium_requests/{requestId}": {
+      "schema": "PremiumRequest",
+      "description": "Manual premium plan requests"
     },
     "/premium_interest/{userId}": {
       "schema": "PremiumInterest",

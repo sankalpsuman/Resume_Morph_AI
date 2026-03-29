@@ -230,13 +230,17 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      if (userData.morphCount >= 2) {
-        onUpgrade();
-        return;
+      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
+      if (!isAdmin) {
+        if (userData.morphCount === 1 && !userData.hasReviewed) {
+          setShowFeedbackModal(true);
+          return;
+        }
+        const limit = userData.planLimit || 2;
+        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+          onUpgrade();
+          return;
+        }
       }
     }
 
@@ -270,6 +274,16 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
+
+      // Deduct morph
+      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          usedMorphs: increment(1),
+          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
+          morphCount: increment(1) // Keep for level calculation
+        });
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -323,13 +337,17 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      if (userData.morphCount >= 2) {
-        onUpgrade();
-        return;
+      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
+      if (!isAdmin) {
+        if (userData.morphCount === 1 && !userData.hasReviewed) {
+          setShowFeedbackModal(true);
+          return;
+        }
+        const limit = userData.planLimit || 2;
+        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+          onUpgrade();
+          return;
+        }
       }
     }
 
@@ -360,6 +378,16 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
+
+      // Deduct morph
+      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          usedMorphs: increment(1),
+          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
+          morphCount: increment(1) // Keep for level calculation
+        });
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -430,13 +458,17 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      if (userData.morphCount >= 2) {
-        onUpgrade();
-        return;
+      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
+      if (!isAdmin) {
+        if (userData.morphCount === 1 && !userData.hasReviewed) {
+          setShowFeedbackModal(true);
+          return;
+        }
+        const limit = userData.planLimit || 2;
+        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+          onUpgrade();
+          return;
+        }
       }
     }
 
@@ -468,6 +500,16 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
+
+      // Deduct morph
+      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userRef, {
+          usedMorphs: increment(1),
+          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
+          morphCount: increment(1) // Keep for level calculation
+        });
+      }
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
@@ -846,7 +888,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 />
 
                 {referenceFile && contentFile && !generatedHtml && (
-                  userData?.morphCount >= 2 ? (
+                  (() => {
+                    const isAdmin = userData?.email === 'sankalpsmn@gmail.com';
+                    const limit = userData?.planLimit || 2;
+                    const isOverLimit = !isAdmin && limit !== -1 && (userData?.usedMorphs || 0) >= limit;
+                    return isOverLimit;
+                  })() ? (
                     <motion.button
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}

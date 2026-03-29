@@ -18,10 +18,13 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import AccountModal from './components/AccountModal';
+import AdminPanel from './components/AdminPanel';
+import UserGuide from './components/UserGuide';
+import PremiumModal from './components/PremiumModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
-import { Zap, CheckCircle, Star, Loader2 } from 'lucide-react';
+import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
 
-type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback';
+type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -31,6 +34,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
@@ -138,17 +142,70 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!userData || !user) return;
+
+    const checkExpiry = async () => {
+      if (userData.plan === 'unlimited' && userData.premiumExpiryDate) {
+        const expiry = userData.premiumExpiryDate.toDate();
+        if (Date.now() > expiry.getTime()) {
+          const userRef = doc(db, 'users', user.uid);
+          await updateDoc(userRef, {
+            plan: 'free',
+            planLimit: 2,
+            usedMorphs: 0,
+            remainingMorphs: 2,
+            premiumExpiryDate: null
+          });
+        }
+      }
+    };
+
+    checkExpiry();
+  }, [userData?.premiumExpiryDate, user?.uid]);
+
   const handleLogout = () => {
     signOut(auth);
   };
 
+  const handleDeleteResume = async (resumeId: string) => {
+    if (!user || !userData) return;
+    
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const updatedHistory = userData.resumeHistory.filter((r: any) => r.id !== resumeId);
+      
+      // Also delete from storage if storagePath exists
+      const resumeToDelete = userData.resumeHistory.find((r: any) => r.id === resumeId);
+      if (resumeToDelete?.storagePath) {
+        const storageRef = ref(storage, resumeToDelete.storagePath);
+        await deleteObject(storageRef).catch(err => console.error("Storage delete failed:", err));
+      }
+
+      await updateDoc(userRef, {
+        resumeHistory: updatedHistory
+      });
+    } catch (error) {
+      console.error("Delete resume failed:", error);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
+    }
+  };
+
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'builder', label: 'Morph Engine', icon: Layout },
+    { id: 'guide', label: 'User Guide', icon: BookOpen },
     { id: 'about', label: 'About & Founder', icon: Info },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'contact', label: 'Contact', icon: Send },
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   ];
+
+  const getLevel = (count: number) => {
+    if (count >= 100) return { name: 'Grandmaster', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' };
+    if (count >= 50) return { name: 'Expert', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' };
+    if (count >= 10) return { name: 'Pro', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' };
+    return { name: 'Novice', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' };
+  };
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
@@ -168,6 +225,13 @@ export default function App() {
   if (!user) {
     return <Login />;
   }
+
+  const userLevel = getLevel(userData?.morphCount || 0);
+  const isAdmin = user.email === 'sankalpsmn@gmail.com';
+  const usedMorphs = isAdmin ? 0 : (userData?.usedMorphs || 0);
+  const planLimit = isAdmin ? 100 : (userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2));
+  const progress = Math.min((usedMorphs / planLimit) * 100, 100);
+  const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
@@ -189,13 +253,21 @@ export default function App() {
               Morph Engine
             </button>
 
+            <button 
+              onClick={() => setShowUpgradeModal(true)}
+              className="flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black text-amber-600 hover:bg-amber-50 transition-all duration-500 whitespace-nowrap group"
+            >
+              <Zap className="w-4 h-4 fill-amber-600 group-hover:scale-110 transition-transform" />
+              Premium
+            </button>
+
             {/* Resources Dropdown */}
             <div className="relative">
               <button 
                 onClick={() => setIsResourcesOpen(!isResourcesOpen)}
                 className={cn(
                   "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                  ['about', 'privacy', 'contact', 'feedback'].includes(activeTab)
+                  ['about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
                     ? "bg-indigo-50 text-indigo-600" 
                     : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
                 )}
@@ -214,6 +286,7 @@ export default function App() {
                     className="absolute top-full left-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl p-1.5 overflow-hidden"
                   >
                     {[
+                      { id: 'guide', label: 'User Guide', icon: BookOpen },
                       { id: 'about', label: 'About', icon: Info },
                       { id: 'privacy', label: 'Privacy', icon: Shield },
                       { id: 'contact', label: 'Contact', icon: Send },
@@ -244,13 +317,19 @@ export default function App() {
             {userData && (
               <div className="flex items-center gap-3">
                 <div className="flex flex-col items-end">
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 rounded-full">
-                    <Star className="w-3 h-3 text-indigo-600 fill-indigo-600" />
-                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">
-                      {userData.morphCount}/2 Morphs
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm",
+                    userLevel.bg, userLevel.border
+                  )}>
+                    <Star className={cn("w-3 h-3 fill-current", userLevel.color)} />
+                    <span className={cn("text-[10px] font-black uppercase tracking-wider", userLevel.color)}>
+                      {userLevel.name}
                     </span>
                   </div>
-                  <span className="text-[11px] font-bold text-gray-500">{user.displayName}</span>
+                  <span className="text-[11px] font-bold text-gray-900 mt-0.5 flex items-center gap-1">
+                    {user.displayName}
+                    {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-3 h-3 text-indigo-600" />}
+                  </span>
                 </div>
                 
                 <div className="relative">
@@ -258,37 +337,142 @@ export default function App() {
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                     className="relative group focus:outline-none"
                   >
-                    <img 
-                      src={user.photoURL || ''} 
-                      alt={user.displayName || ''} 
-                      className="w-10 h-10 rounded-xl border-2 border-white shadow-lg group-hover:border-indigo-100 transition-all"
-                    />
+                    <div className="relative p-1 rounded-2xl bg-white shadow-lg group-hover:shadow-indigo-200/50 transition-all duration-300">
+                      {/* Progress Ring */}
+                      <svg className="absolute inset-0 w-full h-full -rotate-90">
+                        <circle
+                          cx="24"
+                          cy="24"
+                          r="21"
+                          fill="transparent"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="text-gray-100"
+                        />
+                        <motion.circle
+                          initial={{ strokeDasharray: "0 100" }}
+                          animate={{ strokeDasharray: `${progress} 100` }}
+                          cx="24"
+                          cy="24"
+                          r="21"
+                          fill="transparent"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeDasharray="100 100"
+                          className="text-indigo-600"
+                        />
+                      </svg>
+                      
+                      <img 
+                        src={user.photoURL || ''} 
+                        alt={user.displayName || ''} 
+                        className="w-10 h-10 rounded-[14px] border-2 border-white shadow-sm object-cover relative z-10"
+                      />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-20" />
+                    </div>
                   </button>
 
                   <AnimatePresence>
                     {isUserDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl p-1.5 overflow-hidden"
-                      >
-                        <button
-                          onClick={() => { setIsAccountOpen(true); setIsUserDropdownOpen(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[-1]" 
+                          onClick={() => setIsUserDropdownOpen(false)} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-[32px] shadow-2xl p-2 overflow-hidden ring-1 ring-black/5"
                         >
-                          <UserIcon className="w-4 h-4 text-indigo-600" />
-                          Account Settings
-                        </button>
-                        <div className="h-px bg-gray-100 my-1 mx-2" />
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </motion.div>
+                          {/* Profile Header */}
+                          <div className="p-5 bg-gradient-to-br from-gray-50 to-white rounded-[24px] mb-2 border border-gray-100">
+                            <div className="flex items-center gap-4">
+                              <div className="relative">
+                                <img 
+                                  src={user.photoURL || ''} 
+                                  alt={user.displayName || ''} 
+                                  className="w-16 h-16 rounded-2xl border-2 border-white shadow-md object-cover"
+                                />
+                                <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-indigo-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
+                                  {userLevel.name}
+                                </div>
+                              </div>
+                              <div className="flex-grow min-w-0">
+                                <h4 className="font-black text-gray-900 text-base truncate flex items-center gap-1.5">
+                                  {user.displayName}
+                                  {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-4 h-4 text-indigo-600" />}
+                                </h4>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-600 text-white rounded-lg">
+                                    <Zap className="w-2.5 h-2.5 fill-white" />
+                                    <span className="text-[9px] font-black uppercase tracking-wider">{userData.plan || 'Free'} Plan</span>
+                                  </div>
+                                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Since {memberSince}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Stats & Progress */}
+                          <div className="px-2 mb-2 space-y-2">
+                            <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
+                                <p className="text-[10px] font-black text-indigo-600">
+                                  {isAdmin ? '∞' : `${usedMorphs} / ${userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}`}
+                                </p>
+                              </div>
+                              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  className="h-full bg-indigo-600 rounded-full"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Account Status</p>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                  <p className="text-xs font-black text-gray-900">Verified</p>
+                                </div>
+                              </div>
+                              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">User Level</p>
+                                <p className={cn("text-xs font-black", userLevel.color)}>{userLevel.name}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => { setIsAccountOpen(true); setIsUserDropdownOpen(false); }}
+                              className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all group"
+                            >
+                              <div className="flex items-center gap-3">
+                                <UserIcon className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                                Account Settings
+                              </div>
+                              <ChevronDown className="w-4 h-4 -rotate-90 text-gray-300 group-hover:text-indigo-300" />
+                            </button>
+                            
+                            <div className="h-px bg-gray-100/50 mx-4 my-1" />
+                            
+                            <button
+                              onClick={handleLogout}
+                              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all group"
+                            >
+                              <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors" />
+                              Logout
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
                     )}
                   </AnimatePresence>
                 </div>
@@ -335,9 +519,18 @@ export default function App() {
                   Morph Engine
                 </button>
 
+                <button 
+                  onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black text-amber-600 hover:bg-amber-50 transition-all"
+                >
+                  <Zap className="w-5 h-5 fill-amber-600" />
+                  Upgrade to Premium
+                </button>
+
                 <div className="py-2">
                   <p className="px-5 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-2">Resources</p>
                   {[
+                    { id: 'guide', label: 'User Guide', icon: BookOpen },
                     { id: 'about', label: 'About & Founder', icon: Info },
                     { id: 'privacy', label: 'Privacy Policy', icon: Shield },
                     { id: 'contact', label: 'Contact Us', icon: Send },
@@ -363,37 +556,79 @@ export default function App() {
               {/* Mobile User Info */}
               {userData && (
                 <div className="mt-4 pt-4 border-t border-gray-100 px-2 pb-2">
-                  <div className="flex items-center justify-between mb-4 px-3">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={user.photoURL || ''} 
-                        alt={user.displayName || ''} 
-                        className="w-12 h-12 rounded-2xl border-2 border-white shadow-md"
-                      />
-                      <div>
-                        <p className="text-sm font-black text-gray-900">{user.displayName}</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{user.email}</p>
+                  <div className="bg-gray-50/50 rounded-[32px] p-5 mb-4 border border-gray-100">
+                    <div className="flex items-center gap-4 mb-5">
+                      <div className="relative">
+                        <img 
+                          src={user.photoURL || ''} 
+                          alt={user.displayName || ''} 
+                          className="w-16 h-16 rounded-[20px] border-4 border-white shadow-lg object-cover"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full shadow-sm" />
+                        <div className="absolute -top-2 -left-2 px-2 py-0.5 bg-indigo-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
+                          {userLevel.name}
+                        </div>
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <h4 className="font-black text-gray-900 text-lg truncate flex items-center gap-1.5">
+                          {user.displayName}
+                          {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-4 h-4 text-indigo-600" />}
+                        </h4>
+                        <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-xl">
+                            <Zap className="w-3 h-3 fill-white" />
+                            <span className="text-[10px] font-black uppercase tracking-wider">{userData.plan || 'Free'} Plan</span>
+                          </div>
+                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Since {memberSince}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 rounded-full">
-                      <Star className="w-3 h-3 text-indigo-600 fill-indigo-600" />
-                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider">
-                        {userData.morphCount}/2
-                      </span>
+
+                    <div className="space-y-4">
+                      <div className="w-full">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
+                          <p className="text-[10px] font-black text-indigo-600">
+                            {isAdmin ? '∞' : `${usedMorphs} / ${userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}`}
+                          </p>
+                        </div>
+                        <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-gray-100 shadow-inner">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            className="h-full bg-indigo-600 rounded-full"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">User Level</p>
+                          <p className={cn("text-sm font-black", userLevel.color)}>{userLevel.name}</p>
+                        </div>
+                        <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Status</p>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                            <p className="text-sm font-black text-gray-900">Active</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => { setIsAccountOpen(true); setIsMenuOpen(false); }}
-                      className="flex items-center justify-center gap-2 py-4 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all"
+                      className="flex items-center justify-center gap-3 py-4 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100"
                     >
                       <UserIcon className="w-4 h-4" />
                       Account
                     </button>
                     <button 
                       onClick={handleLogout}
-                      className="flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all"
+                      className="flex items-center justify-center gap-3 py-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -410,6 +645,9 @@ export default function App() {
       <main className="flex-grow relative">
         <div className={cn(activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
+        </div>
+        <div className={cn(activeTab !== 'guide' && "hidden")}>
+          <UserGuide />
         </div>
         <div className={cn(activeTab !== 'about' && "hidden")}>
           <About />
@@ -436,65 +674,25 @@ export default function App() {
           setIsAccountOpen(false);
           setShowUpgradeModal(true);
         }}
+        onOpenAdmin={() => {
+          setIsAccountOpen(false);
+          setIsAdminOpen(true);
+        }}
+        onDeleteResume={handleDeleteResume}
+      />
+
+      {/* Admin Panel */}
+      <AdminPanel 
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
       />
 
       {/* Premium Upgrade Modal */}
-      <AnimatePresence>
-        {showUpgradeModal && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowUpgradeModal(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100"
-            >
-              <div className="p-8 md:p-10 text-center">
-                <div className="w-20 h-20 bg-indigo-600 rounded-[28px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-indigo-100">
-                  <Zap className="w-10 h-10 text-white fill-white" />
-                </div>
-                
-                <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight leading-tight">
-                  🚀 Unlimited Downloads & Unlimited Morphs – Coming Soon
-                </h2>
-                <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-                  Premium plans with unlimited resume downloads, unlimited morphing, and priority features will be available soon.
-                </p>
-
-                <div className="flex flex-col gap-3">
-                  {!hasNotified ? (
-                    <button
-                      onClick={handleNotifyMe}
-                      disabled={isNotifying}
-                      className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
-                    >
-                      {isNotifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <Star className="w-5 h-5" />}
-                      Notify Me
-                    </button>
-                  ) : (
-                    <div className="w-full py-5 bg-green-50 text-green-600 rounded-[24px] font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3">
-                      <CheckCircle className="w-5 h-5" />
-                      We'll Notify You!
-                    </div>
-                  )}
-                  <button
-                    onClick={() => setShowUpgradeModal(false)}
-                    className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
-                  >
-                    Maybe Later
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <PremiumModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        user={user}
+      />
 
       {/* Global Footer */}
       <footer className="py-12 border-t border-gray-100 bg-white">
