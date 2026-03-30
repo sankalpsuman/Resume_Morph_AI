@@ -1,4 +1,4 @@
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Type, ThinkingLevel } from "@google/genai";
 
 // Helper to extract JSON from a string that might contain extra text
 function extractJson(text: string): string {
@@ -117,6 +117,9 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
 
     const response = await ai.models.generateContent({
       model,
+      config: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      },
       contents,
     });
 
@@ -131,6 +134,9 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
     const part = { inlineData: { data: base64, mimeType } };
     const response = await ai.models.generateContent({
       model,
+      config: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      },
       contents: [{ parts: [part, { text: prompt }] }],
     });
     return response.text;
@@ -165,7 +171,8 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
           type: Type.ARRAY,
           items: { type: Type.STRING }
         },
-        temperature: 0.1
+        temperature: 0.1,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
       contents: [{ parts: [{ text: prompt }] }],
     });
@@ -288,7 +295,8 @@ export async function generateResume(
           },
           required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
         },
-        temperature: 0.1
+        temperature: 0.1,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
       contents: [{ parts }],
     });
@@ -350,7 +358,8 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
           },
           required: ["score", "missing"]
         },
-        temperature: 0.1
+        temperature: 0.1,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
       contents: [{ parts: [{ text: prompt }] }],
     });

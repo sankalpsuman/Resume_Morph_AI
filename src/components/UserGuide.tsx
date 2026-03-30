@@ -24,6 +24,7 @@ import {
 export default function UserGuide() {
   const steps = [
     {
+      id: "upload",
       title: "Upload Your Resume",
       description: "Start by uploading your current resume in PDF or DOCX format. Our engine will analyze the structure and content.",
       icon: Upload,
@@ -31,6 +32,7 @@ export default function UserGuide() {
       details: ["Supports PDF, DOCX, TXT", "Automatic text extraction", "Privacy guaranteed"]
     },
     {
+      id: "choose",
       title: "Choose Your Morph",
       description: "Select from our premium templates or describe how you want your resume to look. Our AI handles the heavy lifting.",
       icon: Sparkles,
@@ -38,6 +40,7 @@ export default function UserGuide() {
       details: ["Cloned visual styles", "ATS-friendly layouts", "Custom descriptions"]
     },
     {
+      id: "review",
       title: "Review & Refine",
       description: "Get a real-time preview of your morphed resume. You can make adjustments or try different styles instantly.",
       icon: Layout,
@@ -45,6 +48,7 @@ export default function UserGuide() {
       details: ["Side-by-side preview", "Instant style switching", "Real-time updates"]
     },
     {
+      id: "download",
       title: "Download & Apply",
       description: "Once satisfied, download your perfectly formatted resume in high-quality HTML or PDF format.",
       icon: Download,
@@ -54,16 +58,17 @@ export default function UserGuide() {
   ];
 
   const features = [
-    { title: "AI-Powered Analysis", icon: Zap, desc: "Deep learning models analyze your resume structure." },
-    { title: "Premium Templates", icon: Star, desc: "Hand-crafted designs that pass any ATS system." },
-    { title: "Secure Data Handling", icon: Shield, desc: "Your data is encrypted and never shared with third parties." },
-    { title: "Instant Previews", icon: Eye, desc: "See changes as they happen with our lightning-fast engine." },
-    { title: "History Tracking", icon: History, desc: "Access your previous morphs anytime from your dashboard." },
-    { title: "Export to Multiple Formats", icon: FileText, desc: "Download in PDF, HTML, or DOCX for maximum compatibility." }
+    { id: "analysis", title: "AI-Powered Analysis", icon: Zap, desc: "Deep learning models analyze your resume structure." },
+    { id: "templates", title: "Premium Templates", icon: Star, desc: "Hand-crafted designs that pass any ATS system." },
+    { id: "security", title: "Secure Data Handling", icon: Shield, desc: "Your data is encrypted and never shared with third parties." },
+    { id: "previews", title: "Instant Previews", icon: Eye, desc: "See changes as they happen with our lightning-fast engine." },
+    { id: "history", title: "History Tracking", icon: History, desc: "Access your previous morphs anytime from your dashboard." },
+    { id: "export", title: "Export to Multiple Formats", icon: FileText, desc: "Download in PDF, HTML, or DOCX for maximum compatibility." }
   ];
 
   const plans = [
     {
+      id: "starter",
       name: "Starter Pack",
       price: "₹39",
       morphs: "5 Morphs",
@@ -73,6 +78,7 @@ export default function UserGuide() {
       desc: "Perfect for quick updates"
     },
     {
+      id: "pro",
       name: "Pro Pack",
       price: "₹79",
       morphs: "10 Morphs",
@@ -83,6 +89,7 @@ export default function UserGuide() {
       popular: true
     },
     {
+      id: "unlimited",
       name: "Unlimited Access",
       price: "₹499",
       morphs: "Unlimited",
@@ -126,7 +133,7 @@ export default function UserGuide() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-40">
         {steps.map((step, index) => (
           <motion.div 
-            key={index}
+            key={step.id}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -145,8 +152,8 @@ export default function UserGuide() {
                 {step.description}
               </p>
               <div className="space-y-2 pt-4">
-                {step.details.map((detail, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                {step.details.map((detail) => (
+                  <div key={detail} className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
                     {detail}
                   </div>
@@ -177,7 +184,7 @@ export default function UserGuide() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <motion.div
-              key={index}
+              key={plan.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -239,9 +246,9 @@ export default function UserGuide() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-          {features.map((feature, index) => (
+          {features.map((feature) => (
             <div 
-              key={index}
+              key={feature.id}
               className="p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] hover:bg-white/10 transition-all group"
             >
               <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -289,7 +296,7 @@ export default function UserGuide() {
             <p className="text-gray-500 font-medium mb-10 max-w-md mx-auto">
               Join thousands of professionals who have transformed their careers with Resume Morph.
             </p>
-            <button className="px-10 py-5 bg-indigo-600 text-white rounded-[24px] font-black text-lg shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto">
+            <button className="px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] font-black text-lg shadow-2xl shadow-indigo-200 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto">
               Get Started Now
               <ArrowRight className="w-6 h-6" />
             </button>

@@ -24,7 +24,7 @@ import PremiumModal from './components/PremiumModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
 
-type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide';
+type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -33,7 +33,6 @@ export default function App() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -194,7 +193,8 @@ export default function App() {
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'builder', label: 'Morph Engine', icon: Layout },
     { id: 'guide', label: 'User Guide', icon: BookOpen },
-    { id: 'about', label: 'About & Founder', icon: Info },
+    { id: 'account', label: 'Account', icon: UserIcon },
+    { id: 'about', label: 'About', icon: Info },
     { id: 'privacy', label: 'Privacy', icon: Shield },
     { id: 'contact', label: 'Contact', icon: Send },
     { id: 'feedback', label: 'Feedback', icon: MessageSquare },
@@ -228,15 +228,15 @@ export default function App() {
 
   const userLevel = getLevel(userData?.morphCount || 0);
   const isAdmin = user.email === 'sankalpsmn@gmail.com';
-  const usedMorphs = isAdmin ? 0 : (userData?.usedMorphs || 0);
-  const planLimit = isAdmin ? 100 : (userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2));
+  const usedMorphs = userData?.usedMorphs || 0;
+  const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2);
   const progress = Math.min((usedMorphs / planLimit) * 100, 100);
   const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
       {/* Global Navigation */}
-      <nav className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] md:w-auto">
+      <nav className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-2rem)] md:w-auto">
         <div className="bg-white/80 backdrop-blur-2xl border border-gray-200/50 rounded-[24px] md:rounded-[28px] p-1.5 shadow-2xl shadow-indigo-100/30 flex items-center justify-between md:justify-start gap-1">
           {/* Desktop Tabs */}
           <div className="hidden md:flex items-center gap-1">
@@ -283,7 +283,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full left-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl p-1.5 overflow-hidden"
+                    className="absolute top-full left-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl p-1.5 overflow-y-auto max-h-[70vh] scrollbar-hide"
                   >
                     {[
                       { id: 'guide', label: 'User Guide', icon: BookOpen },
@@ -383,7 +383,7 @@ export default function App() {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-[32px] shadow-2xl p-2 overflow-hidden ring-1 ring-black/5"
+                          className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-[32px] shadow-2xl p-2 overflow-y-auto max-h-[80vh] ring-1 ring-black/5"
                         >
                           {/* Profile Header */}
                           <div className="p-5 bg-gradient-to-br from-gray-50 to-white rounded-[24px] mb-2 border border-gray-100">
@@ -421,7 +421,7 @@ export default function App() {
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
                                 <p className="text-[10px] font-black text-indigo-600">
-                                  {isAdmin ? '∞' : `${usedMorphs} / ${userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}`}
+                                  {userData.planLimit === -1 ? '∞' : `${usedMorphs} / ${userData.planLimit || 2}`}
                                 </p>
                               </div>
                               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -451,7 +451,7 @@ export default function App() {
                           {/* Actions */}
                           <div className="space-y-1">
                             <button
-                              onClick={() => { setIsAccountOpen(true); setIsUserDropdownOpen(false); }}
+                              onClick={() => { handleTabChange('account'); setIsUserDropdownOpen(false); }}
                               className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all group"
                             >
                               <div className="flex items-center gap-3">
@@ -503,7 +503,7 @@ export default function App() {
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="absolute top-full left-0 right-0 mt-3 bg-white/90 backdrop-blur-2xl rounded-[32px] border border-gray-200/50 shadow-2xl p-3 md:hidden overflow-hidden"
+              className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-2xl rounded-[32px] border border-gray-200/50 shadow-2xl p-4 md:hidden overflow-y-auto max-h-[80vh] ring-1 ring-black/5 scrollbar-hide"
             >
               <div className="space-y-1">
                 <button 
@@ -590,7 +590,7 @@ export default function App() {
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
                           <p className="text-[10px] font-black text-indigo-600">
-                            {isAdmin ? '∞' : `${usedMorphs} / ${userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}`}
+                            {userData.planLimit === -1 ? '∞' : `${usedMorphs} / ${userData.planLimit || 2}`}
                           </p>
                         </div>
                         <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-gray-100 shadow-inner">
@@ -620,7 +620,7 @@ export default function App() {
                   
                   <div className="grid grid-cols-2 gap-3">
                     <button 
-                      onClick={() => { setIsAccountOpen(true); setIsMenuOpen(false); }}
+                      onClick={() => { handleTabChange('account'); setIsMenuOpen(false); }}
                       className="flex items-center justify-center gap-3 py-4 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100"
                     >
                       <UserIcon className="w-4 h-4" />
@@ -661,25 +661,42 @@ export default function App() {
         <div className={cn(activeTab !== 'feedback' && "hidden")}>
           <Feedback />
         </div>
+        <div className={cn(activeTab !== 'account' && "hidden")}>
+          <AccountModal 
+            isOpen={true} 
+            onClose={() => handleTabChange('builder')} 
+            user={user}
+            userData={userData}
+            onLogout={handleLogout}
+            onUpgrade={() => setShowUpgradeModal(true)}
+            onOpenAdmin={() => setIsAdminOpen(true)}
+            onDeleteResume={handleDeleteResume}
+            isTabMode={true}
+          />
+        </div>
       </main>
 
-      {/* Account Modal */}
-      <AccountModal 
-        isOpen={isAccountOpen} 
-        onClose={() => setIsAccountOpen(false)} 
-        user={user}
-        userData={userData}
-        onLogout={handleLogout}
-        onUpgrade={() => {
-          setIsAccountOpen(false);
-          setShowUpgradeModal(true);
-        }}
-        onOpenAdmin={() => {
-          setIsAccountOpen(false);
-          setIsAdminOpen(true);
-        }}
-        onDeleteResume={handleDeleteResume}
-      />
+      {/* Bottom Navigation for Mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        {[
+          { id: 'builder', icon: Layout, label: 'Morph' },
+          { id: 'guide', icon: BookOpen, label: 'Guide' },
+          { id: 'account', icon: UserIcon, label: 'Account' },
+          { id: 'contact', icon: Send, label: 'Help' }
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleTabChange(item.id as Tab)}
+            className={cn(
+              "flex flex-col items-center gap-1 transition-all",
+              activeTab === item.id ? "text-indigo-600" : "text-gray-400"
+            )}
+          >
+            <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50")} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Admin Panel */}
       <AdminPanel 

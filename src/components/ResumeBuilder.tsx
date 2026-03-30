@@ -230,17 +230,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
-      if (!isAdmin) {
-        if (userData.morphCount === 1 && !userData.hasReviewed) {
-          setShowFeedbackModal(true);
-          return;
-        }
-        const limit = userData.planLimit || 2;
-        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
-          onUpgrade();
-          return;
-        }
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+        onUpgrade();
+        return;
       }
     }
 
@@ -276,7 +273,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       setShowSaveModal(true);
 
       // Deduct morph
-      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+      if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           usedMorphs: increment(1),
@@ -337,17 +334,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
-      if (!isAdmin) {
-        if (userData.morphCount === 1 && !userData.hasReviewed) {
-          setShowFeedbackModal(true);
-          return;
-        }
-        const limit = userData.planLimit || 2;
-        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
-          onUpgrade();
-          return;
-        }
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+        onUpgrade();
+        return;
       }
     }
 
@@ -380,7 +374,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       setShowSaveModal(true);
 
       // Deduct morph
-      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+      if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           usedMorphs: increment(1),
@@ -458,17 +452,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     // Check limits
     if (userData) {
-      const isAdmin = userData.email === 'sankalpsmn@gmail.com';
-      if (!isAdmin) {
-        if (userData.morphCount === 1 && !userData.hasReviewed) {
-          setShowFeedbackModal(true);
-          return;
-        }
-        const limit = userData.planLimit || 2;
-        if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
-          onUpgrade();
-          return;
-        }
+      if (userData.morphCount === 1 && !userData.hasReviewed) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+        onUpgrade();
+        return;
       }
     }
 
@@ -502,7 +493,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       setShowSaveModal(true);
 
       // Deduct morph
-      if (auth.currentUser && userData.email !== 'sankalpsmn@gmail.com') {
+      if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
         await updateDoc(userRef, {
           usedMorphs: increment(1),
@@ -698,7 +689,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl border border-gray-100 p-2 z-20"
+                        className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl border border-gray-100 p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
                       >
                         <button 
                           onClick={handleDownloadHTML}
@@ -889,9 +880,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
                 {referenceFile && contentFile && !generatedHtml && (
                   (() => {
-                    const isAdmin = userData?.email === 'sankalpsmn@gmail.com';
                     const limit = userData?.planLimit || 2;
-                    const isOverLimit = !isAdmin && limit !== -1 && (userData?.usedMorphs || 0) >= limit;
+                    const isOverLimit = limit !== -1 && (userData?.usedMorphs || 0) >= limit;
                     return isOverLimit;
                   })() ? (
                     <motion.button
@@ -1318,7 +1308,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full left-4 right-4 mb-4 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-3 z-20"
+                  className="absolute bottom-full left-4 right-4 mb-4 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
                 >
                   <div className="grid grid-cols-1 gap-2">
                     <button 

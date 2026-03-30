@@ -13,17 +13,17 @@ interface PremiumModalProps {
 
 const PLANS = [
   {
-    id: '5_morphs',
-    name: 'Starter Pack',
-    morphs: 5,
+    id: 'premium',
+    name: 'Premium Pack',
+    morphs: 4,
     price: 39,
     description: 'Perfect for quick updates',
     icon: Star,
     color: 'from-blue-500 to-indigo-500'
   },
   {
-    id: '10_morphs',
-    name: 'Pro Pack',
+    id: 'gold',
+    name: 'Gold Pack',
     morphs: 10,
     price: 79,
     description: 'Best for job seekers',
@@ -171,8 +171,8 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         'Unlimited History',
                         'Expert Support',
                         'Future Feature Access'
-                      ].map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                      ].map((feature) => (
+                        <li key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-500">
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
                           {feature}
                         </li>

@@ -102,13 +102,13 @@ export default function Login() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { icon: Zap, text: "Instant Morphing", color: "text-amber-500", bg: "bg-amber-50" },
-                { icon: ShieldCheck, text: "ATS Optimized", color: "text-green-500", bg: "bg-green-50" },
-                { icon: Target, text: "JD Alignment", color: "text-indigo-500", bg: "bg-indigo-50" },
-                { icon: RefreshCw, text: "Style Cloning", color: "text-blue-500", bg: "bg-blue-50" }
+                { id: 'morphing', icon: Zap, text: "Instant Morphing", color: "text-amber-500", bg: "bg-amber-50" },
+                { id: 'ats', icon: ShieldCheck, text: "ATS Optimized", color: "text-green-500", bg: "bg-green-50" },
+                { id: 'jd', icon: Target, text: "JD Alignment", color: "text-indigo-500", bg: "bg-indigo-50" },
+                { id: 'cloning', icon: RefreshCw, text: "Style Cloning", color: "text-blue-500", bg: "bg-blue-50" }
               ].map((feature, i) => (
                 <motion.div 
-                  key={i}
+                  key={feature.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 * i }}
@@ -193,7 +193,7 @@ export default function Login() {
                   </div>
                   <div className="flex gap-0.5">
                     {[...Array(item.rating || 5)].map((_, i) => (
-                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <Star key={`${item.id}-star-${i}`} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
                 </div>
