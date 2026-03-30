@@ -49,6 +49,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
   const [isMatching, setIsMatching] = useState(false);
+  const [showSurprise, setShowSurprise] = useState(false);
 
   // New state for limits and feedback
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -84,6 +85,38 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     checkKey();
   }, []);
+
+  useEffect(() => {
+    if (userData?.showResetSurprise) {
+      setShowSurprise(true);
+    }
+  }, [userData?.showResetSurprise]);
+
+  const dismissResetSurprise = async () => {
+    if (!auth.currentUser) return;
+    setShowSurprise(false);
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        showResetSurprise: false
+      });
+    } catch (err) {
+      console.error("Failed to dismiss reset surprise:", err);
+    }
+  };
+
+  const dismissRevokeNotice = async () => {
+    if (!auth.currentUser) return;
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      await updateDoc(userRef, {
+        showRevokeNotice: false,
+        revokeReason: null
+      });
+    } catch (err) {
+      console.error("Failed to dismiss revoke notice:", err);
+    }
+  };
 
   const previewRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -291,8 +324,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Deduct morph
       if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
+        const isPremium = userData.plan && userData.plan !== 'free';
         await updateDoc(userRef, {
           usedMorphs: increment(1),
+          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
+          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
           remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
           morphCount: increment(1) // Keep for level calculation
         });
@@ -392,8 +428,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Deduct morph
       if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
+        const isPremium = userData.plan && userData.plan !== 'free';
         await updateDoc(userRef, {
           usedMorphs: increment(1),
+          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
+          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
           remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
           morphCount: increment(1) // Keep for level calculation
         });
@@ -527,8 +566,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Deduct morph
       if (auth.currentUser) {
         const userRef = doc(db, 'users', auth.currentUser.uid);
+        const isPremium = userData.plan && userData.plan !== 'free';
         await updateDoc(userRef, {
           usedMorphs: increment(1),
+          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
+          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
           remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
           morphCount: increment(1) // Keep for level calculation
         });
@@ -681,6 +723,103 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-indigo-100">
+      {/* Notification Banners */}
+      <AnimatePresence>
+        {userData?.showRevokeNotice && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-red-600 text-white overflow-hidden sticky top-0 z-[120]"
+          >
+            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p className="text-sm font-black uppercase tracking-widest">
+                  Premium Revoked: {userData.revokeReason || 'Policy Violation'}
+                </p>
+              </div>
+              <button 
+                onClick={dismissRevokeNotice}
+                className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {userData?.adminMessage && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-indigo-600 text-white overflow-hidden sticky top-0 z-[120]"
+          >
+            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Zap className="w-5 h-5 shrink-0" />
+                <p className="text-sm font-black uppercase tracking-widest">
+                  {userData.adminMessage}
+                </p>
+              </div>
+              <button 
+                onClick={async () => {
+                  if (!auth.currentUser) return;
+                  const userRef = doc(db, 'users', auth.currentUser.uid);
+                  await updateDoc(userRef, { adminMessage: null });
+                }}
+                className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Surprise Popup */}
+      <AnimatePresence>
+        {showSurprise && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={dismissResetSurprise}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 text-center p-10"
+            >
+              <div className="w-24 h-24 bg-amber-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 relative">
+                <Star className="w-12 h-12 text-amber-600 fill-amber-600 animate-bounce" />
+                <div className="absolute -top-2 -right-2 bg-indigo-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
+                  +2 Bonus
+                </div>
+              </div>
+              
+              <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Surprise! 🎁</h2>
+              <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+                An administrator has reset your usage and added <span className="text-indigo-600 font-black">+2 bonus credits</span> to your plan! Enjoy your fresh start.
+              </p>
+
+              <button
+                onClick={dismissResetSurprise}
+                className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+              >
+                Awesome, Thanks!
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
@@ -1547,11 +1686,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-3xl font-black text-gray-900 tracking-tight">Save Resume?</h3>
-                  <p className="text-gray-500 font-medium">Do you want to save this resume for later download? You can save up to 2 resumes.</p>
+                  <p className="text-gray-500 font-medium">
+                    {userData.plan === 'premium' 
+                      ? "You can save up to 2 morphed resumes in your history. Would you like to save this one?"
+                      : "Free users can save 1 morphed resume. Would you like to save this one?"}
+                  </p>
                 </div>
               </div>
 
-              {userData.resumeHistory?.length >= 2 ? (
+              {userData.resumeHistory?.length >= (userData.plan === 'premium' ? 2 : 1) ? (
                 <div className="space-y-4">
                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest text-center">Select a resume to replace</p>
                   <div className="grid gap-3">

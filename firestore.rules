@@ -27,10 +27,15 @@ service cloud.firestore {
              (data.createdAt is timestamp || data.createdAt == serverTimestamp()) &&
              (!('morphCount' in data) || data.morphCount is number) &&
              (!('usedMorphs' in data) || data.usedMorphs is number) &&
+             (!('freeMorphsUsed' in data) || data.freeMorphsUsed is number) &&
+             (!('premiumMorphsUsed' in data) || data.premiumMorphsUsed is number) &&
              (!('remainingMorphs' in data) || data.remainingMorphs is number) &&
              (!('plan' in data) || data.plan is string) &&
              (!('planLimit' in data) || data.planLimit is number) &&
              (!('premiumExpiryDate' in data) || data.premiumExpiryDate is timestamp || data.premiumExpiryDate == null) &&
+             (!('adminMessage' in data) || data.adminMessage is string || data.adminMessage == null) &&
+             (!('revokeReason' in data) || data.revokeReason is string || data.revokeReason == null) &&
+             (!('lastResetAt' in data) || data.lastResetAt is timestamp || data.lastResetAt == null || data.lastResetAt == serverTimestamp()) &&
              (!('role' in data) || data.role is string) &&
              (!('resumeHistory' in data) || data.resumeHistory is list);
     }
@@ -73,7 +78,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isAuthenticated() && (
-        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'usedMorphs', 'remainingMorphs', 'premiumExpiryDate'])) ||
+        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'premiumExpiryDate'])) ||
         isAdmin()
       );
     }

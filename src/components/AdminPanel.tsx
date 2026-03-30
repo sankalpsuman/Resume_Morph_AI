@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users } from 'lucide-react';
-import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp } from 'firebase/firestore';
+import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star } from 'lucide-react';
+import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 import { cn } from '../lib/utils';
@@ -19,6 +19,11 @@ interface UserData {
   morphCount: number;
   usedMorphs?: number;
   remainingMorphs?: number;
+  freeMorphsUsed?: number;
+  premiumMorphsUsed?: number;
+  adminMessage?: string | null;
+  revokeReason?: string | null;
+  lastResetAt?: any;
   plan?: string;
   planLimit?: number;
   premiumExpiryDate?: any;
@@ -151,12 +156,31 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       const user = users.find(u => u.id === userId);
       if (!user) return;
       
+      const newLimit = (user.planLimit || 2) + 2;
+      const now = new Date();
+      
       await updateDoc(doc(db, 'users', userId), {
         usedMorphs: 0,
-        remainingMorphs: user.planLimit === -1 ? 999999 : user.planLimit
+        freeMorphsUsed: 0,
+        premiumMorphsUsed: 0,
+        planLimit: newLimit,
+        remainingMorphs: newLimit,
+        lastResetAt: serverTimestamp(),
+        showResetSurprise: true,
+        adminMessage: null
       });
       
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, usedMorphs: 0, remainingMorphs: u.planLimit === -1 ? 999999 : u.planLimit } : u));
+      setUsers(prev => prev.map(u => u.id === userId ? { 
+        ...u, 
+        usedMorphs: 0, 
+        freeMorphsUsed: 0,
+        premiumMorphsUsed: 0,
+        planLimit: newLimit,
+        remainingMorphs: newLimit,
+        lastResetAt: Timestamp.fromDate(now),
+        showResetSurprise: true,
+        adminMessage: null
+      } : u));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     } finally {
@@ -164,7 +188,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   };
 
-  const handleRevokePremium = async (userId: string) => {
+  const handleRevokePremium = async (userId: string, reason: string = "Premium access revoked due to policy violation.") => {
     setUpdating(userId);
     try {
       const user = users.find(u => u.id === userId);
@@ -174,7 +198,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         plan: 'free',
         planLimit: 2,
         remainingMorphs: Math.max(0, 2 - currentUsed),
-        premiumExpiryDate: null
+        premiumExpiryDate: null,
+        revokeReason: reason,
+        showRevokeNotice: true
       });
       
       setUsers(prev => prev.map(u => u.id === userId ? { 
@@ -182,7 +208,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         plan: 'free', 
         planLimit: 2, 
         remainingMorphs: Math.max(0, 2 - currentUsed), 
-        premiumExpiryDate: null 
+        premiumExpiryDate: null,
+        revokeReason: reason,
+        showRevokeNotice: true
       } : u));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
@@ -479,6 +507,21 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   </span>
                                 )}
                               </div>
+                              
+                              {/* New: Usage Breakdown */}
+                              <div className="flex flex-wrap items-center gap-2 mt-3">
+                                <div className="px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                  Free: {user.freeMorphsUsed || 0}
+                                </div>
+                                <div className="px-2 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-indigo-400">
+                                  Premium: {user.premiumMorphsUsed || 0}
+                                </div>
+                                {user.lastResetAt && (
+                                  <div className="px-2 py-1 bg-green-50 border border-green-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-green-600">
+                                    Last Reset: {user.lastResetAt.toDate ? user.lastResetAt.toDate().toLocaleDateString() : new Date(user.lastResetAt).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -491,14 +534,18 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   onClick={() => handleResetUsage(user.id)}
                                   disabled={updating === user.id}
                                   className="text-[8px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest flex items-center gap-1 hover:underline"
+                                  title="Reset Usage & Add 2 Credits"
                                 >
                                   <RefreshCw className={cn("w-2.5 h-2.5 md:w-3 md:h-3", updating === user.id && "animate-spin")} />
                                   Reset
                                 </button>
                                 <button
-                                  onClick={() => handleRevokePremium(user.id)}
-                                  disabled={updating === user.id}
-                                  className="text-[8px] md:text-[10px] text-red-600 font-black uppercase tracking-widest flex items-center gap-1 hover:underline"
+                                  onClick={() => {
+                                    const reason = prompt("Enter revocation reason:", "Premium access revoked due to policy violation.");
+                                    if (reason !== null) handleRevokePremium(user.id, reason);
+                                  }}
+                                  disabled={updating === user.id || user.plan === 'free'}
+                                  className="text-[8px] md:text-[10px] text-red-600 font-black uppercase tracking-widest flex items-center gap-1 hover:underline disabled:opacity-30"
                                 >
                                   <Ban className="w-2.5 h-2.5 md:w-3 md:h-3" />
                                   Revoke

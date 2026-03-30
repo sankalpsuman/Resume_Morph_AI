@@ -172,10 +172,11 @@ export default function App() {
     
     try {
       const userRef = doc(db, 'users', user.uid);
-      const updatedHistory = userData.resumeHistory.filter((r: any) => r.id !== resumeId);
+      const history = userData.resumeHistory || [];
+      const updatedHistory = history.filter((r: any) => r.id !== resumeId);
       
       // Also delete from storage if storagePath exists
-      const resumeToDelete = userData.resumeHistory.find((r: any) => r.id === resumeId);
+      const resumeToDelete = history.find((r: any) => r.id === resumeId);
       if (resumeToDelete?.storagePath) {
         const storageRef = ref(storage, resumeToDelete.storagePath);
         await deleteObject(storageRef).catch(err => console.error("Storage delete failed:", err));
@@ -228,7 +229,7 @@ export default function App() {
 
   const userLevel = getLevel(userData?.morphCount || 0);
   const isAdmin = user.email === 'sankalpsmn@gmail.com';
-  const usedMorphs = userData?.usedMorphs || 0;
+  const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2);
   const progress = Math.min((usedMorphs / planLimit) * 100, 100);
   const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
