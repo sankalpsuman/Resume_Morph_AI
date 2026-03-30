@@ -38,10 +38,10 @@ export default function AccountModal({
     return { name: 'Novice', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', icon: User };
   };
 
-  const userLevel = getLevel(userData.morphCount || 0);
-  const morphCount = userData.morphCount || 0;
+  const usedMorphs = userData.usedMorphs !== undefined ? userData.usedMorphs : (userData.morphCount || 0);
+  const userLevel = getLevel(usedMorphs);
   const planLimit = userData.planLimit === -1 ? 100 : (userData.planLimit || 2);
-  const progress = Math.min((morphCount / planLimit) * 100, 100);
+  const progress = Math.min((usedMorphs / planLimit) * 100, 100);
 
   const joinedDate = userData.createdAt?.toDate 
     ? userData.createdAt.toDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -173,7 +173,7 @@ export default function AccountModal({
                 <Activity className="w-7 h-7 text-white" />
               </div>
               <div>
-                <p className="text-3xl font-black text-indigo-600 leading-none">{userData.morphCount}</p>
+                <p className="text-3xl font-black text-indigo-600 leading-none">{usedMorphs}</p>
                 <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Total Morphs</p>
               </div>
             </div>
@@ -181,7 +181,7 @@ export default function AccountModal({
             <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Usage Progress</p>
-                <p className="text-xs font-black text-indigo-600">{morphCount} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}</p>
+                <p className="text-xs font-black text-indigo-600">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}</p>
               </div>
               <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
                 <motion.div 
@@ -191,7 +191,7 @@ export default function AccountModal({
                 />
               </div>
               <p className="text-[9px] text-gray-400 font-bold mt-3 uppercase tracking-widest text-center">
-                {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || 2) - userData.morphCount)} morphs remaining`}
+                {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || 2) - usedMorphs)} morphs remaining`}
               </p>
             </div>
           </div>

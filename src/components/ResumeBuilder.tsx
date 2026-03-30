@@ -27,6 +27,7 @@ interface ResumeBuilderProps {
 }
 
 export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProps) {
+  const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
@@ -88,6 +89,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const onDropReference = async (acceptedFiles: File[]) => {
+    if (userData) {
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && usedMorphs >= limit) {
+        onUpgrade();
+        return;
+      }
+    }
+
     const file = acceptedFiles[0];
     if (!file) return;
 
@@ -115,6 +124,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const onDropContent = async (acceptedFiles: File[]) => {
+    if (userData) {
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && usedMorphs >= limit) {
+        onUpgrade();
+        return;
+      }
+    }
+
     const file = acceptedFiles[0];
     if (!file) return;
 
@@ -179,7 +196,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       await Promise.all([
         uploadString(resumeRef, html, 'raw', { contentType: 'text/html' }),
         updateDoc(userRef, {
-          morphCount: increment(1),
           resumeHistory: updatedHistory,
           lastActivityAt: serverTimestamp()
         })
@@ -235,7 +251,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         return;
       }
       const limit = userData.planLimit || 2;
-      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+      if (limit !== -1 && usedMorphs >= limit) {
         onUpgrade();
         return;
       }
@@ -339,7 +355,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         return;
       }
       const limit = userData.planLimit || 2;
-      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+      if (limit !== -1 && usedMorphs >= limit) {
         onUpgrade();
         return;
       }
@@ -398,6 +414,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const handleCheckMatch = async () => {
+    if (userData) {
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && usedMorphs >= limit) {
+        onUpgrade();
+        return;
+      }
+    }
+
     if (!matchDescription) {
       setError("Please paste a job description first.");
       return;
@@ -428,6 +452,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const handleMaximizeAts = async () => {
     if (!layoutAnalysis || !contentFile?.text) return;
     
+    if (userData) {
+      const limit = userData.planLimit || 2;
+      if (limit !== -1 && usedMorphs >= limit) {
+        onUpgrade();
+        return;
+      }
+    }
+
     setIsPlanning(true);
     setError(null);
     setNeedsApiKey(false);
@@ -457,7 +489,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         return;
       }
       const limit = userData.planLimit || 2;
-      if (limit !== -1 && (userData.usedMorphs || 0) >= limit) {
+      if (limit !== -1 && usedMorphs >= limit) {
         onUpgrade();
         return;
       }
@@ -750,6 +782,55 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       </header>
 
       <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+        {/* Morph Stats Bar */}
+        <div className="mb-8 md:mb-12">
+          <div className="flex flex-wrap items-center gap-4 md:gap-8 bg-white/50 backdrop-blur-md border border-gray-200/50 rounded-[32px] p-5 md:p-8 shadow-sm">
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-[22px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100">
+                <Zap className="w-7 h-7 text-white fill-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5">Morph Engine Status</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black text-gray-900 tracking-tight">
+                    {userData?.planLimit === -1 ? 'Unlimited' : `${usedMorphs} / ${userData?.planLimit || 2}`}
+                  </span>
+                  <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                    {userData?.plan || 'Free'} Plan
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
+            
+            <div className="flex-grow max-w-md">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Remaining Credits</p>
+                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
+                  {userData?.planLimit === -1 ? '∞' : Math.max(0, (userData?.planLimit || 2) - usedMorphs)} Morphs Left
+                </p>
+              </div>
+              <div className="w-full h-3 bg-white rounded-full overflow-hidden border border-gray-100 shadow-inner">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min((usedMorphs / (userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2))) * 100, 100)}%` }}
+                  className="h-full bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                />
+              </div>
+            </div>
+
+            {userData?.planLimit !== -1 && usedMorphs >= (userData?.planLimit || 2) && (
+              <button 
+                onClick={onUpgrade}
+                className="ml-auto px-8 py-4 bg-indigo-600 text-white rounded-[20px] text-xs font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center gap-3 group"
+              >
+                <Zap className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
+                Upgrade Now
+              </button>
+            )}
+          </div>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* Left Column: Controls */}
@@ -771,6 +852,10 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   file={referenceFile?.file}
                   label="Drop reference resume"
                   color="indigo"
+                  disabled={(() => {
+                    const limit = userData?.planLimit || 2;
+                    return limit !== -1 && usedMorphs >= limit;
+                  })()}
                 />
                 
                 {referenceFile && !layoutAnalysis && (
@@ -876,12 +961,16 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   file={contentFile?.file}
                   label="Drop your content file"
                   color="indigo"
+                  disabled={(() => {
+                    const limit = userData?.planLimit || 2;
+                    return limit !== -1 && usedMorphs >= limit;
+                  })()}
                 />
 
                 {referenceFile && contentFile && !generatedHtml && (
                   (() => {
                     const limit = userData?.planLimit || 2;
-                    const isOverLimit = limit !== -1 && (userData?.usedMorphs || 0) >= limit;
+                    const isOverLimit = limit !== -1 && usedMorphs >= limit;
                     return isOverLimit;
                   })() ? (
                     <motion.button
@@ -1513,16 +1602,17 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   );
 }
 
-function Dropzone({ onDrop, isProcessing, file, label, color }: { 
+function Dropzone({ onDrop, isProcessing, file, label, color, disabled }: { 
   onDrop: (files: File[]) => void, 
   isProcessing: boolean, 
   file?: File,
   label: string,
-  color: string
+  color: string,
+  disabled?: boolean
 }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop, 
-    disabled: isProcessing,
+    disabled: isProcessing || disabled,
     multiple: false,
     accept: {
       'application/pdf': ['.pdf'],
@@ -1539,8 +1629,9 @@ function Dropzone({ onDrop, isProcessing, file, label, color }: {
         "relative group cursor-pointer transition-all duration-500",
         "border-2 border-dashed rounded-[32px] p-10 text-center",
         isDragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.02]" : "border-gray-100 bg-gray-50/50 hover:border-indigo-200 hover:bg-white hover:shadow-xl hover:shadow-indigo-100/20",
-        isProcessing && "opacity-50 cursor-not-allowed",
-        file && "border-indigo-200 bg-indigo-50/20"
+        (isProcessing || disabled) && "opacity-50 cursor-not-allowed",
+        file && "border-indigo-200 bg-indigo-50/20",
+        disabled && "grayscale grayscale-0 hover:grayscale-0"
       )}
     >
       <input {...getInputProps()} />
@@ -1548,10 +1639,13 @@ function Dropzone({ onDrop, isProcessing, file, label, color }: {
       <div className="flex flex-col items-center gap-5">
         <div className={cn(
           "w-16 h-16 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg",
-          file ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-white text-gray-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-indigo-200"
+          file ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-white text-gray-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-indigo-200",
+          disabled && "bg-gray-100 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-400"
         )}>
           {isProcessing ? (
             <Loader2 className="w-8 h-8 animate-spin" />
+          ) : disabled ? (
+            <Lock className="w-8 h-8" />
           ) : file ? (
             <CheckCircle className="w-8 h-8" />
           ) : (
@@ -1561,10 +1655,10 @@ function Dropzone({ onDrop, isProcessing, file, label, color }: {
         
         <div className="space-y-1">
           <p className="text-sm font-black tracking-tight">
-            {isProcessing ? "Analyzing DNA..." : file ? file.name : label}
+            {isProcessing ? "Analyzing DNA..." : disabled ? "Limit Reached" : file ? file.name : label}
           </p>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-            {file ? `${(file.size / 1024).toFixed(1)} KB` : "PDF, DOCX, TXT or Image"}
+            {disabled ? "Upgrade to continue" : file ? `${(file.size / 1024).toFixed(1)} KB` : "PDF, DOCX, TXT or Image"}
           </p>
         </div>
       </div>

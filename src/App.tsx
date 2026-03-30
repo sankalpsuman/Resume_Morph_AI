@@ -145,7 +145,7 @@ export default function App() {
     if (!userData || !user) return;
 
     const checkExpiry = async () => {
-      if (userData.plan === 'unlimited' && userData.premiumExpiryDate) {
+      if (userData.plan !== 'free' && userData.premiumExpiryDate) {
         const expiry = userData.premiumExpiryDate.toDate();
         if (Date.now() > expiry.getTime()) {
           const userRef = doc(db, 'users', user.uid);

@@ -38,8 +38,8 @@ interface PremiumRequest {
 
 const PLANS = [
   { id: 'free', name: 'Free', limit: 2, price: 0, color: 'text-gray-600', bg: 'bg-gray-100' },
-  { id: 'premium', name: 'Premium', limit: 4, price: 39, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { id: 'gold', name: 'Gold', limit: 10, price: 79, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+  { id: 'premium', name: 'Premium', limit: 7, price: 39, color: 'text-blue-600', bg: 'bg-blue-100' },
+  { id: 'gold', name: 'Gold', limit: 12, price: 79, color: 'text-indigo-600', bg: 'bg-indigo-100' },
   { id: 'unlimited', name: 'Unlimited', limit: -1, price: 499, color: 'text-purple-600', bg: 'bg-purple-100' }
 ];
 
@@ -107,12 +107,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
         : null;
 
+      const targetUser = users.find(u => u.id === request.userId);
+      const usedMorphs = targetUser?.usedMorphs || 0;
+
       // Update user
       await updateDoc(doc(db, 'users', request.userId), {
         plan: plan.id,
         planLimit: plan.limit,
-        usedMorphs: 0,
-        remainingMorphs: plan.limit === -1 ? 999999 : plan.limit,
+        remainingMorphs: plan.limit === -1 ? 999999 : Math.max(0, plan.limit - usedMorphs),
         premiumExpiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null
       });
 
@@ -165,15 +167,23 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const handleRevokePremium = async (userId: string) => {
     setUpdating(userId);
     try {
+      const user = users.find(u => u.id === userId);
+      const currentUsed = user?.usedMorphs !== undefined ? user.usedMorphs : (user?.morphCount || 0);
+
       await updateDoc(doc(db, 'users', userId), {
         plan: 'free',
         planLimit: 2,
-        usedMorphs: 0,
-        remainingMorphs: 2,
+        remainingMorphs: Math.max(0, 2 - currentUsed),
         premiumExpiryDate: null
       });
       
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, plan: 'free', planLimit: 2, usedMorphs: 0, remainingMorphs: 2, premiumExpiryDate: null } : u));
+      setUsers(prev => prev.map(u => u.id === userId ? { 
+        ...u, 
+        plan: 'free', 
+        planLimit: 2, 
+        remainingMorphs: Math.max(0, 2 - currentUsed), 
+        premiumExpiryDate: null 
+      } : u));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     } finally {
@@ -204,6 +214,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
     setUpdating(userId);
     try {
+      const user = users.find(u => u.id === userId);
+      const currentUsed = user?.usedMorphs !== undefined ? user.usedMorphs : (user?.morphCount || 0);
+
       const expiryDate = change.planId === 'unlimited' 
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
         : null;
@@ -211,8 +224,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       await updateDoc(doc(db, 'users', userId), {
         plan: change.planId,
         planLimit: change.limit,
-        usedMorphs: 0,
-        remainingMorphs: change.limit === -1 ? 999999 : change.limit,
+        remainingMorphs: change.limit === -1 ? 999999 : Math.max(0, change.limit - currentUsed),
         premiumExpiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null
       });
       
@@ -220,8 +232,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         ...u, 
         plan: change.planId, 
         planLimit: change.limit,
-        usedMorphs: 0,
-        remainingMorphs: change.limit === -1 ? 999999 : change.limit,
+        remainingMorphs: change.limit === -1 ? 999999 : Math.max(0, change.limit - currentUsed),
         premiumExpiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null
       } : u));
       
@@ -239,7 +250,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     if (users.length > 0 || requests.length > 0) {
       setStats({
         totalUsers: users.length,
-        totalMorphs: users.reduce((acc, user) => acc + (user.usedMorphs || 0), 0),
+        totalMorphs: users.reduce((acc, user) => acc + (user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)), 0),
         pendingRequests: requests.filter(r => r.status === 'Pending').length,
         activePremium: users.filter(u => u.plan && u.plan !== 'free').length
       });
@@ -452,7 +463,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                               <p className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
                               <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
                                 <span className="text-[8px] md:text-[10px] bg-gray-100 text-gray-600 px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest">
-                                  {user.usedMorphs || 0}/{user.planLimit === -1 ? '∞' : (user.planLimit || 2)}
+                                  {user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)}/{user.planLimit === -1 ? '∞' : (user.planLimit || 2)}
                                 </span>
                                 <span className={cn(
                                   "text-[8px] md:text-[10px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1",

@@ -15,7 +15,7 @@ const PLANS = [
   {
     id: 'premium',
     name: 'Premium Pack',
-    morphs: 4,
+    morphs: 7,
     price: 39,
     description: 'Perfect for quick updates',
     icon: Star,
@@ -24,7 +24,7 @@ const PLANS = [
   {
     id: 'gold',
     name: 'Gold Pack',
-    morphs: 10,
+    morphs: 12,
     price: 79,
     description: 'Best for job seekers',
     icon: Trophy,

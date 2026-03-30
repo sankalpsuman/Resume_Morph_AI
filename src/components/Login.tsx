@@ -57,6 +57,10 @@ export default function Login() {
             photo: user.photoURL,
             createdAt: serverTimestamp(),
             morphCount: 0,
+            usedMorphs: 0,
+            remainingMorphs: 2,
+            plan: 'free',
+            planLimit: 2,
             hasReviewed: false,
             resumeHistory: []
           });
