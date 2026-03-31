@@ -90,14 +90,18 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `Analyze the layout of this resume. 
-    ${rawText ? `The following text was extracted from a document: \n\n${rawText}\n\nBased on the structure of this text, infer and describe:` : "Describe in detail based on the provided file:"}
-    1. Typography (font styles, weights, sizes for headers vs body).
-    2. Layout (single column, double column, sidebar, margins, spacing).
-    3. Visual elements (lines, icons, colors, bullet points style).
-    4. Section organization (how sections like Experience, Education, Skills are visually separated).
+    const prompt = `Expert Visual DNA Analyst.
     
-    Provide a structured description that can be used to recreate this style in HTML/Tailwind CSS.`;
+    TASK: Analyze the visual structure of this resume to extract its "Layout DNA".
+    
+    ${rawText ? `EXTRACTED TEXT: \n\n${rawText}\n\nBased on this text structure, infer:` : "Based on the provided file, describe:"}
+    
+    1. TYPOGRAPHY: Font pairings (serif/sans), weights (bold/light), and precise size hierarchy (headers vs body).
+    2. LAYOUT ARCHITECTURE: Column structure (single, 2/3 split, sidebar left/right), margins, and vertical/horizontal spacing patterns.
+    3. DESIGN LANGUAGE: Visual accents (lines, icons, color palette hex codes if visible, bullet point styles).
+    4. SECTION LOGIC: How sections (Experience, Education, etc.) are visually demarcated (borders, background colors, spacing).
+    
+    OUTPUT: Provide a concise, highly technical description optimized for a developer to recreate using Tailwind CSS. Focus on structural patterns.`;
 
     const contents: any[] = [];
     if (fileBase64 && mimeType) {
@@ -191,7 +195,8 @@ export async function generateResume(
   content: { base64?: string; mimeType?: string; text?: string },
   jobDescription: string = "",
   maximizeAts: boolean = false,
-  existingLayout: string | null = null
+  existingLayout: string | null = null,
+  strict: boolean = true
 ) {
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
@@ -212,36 +217,51 @@ export async function generateResume(
       - Set "atsScore" to 100.`
       : "";
 
-    const prompt = `Expert ATS Resume Builder & Career Strategist.
+    const strictPrompt = strict 
+      ? `\n\nSTRICT MODE ENABLED:
+      - Replicate the EXACT layout, composition, and proportions of the REFERENCE.
+      - Do NOT move sections, do NOT change the order of elements.
+      - Keep EXACT subject position and proportions (e.g., sidebar width, header height).
+      - Do NOT "reimagine" or "optimize" the layout structure. Mirror it perfectly.
+      - Preserve the original's section organization and visual hierarchy.`
+      : "";
+
+    const prompt = `Expert Structural Architect & Visual Mirror.
     
     TASK:
-    1. ANALYZE LAYOUT: Analyze the visual structure of the REFERENCE. If text/analysis is provided, use it. If an image/PDF is provided, describe its typography, layout, and visual elements.
-    2. EXTRACT CONTENT: Extract all professional details from the USER CONTENT.
-    3. GENERATE RESUME: Create a professional HTML/Tailwind resume matching the analyzed layout and optimized for the JOB DESCRIPTION.
-    4. CALCULATE SCORES: 
-       - Calculate ATS Score (0-100) based on standard parsing rules.
-       - Calculate Match Score (0-100) specifically against the JOB DESCRIPTION.
-       - Identify missing keywords from the JD.
+    1. STRUCTURAL MIRROR: Replicate the EXACT layout, composition, and proportions of the REFERENCE RESUME. The output HTML must be a structural clone.
+    2. CONTENT MAPPING: Map the USER CONTENT into this EXACT structure. Do NOT move sections, do NOT change the order of elements, and do NOT add or remove structural components unless explicitly requested.
+    3. STYLE APPLICATION: Apply the visual style (fonts, colors, spacing, accents) of the REFERENCE while maintaining the original's structural integrity.
+    
+    ${strictPrompt}
+    
+    STRICT RULES (MANDATORY):
+    - Keep EXACT same layout and composition as the reference.
+    - Keep EXACT subject position and proportions.
+    - Do NOT "reimagine" or "optimize" the layout structure. Mirror it.
+    - Preserve the original's section organization and visual hierarchy.
+    - Use clean, semantic Tailwind CSS classes.
     
     ${optimizationPrompt}${atsMaxPrompt}
     
-    ATS RULES: Standard headings, linear structure, no complex CSS hacks, searchable text.
-    
-    METADATA: "name", "yoe", "profile" (use underscores).
+    QUALITY CONTROLS:
+    - Sharp, high-quality layout.
+    - Clean edges and consistent spacing.
+    - Professional typography pairings.
     
     OUTPUT: JSON object with:
-    - "html": HTML string (Tailwind only).
+    - "html": Complete HTML string (Tailwind only).
     - "name": Full name.
     - "yoe": Years of experience.
-    - "profile": Job title.
+    - "profile": Target job title.
     - "atsScore": 0-100.
     - "atsFeedback": Max 150 chars.
     - "matchScore": 0-100.
     - "missingKeywords": Array of strings.
-    - "layoutAnalysis": Concise description of the layout style.
-    - "extractedText": The full text extracted from the USER CONTENT (if it was an image/PDF).
+    - "layoutAnalysis": Concise summary of the mirrored structure.
+    - "extractedText": Full text from USER CONTENT.
     
-    Return ONLY JSON. No markdown.`;
+    Return ONLY JSON.`;
 
     const contents: any[] = [];
     const parts: any[] = [];
@@ -295,7 +315,7 @@ export async function generateResume(
           },
           required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
         },
-        temperature: 0.1,
+        temperature: 0.0,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
       },
       contents: [{ parts }],

@@ -61,6 +61,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [strictLayout, setStrictLayout] = useState(true);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -225,14 +226,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         updatedHistory = [newResume, ...currentHistory].slice(0, 2);
       }
 
-      // Parallelize Storage and Firestore updates for maximum speed
-      await Promise.all([
-        uploadString(resumeRef, html, 'raw', { contentType: 'text/html' }),
-        updateDoc(userRef, {
-          resumeHistory: updatedHistory,
-          lastActivityAt: serverTimestamp()
-        })
-      ]);
+      // Parallelize Storage and Firestore updates
+      // We don't strictly need to await Storage upload for the UI to feel "saved"
+      // because the HTML is already in Firestore.
+      uploadString(resumeRef, html, 'raw', { contentType: 'text/html' }).catch(err => console.error("Background storage upload failed:", err));
+      
+      await updateDoc(userRef, {
+        resumeHistory: updatedHistory,
+        lastActivityAt: serverTimestamp()
+      });
       
       setPendingResume(null);
     } catch (err) {
@@ -301,7 +303,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
         jobDescription,
         false,
-        layoutAnalysis
+        layoutAnalysis,
+        strictLayout
       );
 
       setGeneratedHtml(result.html);
@@ -406,7 +409,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
         jobDescription,
         false,
-        layoutAnalysis
+        layoutAnalysis,
+        strictLayout
       );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
@@ -544,7 +548,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
         jobDescription,
         true,
-        layoutAnalysis
+        layoutAnalysis,
+        strictLayout
       );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
@@ -941,6 +946,27 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               </div>
             </div>
             
+            <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
+            
+            <div className="flex items-center gap-4 bg-gray-50/50 px-6 py-3 rounded-2xl border border-gray-100">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Strict Layout</span>
+                <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest">Structural Mirror</span>
+              </div>
+              <button 
+                onClick={() => setStrictLayout(!strictLayout)}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative",
+                  strictLayout ? "bg-indigo-600" : "bg-gray-200"
+                )}
+              >
+                <motion.div 
+                  animate={{ x: strictLayout ? 24 : 4 }}
+                  className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                />
+              </button>
+            </div>
+
             <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
             
             <div className="flex-grow max-w-md">
