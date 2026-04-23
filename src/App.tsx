@@ -12,7 +12,9 @@ import Feedback from './components/Feedback';
 import PortfolioGenerator from './components/PortfolioGenerator';
 import Login from './components/Login';
 import SmartEditor from './components/SmartEditor';
-import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles } from 'lucide-react';
+import CoverLetterGenerator from './components/CoverLetterGenerator';
+import ApplyTracker from './components/ApplyTracker';
+import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, storage } from './firebase';
@@ -26,7 +28,7 @@ import PremiumModal from './components/PremiumModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -249,6 +251,8 @@ export default function App() {
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'builder', label: 'Morph Engine', icon: Layout },
     { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
+    { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
+    { id: 'tracker', label: 'Applications', icon: Briefcase },
     { id: 'portfolio', label: 'Portfolio', icon: Globe },
     { id: 'guide', label: 'User Guide', icon: BookOpen },
     { id: 'account', label: 'Account', icon: UserIcon },
@@ -336,6 +340,32 @@ export default function App() {
             >
               <Globe className="w-4 h-4" />
               Portfolio Gen
+            </button>
+
+            <button 
+              onClick={() => handleTabChange('cover-letter')}
+              className={cn(
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
+                activeTab === 'cover-letter' 
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+              )}
+            >
+              <FileText className="w-4 h-4" />
+              Cover Letter
+            </button>
+
+            <button 
+              onClick={() => handleTabChange('tracker')}
+              className={cn(
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
+                activeTab === 'tracker' 
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+              )}
+            >
+              <Briefcase className="w-4 h-4" />
+              Applications
             </button>
 
             <button 
@@ -629,6 +659,32 @@ export default function App() {
                 </button>
 
                 <button 
+                  onClick={() => handleTabChange('cover-letter')}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
+                    activeTab === 'cover-letter' 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <FileText className="w-5 h-5" />
+                  Cover Letter
+                </button>
+
+                <button 
+                  onClick={() => handleTabChange('tracker')}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
+                    activeTab === 'tracker' 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <Briefcase className="w-5 h-5" />
+                  Applications
+                </button>
+
+                <button 
                   onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
                   className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black text-amber-600 hover:bg-amber-50 transition-all"
                 >
@@ -759,6 +815,12 @@ export default function App() {
         <div className={cn(activeTab !== 'smart-editor' && "hidden")}>
           <SmartEditor />
         </div>
+        <div className={cn(activeTab !== 'cover-letter' && "hidden")}>
+          <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.data || {}} />
+        </div>
+        <div className={cn(activeTab !== 'tracker' && "hidden")}>
+          <ApplyTracker />
+        </div>
         <div className={cn(activeTab !== 'portfolio' && "hidden")}>
           <PortfolioGenerator onFullscreenChange={setIsPortfolioFullscreen} />
         </div>
@@ -798,9 +860,9 @@ export default function App() {
         {[
           { id: 'builder', icon: Layout, label: 'Morph' },
           { id: 'smart-editor', icon: Sparkles, label: 'Smart' },
-          { id: 'portfolio', icon: Globe, label: 'Portfolio' },
-          { id: 'guide', icon: BookOpen, label: 'Guide' },
-          { id: 'account', icon: UserIcon, label: 'Account' },
+          { id: 'tracker', icon: Briefcase, label: 'Jobs' },
+          { id: 'portfolio', icon: Globe, label: 'Port' },
+          { id: 'account', icon: UserIcon, label: 'Me' },
         ].map((item) => (
           <button
             key={item.id}

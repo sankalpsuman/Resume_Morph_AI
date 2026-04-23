@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, Printer, 
-  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock
+  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin
 } from 'lucide-react';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import mammoth from 'mammoth';
@@ -62,6 +62,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strictLayout, setStrictLayout] = useState(true);
+  const [lengthMode, setLengthMode] = useState<'1-page' | '2-page' | 'executive'>('1-page');
+  const [linkedinText, setLinkedinText] = useState('');
+  const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
 
   useEffect(() => {
     if (userData?.showResetSurprise) {
@@ -297,7 +300,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         jobDescription,
         false,
         layoutAnalysis,
-        strictLayout
+        strictLayout,
+        { lengthMode }
       );
 
       setGeneratedHtml(result.html);
@@ -399,7 +403,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         jobDescription,
         false,
         layoutAnalysis,
-        strictLayout
+        strictLayout,
+        { lengthMode }
       );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
@@ -535,7 +540,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         jobDescription,
         true,
         layoutAnalysis,
-        strictLayout
+        strictLayout,
+        { lengthMode }
       );
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
@@ -580,6 +586,34 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
   };
   
+  const handleLinkedInImport = async () => {
+    if (!linkedinText) return;
+    setIsImportingLinkedIn(false);
+    setIsGenerating(true);
+    try {
+      // We'll treat the text as "content"
+      setContentFile({
+        name: 'LinkedIn_Profile.txt',
+        type: 'text/plain',
+        text: linkedinText
+      });
+    } catch (e) {
+      console.error(e);
+      setError("Failed to import LinkedIn data.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (!generatedHtml) return;
+    // In a real app we'd save to firebase and get a public ID
+    // For now, we'll copy the current app URL or a mock share URL
+    const shareUrl = window.location.href;
+    navigator.clipboard.writeText(shareUrl);
+    alert("Share link copied! (Mock - would be a direct resume URL in production)");
+  };
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -975,7 +1009,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               <section>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">1</div>
-                  <h2 className="font-black text-xl tracking-tight">Reference Style</h2>
+                  <h2 className="font-black text-xl tracking-tight">The Content</h2>
+                  <button
+                    onClick={() => setIsImportingLinkedIn(true)}
+                    title="Import data directly from your LinkedIn profile"
+                    className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
+                  >
+                    <Linkedin className="w-3.5 h-3.5" />
+                    LinkedIn Import
+                  </button>
                 </div>
                 <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
                   Upload the resume layout you want to clone. We'll analyze its visual DNA.
@@ -1041,6 +1083,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   {jobDescription && (
                     <button 
                       onClick={() => setJobDescription('')}
+                      title="Clear the current job description"
                       className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider transition-colors"
                     >
                       Clear
@@ -1081,7 +1124,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     animate={{ opacity: 1, y: 0 }}
                     onClick={handleOptimize}
                     disabled={isGenerating}
-                    className="w-full py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
+                    title="Run the Morph Engine with Job Description matching"
+                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group border border-indigo-500"
                   >
                     {isGenerating ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1093,10 +1137,46 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 )}
               </section>
 
+              <section className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100">3</div>
+                    <h2 className="font-black text-xl tracking-tight">Smart Length</h2>
+                  </div>
+                  <div className="flex p-1 bg-gray-100 rounded-2xl">
+                    {[
+                      { id: '1-page', label: '1 Page', sub: 'Standard' },
+                      { id: '2-page', label: '2 Pages', sub: 'Senior' },
+                      { id: 'executive', label: 'Executive', sub: 'Impact' }
+                    ].map((mode) => (
+                      <button
+                        key={mode.id}
+                        onClick={() => setLengthMode(mode.id as any)}
+                        title={`Switch to ${mode.label} mode for ${mode.sub} profiles`}
+                        className={cn(
+                          "flex-1 py-3 px-2 rounded-xl transition-all flex flex-col items-center",
+                          lengthMode === mode.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-50" : "text-gray-400 hover:text-gray-600"
+                        )}
+                      >
+                        <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
+                        <span className="text-[8px] font-bold opacity-50">{mode.sub}</span>
+                      </button>
+                    ))}
+                  </div>
+              </section>
+
               <section className="transition-all duration-500">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">3</div>
-                  <h2 className="font-black text-xl tracking-tight">Your Content</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">4</div>
+                    <h2 className="font-black text-xl tracking-tight">Your Content</h2>
+                  </div>
+                  <button 
+                    onClick={() => setIsImportingLinkedIn(true)}
+                    className="flex items-center gap-2 group/btn"
+                  >
+                     <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest group-hover/btn:text-indigo-400 transition-colors">LinkedIn Import</span>
+                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  </button>
                 </div>
                 <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
                   Upload your data. We'll morph it into the reference style.
@@ -1286,6 +1366,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                         <button
                           onClick={handleMaximizeAts}
                           disabled={isGenerating || isPlanning}
+                          title="Let AI optimize your resume structure for high ATS compatibility"
                           className="px-2 md:px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 md:gap-1.5 shadow-lg shadow-indigo-100 disabled:opacity-50"
                         >
                           {isPlanning ? (
@@ -1300,9 +1381,20 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   )}
                 </div>
                 <div className="flex items-center gap-2 md:gap-4">
+                   {generatedHtml && (
+                    <button 
+                      onClick={handleShare}
+                      title="Generate a public link for your resume"
+                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Share Link</span>
+                    </button>
+                  )}
                   {generatedHtml && (
                     <button 
                       onClick={() => setIsPreviewFull(!isPreviewFull)}
+                      title={isPreviewFull ? "Exit fullscreen" : "Full View"}
                       className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
                     >
                       {isPreviewFull ? (
@@ -1736,6 +1828,61 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               >
                 No, Don't Save
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LinkedIn Import Modal */}
+      <AnimatePresence>
+        {isImportingLinkedIn && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsImportingLinkedIn(false)}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-xl bg-white rounded-[48px] shadow-2xl overflow-hidden p-10 space-y-8"
+            >
+              <div className="space-y-4">
+                <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-blue-100">
+                  <Linkedin className="w-8 h-8" />
+                </div>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">LinkedIn Import</h2>
+                <p className="text-sm font-medium text-gray-400">Paste your profile data or PDF text to convert it into a baseline resume.</p>
+              </div>
+
+              <div className="space-y-6">
+                <textarea
+                  value={linkedinText}
+                  onChange={(e) => setLinkedinText(e.target.value)}
+                  placeholder="Paste your 'About', 'Experience', and 'Skills' from LinkedIn profile..."
+                  className="w-full h-60 p-6 bg-gray-50 border-gray-100 rounded-[32px] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-white outline-none resize-none transition-all"
+                />
+                
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setIsImportingLinkedIn(false)}
+                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLinkedInImport}
+                    disabled={!linkedinText}
+                    className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 group"
+                  >
+                    <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                    Process & Import
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

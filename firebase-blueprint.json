@@ -81,6 +81,27 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "uid", "timestamp"]
+    },
+    "Application": {
+      "title": "Job Application",
+      "description": "Job application tracking details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "company": { "type": "string" },
+        "role": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { 
+          "type": "string", 
+          "enum": ["Applied", "Interview", "Offer", "Rejected", "Wishlist"] 
+        },
+        "date": { "type": "string" },
+        "salary": { "type": "string" },
+        "notes": { "type": "string" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "company", "role", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -99,6 +120,10 @@
     "/premium_interest/{userId}": {
       "schema": "PremiumInterest",
       "description": "Users interested in premium features"
+    },
+    "/applications/{applicationId}": {
+      "schema": "Application",
+      "description": "Job application tracking"
     }
   }
 }

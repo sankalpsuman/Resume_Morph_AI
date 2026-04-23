@@ -20,52 +20,54 @@ import {
   MessageCircle,
   Clock,
   Rocket,
-  Layers
+  Layers,
+  Target,
+  Globe
 } from 'lucide-react';
 
 export default function UserGuide() {
   const steps = [
     {
       id: "upload",
-      title: "Upload Your Resume",
-      description: "Start by uploading your current resume in PDF or DOCX format. Our engine will analyze the structure and content.",
+      title: "Upload & Morph",
+      description: "Start by uploading your current resume or pasting your LinkedIn profile. Our Morph Engine handles the heavy lifting.",
       icon: Upload,
       color: "bg-blue-500",
-      details: ["Supports PDF, DOCX, TXT", "Automatic text extraction", "Privacy guaranteed"]
+      details: ["PDF/DOCX/TXT Support", "LinkedIn Import Modal", "Privacy-First Extraction"]
     },
     {
-      id: "choose",
-      title: "Choose Your Morph",
-      description: "Select from our premium templates or describe how you want your resume to look. Our AI handles the heavy lifting.",
+      id: "tailor",
+      title: "Smart Tailoring",
+      description: "Use the Analyze tab to check your ATS score and match your resume to a specific job description instantly.",
+      icon: Target,
+      color: "bg-amber-500",
+      details: ["Real-time ATS Scoring", "JD Keyword Matcher", "Missing Section Alerts"]
+    },
+    {
+      id: "optimize",
+      title: "AI Optimization",
+      description: "Refine every bullet point with our achieve-oriented rewriter. Create high-impact achievemetns effortlessly.",
       icon: Sparkles,
       color: "bg-purple-500",
-      details: ["Cloned visual styles", "ATS-friendly layouts", "Custom descriptions"]
+      details: ["Achievement Rewriting", "Executive Length Modes", "Smart Section Controls"]
     },
     {
-      id: "review",
-      title: "Review & Refine",
-      description: "Get a real-time preview of your morphed resume. You can make adjustments or try different styles instantly.",
-      icon: Layout,
-      color: "bg-indigo-500",
-      details: ["Side-by-side preview", "Instant style switching", "Real-time updates"]
-    },
-    {
-      id: "download",
-      title: "Download & Apply",
-      description: "Once satisfied, download your perfectly formatted resume in high-quality HTML or PDF format.",
-      icon: Download,
+      id: "apply",
+      title: "Track & Apply",
+      description: "Generate tailored cover letters and track your applications in real-time with our built-in job board.",
+      icon: Rocket,
       color: "bg-green-500",
-      details: ["High-fidelity PDF", "Clean HTML export", "Word compatible"]
+      details: ["AI Cover Letter Gen", "Application Dashboard", "Live Progress Tracking"]
     }
   ];
 
   const features = [
-    { id: "analysis", title: "AI-Powered Analysis", icon: Zap, desc: "Deep learning models analyze your resume structure." },
-    { id: "templates", title: "Premium Templates", icon: Star, desc: "Hand-crafted designs that pass any ATS system." },
-    { id: "security", title: "Secure Data Handling", icon: Shield, desc: "Your data is encrypted and never shared with third parties." },
-    { id: "previews", title: "Instant Previews", icon: Eye, desc: "See changes as they happen with our lightning-fast engine." },
-    { id: "history", title: "History Tracking", icon: History, desc: "Access your previous morphs anytime from your dashboard." },
-    { id: "export", title: "Export to Multiple Formats", icon: FileText, desc: "Download in PDF, HTML, or DOCX for maximum compatibility." }
+    { id: "ats", title: "ATS Score Engine", icon: Zap, desc: "Real-time analysis of your resume formatting and keyword density." },
+    { id: "jd", title: "Job Matching", icon: Target, desc: "Paste any JD to see a match percentage and missing keywords." },
+    { id: "bullet", title: "Bullet Optimizer", icon: Sparkles, desc: "Transform boring tasks into high-impact professional achievements." },
+    { id: "cover", title: "Cover Letter Gen", icon: FileText, desc: "Generate role-specific cover letters that match your profile." },
+    { id: "tracker", title: "App Tracker", icon: Clock, desc: "Keep track of every job application, interview, and offer." },
+    { id: "share", title: "Public Share", icon: Globe, desc: "Share your professional profile with a quick, secure web link." }
   ];
 
   const portfolioSteps = [

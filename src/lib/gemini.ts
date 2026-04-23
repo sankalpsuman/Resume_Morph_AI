@@ -228,7 +228,8 @@ export async function generateResume(
   jobDescription: string = "",
   maximizeAts: boolean = false,
   existingLayout: string | null = null,
-  strict: boolean = true
+  strict: boolean = true,
+  options: { lengthMode?: '1-page' | '2-page' | 'executive' } = {}
 ) {
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
@@ -252,6 +253,14 @@ export async function generateResume(
     const atsMaxPrompt = maximizeAts 
       ? `\n\nATS ENHANCEMENT: While keeping the REFERENCE structure, ensure headings are standard (e.g., "Experience" instead of "History") and font sizes are legible.`
       : "";
+
+    const lengthPrompt = options?.lengthMode === '1-page' 
+      ? "\n\nSTRICT LENGTH CONSTRAINT: The output MUST fit on a single A4 page. Be extremely concise. Use compact spacing."
+      : options?.lengthMode === '2-page'
+        ? "\n\nLENGTH: Expand content to fill approximately 2 pages. More detail per role is expected."
+        : options?.lengthMode === 'executive'
+          ? "\n\nTHEME: High-level executive summary style. Focus on leadership and strategic impact."
+          : "";
 
     const prompt = `SUPREME DESIGN SYSTEM ENGINEER.
     
@@ -279,6 +288,7 @@ export async function generateResume(
     ${optimizationPrompt}
     ${layoutSystemPrompt}
     ${atsMaxPrompt}
+    ${lengthPrompt}
     
     TECHNICAL OUTPUT:
     - Return valid JSON.
@@ -705,6 +715,64 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
       console.error("Failed to parse resume into JSON", e);
       throw new Error("Failed to process resume data structure.");
     }
+  });
+}
+
+export async function generateCoverLetter(resumeText: string, jobTitle: string, company?: string, jobDescription?: string) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+    
+    const prompt = `Expert Career Coach & Copywriter.
+    
+    RESUME: ${resumeText}
+    JOB: ${jobTitle} ${company ? `at ${company}` : ""}
+    ${jobDescription ? `JOB DESCRIPTION: ${jobDescription}` : ""}
+    
+    TASK: Write a high-impact, professional cover letter tailored to this role based on the resume content.
+    
+    RULES:
+    1. Modern, persuasive, and professional tone.
+    2. Focus on specific achievements from the resume that match the role.
+    3. Keep it under 400 words.
+    4. Provide placeholders for [Manager Name], [Date], etc. if unknown.
+    
+    OUTPUT: A string containing the cover letter.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: { temperature: 0.7 }
+    });
+
+    return response.text || "";
+  });
+}
+
+export async function improveBulletPoint(bullet: string, context: string) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+    
+    const prompt = `Expert Resume Writer.
+    
+    BULLET POINT: ${bullet}
+    CONTEXT (Role/Company): ${context}
+    
+    TASK: Rewrite this bullet point to be more impactful using the "Action Verb + Task + Quantifiable Result" framework.
+    
+    RULES:
+    1. Start with a strong action verb.
+    2. Quantify achievements if possible (predict a realistic metric if one isn't provided).
+    3. Keep it concise (max 2 lines).
+    
+    OUTPUT: Just the rewritten bullet point string.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: { temperature: 0.3 }
+    });
+
+    return response.text || "";
   });
 }
 
