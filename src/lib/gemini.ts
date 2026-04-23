@@ -10,6 +10,12 @@ function isSupportedMime(mime?: string) {
 
 // Helper to extract JSON from a string that might contain extra text
 function extractJson(text: string): string {
+  // First, try to handle markdown code blocks
+  const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (markdownMatch && markdownMatch[1]) {
+    return markdownMatch[1].trim();
+  }
+
   const firstBrace = text.indexOf('{');
   const lastBrace = text.lastIndexOf('}');
   const firstBracket = text.indexOf('[');
@@ -28,7 +34,11 @@ function extractJson(text: string): string {
   }
 
   if (start !== -1 && end !== -1 && end > start) {
-    return text.substring(start, end + 1);
+    let candidate = text.substring(start, end + 1);
+    // Cleanup trailing junk after the last closing brace if it's an object
+    if (candidate.endsWith('}') || candidate.endsWith(']')) {
+      return candidate;
+    }
   }
   
   return text.trim();
@@ -72,15 +82,19 @@ async function withRetry<T>(fn: (ai: GoogleGenAI) => Promise<T>, retries = 2): P
     try {
       return await fn(ai);
     } catch (error: any) {
-      const isQuotaError = error?.message?.includes("429") || error?.message?.toLowerCase().includes("quota");
+      const errorMsg = error?.message?.toLowerCase() || "";
+      const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota");
+      const isRpcError = errorMsg.includes("rpc failed") || errorMsg.includes("xhr error") || errorMsg.includes("failed to fetch");
       
-      if (isQuotaError) {
-        // Rotate key
-        currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+      if (isQuotaError || isRpcError) {
+        if (isQuotaError) {
+          // Rotate key
+          currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+        }
         
-        // If we've tried all keys, wait or throw
-        if (attempt === retries || (attempt >= keys.length - 1)) {
-          throw new Error("QUOTA_EXCEEDED");
+        // If we've tried all keys or max retries, throw
+        if (attempt === retries) {
+          throw error;
         }
         
         // Exponential backoff
@@ -333,7 +347,6 @@ export async function generateResume(
       model,
       contents: [{ parts }],
       config: { 
-        temperature: 0.2, // Slightly higher for better layout creativity
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -354,7 +367,7 @@ export async function generateResume(
           },
           required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
         },
-        temperature: 0.0,
+        temperature: 0.1,
       }
     });
 
@@ -546,5 +559,218 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
       console.error("Failed to parse portfolio response", e);
       throw new Error("Failed to generate portfolio content");
     }
+  });
+}
+
+export async function parseResumeToData(file: { base64: string; mimeType: string; text?: string }) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+    const parts: any[] = [];
+    
+    if (file.base64 && isSupportedMime(file.mimeType)) {
+      parts.push({
+        inlineData: {
+          data: file.base64.split(',')[1] || file.base64,
+          mimeType: file.mimeType
+        }
+      });
+    } else if (file.text) {
+      parts.push({ text: `RAW TEXT:\n${file.text}` });
+    }
+
+    const prompt = `EXPERT RESUME CONTENT EXTRACTOR.
+    
+    TASK: Extract EVERY detail from this resume into a clean, structured JSON format.
+    
+    EXTRACTION RULES:
+    1. Do not omit any professional data.
+    2. Split names, titles, and contact info clearly.
+    3. Categorize experience and projects with dates, company names, and bullet points.
+    4. Group skills into categories if possible.
+    
+    JSON STRUCTURE:
+    {
+      "personalInfo": { "name": "...", "title": "...", "email": "...", "phone": "...", "location": "...", "links": { "linkedin": "...", "github": "...", "portfolio": "..." } },
+      "summary": "...",
+      "experience": [ { "company": "...", "role": "...", "dates": "...", "location": "...", "bullets": ["...", "..."] } ],
+      "projects": [ { "name": "...", "description": "...", "tech": "...", "link": "..." } ],
+      "education": [ { "school": "...", "degree": "...", "year": "..." } ],
+      "skills": [ { "category": "...", "items": ["...", "..."] } ],
+      "certifications": ["...", "..."],
+      "customSections": [ { "title": "...", "content": "..." } ]
+    }`;
+
+    parts.push({ text: prompt });
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            personalInfo: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                title: { type: Type.STRING },
+                email: { type: Type.STRING },
+                phone: { type: Type.STRING },
+                location: { type: Type.STRING },
+                links: {
+                  type: Type.OBJECT,
+                  properties: {
+                    linkedin: { type: Type.STRING },
+                    github: { type: Type.STRING },
+                    portfolio: { type: Type.STRING }
+                  }
+                }
+              },
+              required: ["name", "email"]
+            },
+            summary: { type: Type.STRING },
+            experience: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  company: { type: Type.STRING },
+                  role: { type: Type.STRING },
+                  dates: { type: Type.STRING },
+                  location: { type: Type.STRING },
+                  bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["company", "role", "bullets"]
+              }
+            },
+            projects: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  tech: { type: Type.STRING },
+                  link: { type: Type.STRING }
+                },
+                required: ["name", "description"]
+              }
+            },
+            education: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  school: { type: Type.STRING },
+                  degree: { type: Type.STRING },
+                  year: { type: Type.STRING }
+                },
+                required: ["school", "degree"]
+              }
+            },
+            skills: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  category: { type: Type.STRING },
+                  items: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["category", "items"]
+              }
+            },
+            certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
+            customSections: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  content: { type: Type.STRING }
+                }
+              }
+            }
+          },
+          required: ["personalInfo", "summary", "experience", "skills"]
+        },
+        temperature: 0.1,
+      }
+    });
+
+    try {
+      const respText = response.text || "{}";
+      return JSON.parse(extractJson(respText));
+    } catch (e) {
+      console.error("Failed to parse resume into JSON", e);
+      throw new Error("Failed to process resume data structure.");
+    }
+  });
+}
+
+export async function generateResumeFromData(
+  data: any,
+  styles: any,
+  referenceLayout: string | null = null,
+  referenceBase64: string | null = null,
+  referenceMime: string | null = null
+) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+    const parts: any[] = [];
+    
+    if (referenceBase64 && referenceMime && isSupportedMime(referenceMime)) {
+      parts.push({
+        inlineData: {
+          data: referenceBase64.split(',')[1] || referenceBase64,
+          mimeType: referenceMime
+        }
+      });
+      parts.push({ text: "### REFERENCE VISUAL BLUEPRINT (Layout Source of Truth)" });
+    }
+
+    const prompt = `SUPREME FRONT-END DESIGN ENGINEER.
+    
+    TASK: Code a pixel-perfect, interactive RESUME using the visual blueprint and the provided JSON data.
+    
+    DATA SOURCE: ${JSON.stringify(data)}
+    STYLE PREFERENCES: ${JSON.stringify(styles)}
+    STRUCTURAL BLUEPRINT: ${referenceLayout || "Standard Professional"}
+    
+    CODING RULES:
+    1. STYLE: Use Tailwind CSS with absolute fidelity to the Reference Visual.
+    2. THEMING: You MUST use CSS variables for dynamic styles:
+       - Use 'var(--primary-color)' for all accent colors (icons, headers, borders).
+       - Use 'var(--text-main)' for primary text.
+       - Use 'var(--bg-card)' for section backgrounds if applicable.
+    3. DATA BINDING: 
+       - Add 'data-resume-field' to every element that displays data from the JSON.
+       - Add a 'data-section-name' attribute to the container DIV of every major section (e.g., 'Summary', 'Experience', 'Projects', 'Education', 'Skills', 'Certifications').
+       - Use dot notation for paths (e.g., 'personalInfo.name', 'experience.0.company').
+    4. CUSTOMIZATION: Apply the Style Preferences provided.
+    5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills. Use SVG/Lucide icons.
+    6. RESPONSIVENESS: Ensure it looks perfect on A4 size.
+    
+    OUTPUT: Return ONLY a valid JSON object with the "html" key containing the Tailwind structure.`;
+
+    parts.push({ text: prompt });
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            html: { type: Type.STRING }
+          },
+          required: ["html"]
+        },
+        temperature: 0.2,
+      }
+    });
+
+    return JSON.parse(extractJson(response.text || "{\"html\": \"\"}"));
   });
 }
