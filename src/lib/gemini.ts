@@ -1,5 +1,13 @@
 import { GoogleGenAI, GenerateContentResponse, Type, ThinkingLevel } from "@google/genai";
 
+// Gemini supported multimodal types
+const SUPPORTED_MIMES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];
+
+function isSupportedMime(mime?: string) {
+  if (!mime) return false;
+  return SUPPORTED_MIMES.includes(mime.toLowerCase());
+}
+
 // Helper to extract JSON from a string that might contain extra text
 function extractJson(text: string): string {
   const firstBrace = text.indexOf('{');
@@ -90,21 +98,21 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `Expert Visual DNA Analyst.
+    const prompt = `X-RAY VISUAL ARCHITECT.
     
-    TASK: Analyze the visual structure of this resume to extract its "Layout DNA".
+    TASK: Perform a deep structural and aesthetic audit of this reference resume to create a "Pixel-Perfect Development Spec" for a high-fidelity clone.
     
-    ${rawText ? `EXTRACTED TEXT: \n\n${rawText}\n\nBased on this text structure, infer:` : "Based on the provided file, describe:"}
+    ANALYSIS REQUIREMENTS:
+    1. ATMOSPHERE & ZONING: Identify all color-blocked zones. (e.g., "Deep blue header spanning top 20%", "Light gray sidebar with 30% width", "Full white main content area"). State the EXACT colors (HEX/RGB).
+    2. GEOMETRIC DNA: Note any unique shapes or borders. Are there circular profile image placeholders? Rounded corners (\`rounded-lg\`, \`rounded-3xl\`)? Thick dividers?
+    3. GRID LAYOUT: Define the column/row structure. Is it a complex bento-grid? A strict two-column split? A layered z-index design?
+    4. TYPOGRAPHIC DNA: Mirror the font categories (Technical Mono, Elegant Serif, Clean Sans). Identify precise weights and cases (e.g., "Section headers: 14pt, Bold, Tracking-widest, Uppercase").
+    5. DATA FLOW: Map where specific content types are placed in the reference (e.g., "Contact info sits in the header center", "Skills are in a tag-cloud format in the right sidebar").
     
-    1. TYPOGRAPHY: Font pairings (serif/sans), weights (bold/light), and precise size hierarchy (headers vs body).
-    2. LAYOUT ARCHITECTURE: Column structure (single, 2/3 split, sidebar left/right), margins, and vertical/horizontal spacing patterns.
-    3. DESIGN LANGUAGE: Visual accents (lines, icons, color palette hex codes if visible, bullet point styles).
-    4. SECTION LOGIC: How sections (Experience, Education, etc.) are visually demarcated (borders, background colors, spacing).
-    
-    OUTPUT: Provide a concise, highly technical description optimized for a developer to recreate using Tailwind CSS. Focus on structural patterns.`;
+    OUTPUT: A comprehensive technical Tailwind CSS "Visual Blueprint". Focus on defining the EXACT style tokens and structural hierarchy needed to replicate the graphics and colors perfectly.`;
 
     const contents: any[] = [];
-    if (fileBase64 && mimeType) {
+    if (fileBase64 && mimeType && isSupportedMime(mimeType)) {
       contents.push({
         parts: [
           { inlineData: { data: fileBase64, mimeType } },
@@ -113,37 +121,39 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
       });
     } else if (rawText) {
       contents.push({
-        parts: [{ text: prompt }]
+        parts: [{ text: prompt + "\n\nTEXT CONTENT FOR CONTEXT:\n" + rawText }]
       });
     } else {
-      throw new Error("No input provided for layout analysis");
+      throw new Error("UNSUPPORTED_TYPE_AND_NO_TEXT");
     }
 
     const response = await ai.models.generateContent({
       model,
-      config: {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      },
       contents,
+      config: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      }
     });
 
-    return response.text;
+    return response.text || "";
   });
 }
 
 export async function extractTextFromAny(base64: string, mimeType: string) {
+  if (!isSupportedMime(mimeType)) {
+    throw new Error("UNSUPPORTED_MIME_FOR_AI_EXTRACTION");
+  }
+
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
-    const prompt = "Extract all the text content from this resume precisely. Do not add any commentary.";
+    const prompt = "Extract all text content from this document exactly. Preserve logical order. No annotations.";
     const part = { inlineData: { data: base64, mimeType } };
     const response = await ai.models.generateContent({
       model,
-      config: {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      },
       contents: [{ parts: [part, { text: prompt }] }],
     });
-    return response.text;
+    return response.text || "";
   });
 }
 
@@ -169,6 +179,7 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
 
     const response = await ai.models.generateContent({
       model,
+      contents: [{ parts: [{ text: prompt }] }],
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
@@ -176,13 +187,11 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
           items: { type: Type.STRING }
         },
         temperature: 0.1,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      },
-      contents: [{ parts: [{ text: prompt }] }],
+      }
     });
 
     try {
-      const text = extractJson(response.text);
+      const text = extractJson(response.text || "");
       return JSON.parse(text);
     } catch (e) {
       return ["Standardize headings", "Optimize keyword density", "Improve bullet point structure"];
@@ -202,98 +211,105 @@ export async function generateResume(
     const model = "gemini-3-flash-preview";
     
     const optimizationPrompt = jobDescription 
-      ? `\n\nOPTIMIZATION TARGET:\n${jobDescription}\n\nRULES:
-      1. Align USER CONTENT to target.
-      2. PRESERVE all original details.
-      3. Only add details that help match requirements truthfully.
-      4. Focus on keywords and emphasis.`
-      : "";
+      ? `\n\nCONTENT MAPPING & AI OPTIMIZATION:
+      1. Map USER DATA into the target sections.
+      2. Rewrite bullet points to include keywords from the JOB DESCRIPTION while preserving all factual data.
+      3. Use action verbs and quantifiable metrics.`
+      : "\n\nCONTENT MAPPING: Purely map USER DATA into the structural containers. No style changes allowed.";
 
     const atsMaxPrompt = maximizeAts 
-      ? `\n\nCRITICAL: MAXIMIZE ATS SCORE TO 100%. 
-      - Prioritize standard structure and keyword density over complex visual styling.
-      - Use the most standard headings.
-      - Ensure 100% parseability.
-      - Set "atsScore" to 100.`
+      ? `\n\nATS ENHANCEMENT: While keeping the REFERENCE structure, ensure headings are standard (e.g., "Experience" instead of "History") and font sizes are legible.`
       : "";
 
-    const strictPrompt = strict 
-      ? `\n\nSTRICT MODE ENABLED:
-      - Replicate the EXACT layout, composition, and proportions of the REFERENCE.
-      - Do NOT move sections, do NOT change the order of elements.
-      - Keep EXACT subject position and proportions (e.g., sidebar width, header height).
-      - Do NOT "reimagine" or "optimize" the layout structure. Mirror it perfectly.
-      - Preserve the original's section organization and visual hierarchy.`
-      : "";
-
-    const prompt = `Expert Structural Architect & Visual Mirror.
+    const prompt = `EXPERT FRONT-END GRAPHIC ARCHITECT.
     
-    TASK:
-    1. STRUCTURAL MIRROR: Replicate the EXACT layout, composition, and proportions of the REFERENCE RESUME. The output HTML must be a structural clone.
-    2. CONTENT MAPPING: Map the USER CONTENT into this EXACT structure. Do NOT move sections, do NOT change the order of elements, and do NOT add or remove structural components unless explicitly requested.
-    3. STYLE APPLICATION: Apply the visual style (fonts, colors, spacing, accents) of the REFERENCE while maintaining the original's structural integrity.
+    GOAL: Replicate the REFERENCE VISUAL's aesthetic, zoning, and structural identity with absolute (100%) fidelity using Tailwind CSS.
     
-    ${strictPrompt}
+    CRITICAL DESIGN DIRECTIVES (STRICT ENFORCEMENT):
+    1. ATMOSPHERIC LAYERING & COLORS: You MUST extract and use the EXACT HEX colors for every zone. If there is a deep-blue sidebar (\`bg-[#123456]\`), a gray header (\`bg-[#f3f4f6]\`), or specific text accents, mirror them. Use \`bg-opacity-...\` or gradients if necessary to match the "depth" of the reference.
+    2. PIXEL-PERFECT GRID: Recreate the column layout exactly (e.g., \`grid-cols-[300px_1fr]\`, \`flex-col\`, etc.). Capture the exact width ratios and padding/margins.
+    3. GRAPHIC MOTIFS & SHAPES: 
+       - Replicate circular or rounded profile image containers (\`rounded-full\`, \`aspect-square\`). 
+       - Mirror the divider styles (thickness, color, dashes). 
+       - If sections have shadow boxes (\`shadow-md\`), replicate them.
+       - Use Lucide-react icons where the reference shows icons.
+    4. TYPOGRAPHIC MIRROR: Use Google Fonts equivalents. Matches the Serif/Sans/Mono categories and weights. Match uppercase/lowercase and letter-spacing (\`tracking-...\`).
+    5. DATA MAPPING: Inject USER DATA into these precise visual slots.
+       - IMPORTANT: Do not move sections. If the reference has "Skills" at the top-right, put the user's skills there.
     
-    STRICT RULES (MANDATORY):
-    - Keep EXACT same layout and composition as the reference.
-    - Keep EXACT subject position and proportions.
-    - Do NOT "reimagine" or "optimize" the layout structure. Mirror it.
-    - Preserve the original's section organization and visual hierarchy.
-    - Use clean, semantic Tailwind CSS classes.
+    STRICT VISUAL MODE: Treat the REFERENCE IMAGE as a "Design Mockup" that must be coded into a living page. The USER CONTENT is simply the JSON data for that mockup.
     
-    ${optimizationPrompt}${atsMaxPrompt}
+    ADVANCED GRAPHICS DIRECTIVE: If the reference uses overlapping elements, negative margins, or layered images, you MUST implement them. Use \`z-index\`, \`relative/absolute\`, and \`overflow-hidden\` to achieve the high-graphic look. Do NOT simplify the design.
     
-    QUALITY CONTROLS:
-    - Sharp, high-quality layout.
-    - Clean edges and consistent spacing.
-    - Professional typography pairings.
+    ${optimizationPrompt}
+    ${atsMaxPrompt}
     
-    OUTPUT: JSON object with:
-    - "html": Complete HTML string (Tailwind only).
-    - "name": Full name.
-    - "yoe": Years of experience.
-    - "profile": Target job title.
-    - "atsScore": 0-100.
-    - "atsFeedback": Max 150 chars.
-    - "matchScore": 0-100.
-    - "missingKeywords": Array of strings.
-    - "layoutAnalysis": Concise summary of the mirrored structure.
-    - "extractedText": Full text from USER CONTENT.
+    TECHNICAL OUTPUT:
+    - Return valid JSON.
+    - The "html" string MUST be a self-contained Tailwind-styled structure.
+    - Do NOT include <html> or <body> tags, just the inner content.
+    - Ensure all absolute/fixed positioning is avoided; use relative layout flows.
     
-    Return ONLY JSON.`;
+    JSON STRUCTURE:
+    {
+      "html": "...",
+      "name": "...",
+      "yoe": "...",
+      "profile": "...",
+      "atsScore": ...,
+      "atsFeedback": "...",
+      "matchScore": ...,
+      "missingKeywords": [],
+      "layoutAnalysis": "...",
+      "extractedText": "..."
+    }`;
 
     const contents: any[] = [];
     const parts: any[] = [];
 
-    // Add Reference Info
-    if (existingLayout) {
-      parts.push({ text: `EXISTING LAYOUT ANALYSIS: ${existingLayout}` });
-    } else if (reference.text) {
-      parts.push({ text: `REFERENCE RESUME TEXT: ${reference.text}` });
-    } else if (reference.base64 && reference.mimeType) {
-      parts.push({ inlineData: { data: reference.base64.split(',')[1] || reference.base64, mimeType: reference.mimeType } });
-      parts.push({ text: "REFERENCE RESUME (Analyze this layout)" });
+    // Add Reference Info - ALWAYS include visual if available and supported
+    if (reference.base64 && reference.mimeType && isSupportedMime(reference.mimeType)) {
+      parts.push({ 
+        inlineData: { 
+          data: reference.base64.split(',')[1] || reference.base64, 
+          mimeType: reference.mimeType 
+        } 
+      });
+      parts.push({ text: "MASTER REFERENCE VISUAL: Replicate this layout architecture perfectly." });
     }
 
-    // Add Content Info
+    if (existingLayout) {
+      parts.push({ text: `STRUCTURAL BLUEPRINT (Already analyzed): ${existingLayout}` });
+    } else if (reference.text) {
+      parts.push({ text: `REFERENCE TEXT/STRUCTURE: ${reference.text}` });
+    }
+
+    // Add User Content Info - include visual if supported for better data extraction
+    if (content.base64 && content.mimeType && isSupportedMime(content.mimeType)) {
+      parts.push({ 
+        inlineData: { 
+          data: content.base64.split(',')[1] || content.base64, 
+          mimeType: content.mimeType 
+        } 
+      });
+      parts.push({ text: "USER CONTENT SOURCE (Visual): Use this for high-fidelity data extraction." });
+    }
+    
     if (content.text) {
-      parts.push({ text: `USER CONTENT TEXT: ${content.text}` });
-    } else if (content.base64 && content.mimeType) {
-      parts.push({ inlineData: { data: content.base64.split(',')[1] || content.base64, mimeType: content.mimeType } });
-      parts.push({ text: "USER CONTENT (Extract details from this)" });
+      parts.push({ text: `CRITICAL USER TEXT DATA: ${content.text}` });
     }
 
     // Add JD
     if (jobDescription) {
-      parts.push({ text: `JOB DESCRIPTION: ${jobDescription}` });
+      parts.push({ text: `TARGET JOB DESCRIPTION (Use for keyword optimization): ${jobDescription}` });
     }
 
     // Add Final Prompt
     parts.push({ text: prompt });
 
-    const response = await ai.models.generateContent({
+    const response = await ai.models.generateContent({ 
       model,
+      contents: [{ parts }],
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
@@ -316,18 +332,16 @@ export async function generateResume(
           required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
         },
         temperature: 0.0,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      },
-      contents: [{ parts }],
+      }
     });
 
     try {
-      const text = extractJson(response.text);
+      const text = extractJson(response.text || "");
       return JSON.parse(text);
     } catch (e) {
       console.error("Failed to parse AI response as JSON", e);
       return { 
-        html: response.text, 
+        html: response.text || "", 
         name: "Resume", 
         yoe: "0", 
         profile: "Profile", 
@@ -363,8 +377,9 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
     
     Return ONLY JSON.`;
 
-    const response = await ai.models.generateContent({
+    const response = await ai.models.generateContent({ 
       model,
+      contents: [{ parts: [{ text: prompt }] }],
       config: { 
         responseMimeType: "application/json",
         responseSchema: {
@@ -379,17 +394,134 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
           required: ["score", "missing"]
         },
         temperature: 0.1,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-      },
-      contents: [{ parts: [{ text: prompt }] }],
+      }
     });
 
     try {
-      const text = extractJson(response.text);
+      const text = extractJson(response.text || "");
       return JSON.parse(text);
     } catch (e) {
       console.error("Failed to parse match response", e);
       return { score: 0, missing: [] };
+    }
+  });
+}
+
+export async function generatePortfolioContent(resumeText: string, githubData?: any) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+    
+    const prompt = `Expert Portfolio Architect.
+    
+    RESUME CONTENT: ${resumeText}
+    ${githubData ? `GITHUB DATA: ${JSON.stringify(githubData)}` : ""}
+    
+    TASK:
+    1. Parse the resume and extract: Name, Title, Skills, Experience, Projects, Education.
+    2. Improve content:
+       - Rewrite experience into impactful bullet points.
+       - Generate a professional summary.
+       - Create a strong, catchy hero headline.
+    3. Generate missing content:
+       - If no projects are found, create 2-3 realistic sample projects based on their skills.
+       - If the summary is weak, enhance it significantly.
+    4. If GitHub data is provided, incorporate top repositories as projects.
+    
+    OUTPUT: JSON object matching the PortfolioContent interface.
+    
+    PortfolioContent Interface:
+    {
+      hero: { name: string, headline: string, subheadline: string },
+      about: string,
+      skills: string[],
+      experience: [{ company: string, role: string, duration: string, description: string[] }],
+      projects: [{ title: string, description: string, tech: string[], link?: string, github?: string }],
+      education: [{ school: string, degree: string, year: string }],
+      contact: { email: string, linkedin?: string, github?: string }
+    }
+    
+    Return ONLY JSON.`;
+
+    const response = await ai.models.generateContent({ 
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            hero: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                headline: { type: Type.STRING },
+                subheadline: { type: Type.STRING }
+              },
+              required: ["name", "headline", "subheadline"]
+            },
+            about: { type: Type.STRING },
+            skills: { type: Type.ARRAY, items: { type: Type.STRING } },
+            experience: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  company: { type: Type.STRING },
+                  role: { type: Type.STRING },
+                  duration: { type: Type.STRING },
+                  description: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["company", "role", "duration", "description"]
+              }
+            },
+            projects: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  tech: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  link: { type: Type.STRING },
+                  github: { type: Type.STRING }
+                },
+                required: ["title", "description", "tech"]
+              }
+            },
+            education: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  school: { type: Type.STRING },
+                  degree: { type: Type.STRING },
+                  year: { type: Type.STRING }
+                },
+                required: ["school", "degree", "year"]
+              }
+            },
+            contact: {
+              type: Type.OBJECT,
+              properties: {
+                email: { type: Type.STRING },
+                linkedin: { type: Type.STRING },
+                github: { type: Type.STRING }
+              },
+              required: ["email"]
+            }
+          },
+          required: ["hero", "about", "skills", "experience", "projects", "education", "contact"]
+        },
+        temperature: 0.2,
+      }
+    });
+
+    try {
+      const text = extractJson(response.text || "");
+      return JSON.parse(text);
+    } catch (e) {
+      console.error("Failed to parse portfolio response", e);
+      throw new Error("Failed to generate portfolio content");
     }
   });
 }

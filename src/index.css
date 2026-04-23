@@ -1,7 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-accent: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --animate-spin-slow: spin 3s linear infinite;
+  
+  --radius-4xl: 2rem;
+  --radius-5xl: 2.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-[#fafafa] text-neutral-900 antialiased;
+  }
+  
+  @media print {
+    body {
+      background: white !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Hide everything by default */
+    body * {
+      visibility: hidden !important;
+    }
+    
+    /* Show only the portfolio preview */
+    #portfolio-preview,
+    #portfolio-preview * {
+      visibility: visible !important;
+    }
+    
+    #portfolio-preview {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      overflow: visible !important;
+    }
+    
+    /* Hide the browser-like header in preview */
+    #portfolio-preview-header {
+      display: none !important;
+    }
+    
+    /* Remove top padding added for the header */
+    #portfolio-preview > div:last-child {
+      padding-top: 0 !important;
+    }
+
+    /* Fix for motion elements that might be hidden during animation */
+    .motion-div {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
 }

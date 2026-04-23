@@ -18,7 +18,9 @@ import {
   Eye,
   Trophy,
   MessageCircle,
-  Clock
+  Clock,
+  Rocket,
+  Layers
 } from 'lucide-react';
 
 export default function UserGuide() {
@@ -66,37 +68,85 @@ export default function UserGuide() {
     { id: "export", title: "Export to Multiple Formats", icon: FileText, desc: "Download in PDF, HTML, or DOCX for maximum compatibility." }
   ];
 
+  const portfolioSteps = [
+    {
+      id: "gen-choose",
+      title: "Select Template",
+      description: "Choose from Minimal, Developer, or Professional templates to match your industry.",
+      icon: Layout,
+      color: "bg-indigo-500",
+      details: ["SaaS Aesthetic", "Responsive Design", "Dark/Light Mode"]
+    },
+    {
+      id: "gen-config",
+      title: "Configure Deployment",
+      description: "Add your Vercel API Token and Project Name to prepare for a live launch.",
+      icon: Zap,
+      color: "bg-amber-500",
+      details: ["Vercel Integration", "Custom Domains", "One-click Deploy"]
+    },
+    {
+      id: "gen-preview",
+      title: "Preview & Source",
+      description: "Review your live portfolio and download the JSON source code for manual hosting.",
+      icon: Eye,
+      color: "bg-purple-500",
+      details: ["Live Preview", "JSON Export", "Full Ownership"]
+    }
+  ];
+
+  const roleGuides = [
+    {
+      role: "Employees",
+      icon: Trophy,
+      title: "Level Up Your Career",
+      guide: "Use the 'Professional' template to showcase your impact. Focus on metrics and leadership. Deploy your portfolio to a custom domain to show technical maturity."
+    },
+    {
+      role: "Recruiters",
+      icon: Eye,
+      title: "Spot Talent Faster",
+      guide: "Use the 'Recruiter View' toggle to see a condensed, high-impact version of any resume. Perfect for quick scanning and decision making."
+    },
+    {
+      role: "Students",
+      icon: Star,
+      title: "Land Your First Role",
+      guide: "Use the 'Developer' template to highlight your GitHub projects. The clean layout makes even early-career experience look professional and polished."
+    }
+  ];
+
   const plans = [
     {
-      id: "starter",
-      name: "Starter Pack",
-      price: "₹39",
-      morphs: "5 Morphs",
+      id: "portfolio_starter",
+      name: "Portfolio Starter",
+      price: "₹299",
+      morphs: "2 Portfolios",
       icon: Star,
       color: "text-blue-500",
       bg: "bg-blue-50",
-      desc: "Perfect for quick updates"
+      desc: "Perfect for freshers"
     },
     {
-      id: "pro",
-      name: "Pro Pack",
-      price: "₹79",
-      morphs: "10 Morphs",
+      id: "portfolio_pro",
+      name: "Portfolio Pro",
+      price: "₹999",
+      morphs: "5 Portfolios",
       icon: Trophy,
       color: "text-indigo-500",
       bg: "bg-indigo-50",
-      desc: "Best for active job seekers",
+      desc: "Best for professionals",
       popular: true
     },
     {
-      id: "unlimited",
-      name: "Unlimited Access",
-      price: "₹499",
-      morphs: "Unlimited",
+      id: "combo_pack",
+      name: "Master Combo",
+      price: "₹1499",
+      morphs: "15 Morphs + 10 Portfolios",
       icon: Sparkles,
       color: "text-purple-500",
       bg: "bg-purple-50",
-      desc: "30 days of total freedom"
+      desc: "Morph Engine + Portfolio Gen"
     }
   ];
 
@@ -162,6 +212,82 @@ export default function UserGuide() {
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* Portfolio Generation Steps */}
+      <div className="mb-40">
+        <div className="text-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-full text-xs font-black uppercase tracking-widest mb-6"
+          >
+            <Rocket className="w-4 h-4" />
+            Portfolio Generation Guide
+          </motion.div>
+          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">Build Your <span className="text-purple-600">Digital Home</span></h2>
+          <p className="text-gray-500 font-medium max-w-xl mx-auto">
+            Transform your resume into a high-performance portfolio website in three simple steps.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {portfolioSteps.map((step, index) => (
+            <motion.div 
+              key={step.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+              className="p-10 bg-white border border-gray-100 rounded-[40px] shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all group"
+            >
+              <div className={`w-16 h-16 ${step.color} rounded-3xl flex items-center justify-center shadow-2xl shadow-purple-100 mb-8 group-hover:scale-110 transition-transform`}>
+                <step.icon className="text-white w-8 h-8" />
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{step.title}</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">
+                  {step.description}
+                </p>
+                <div className="space-y-2 pt-4">
+                  {step.details.map((detail) => (
+                    <div key={detail} className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      {detail}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Role Guides */}
+      <div className="mb-40">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">Guides for <span className="text-indigo-600">Every Role</span></h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {roleGuides.map((guide, index) => (
+            <motion.div
+              key={guide.role}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+              className="p-10 bg-indigo-900 text-white rounded-[48px] relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+              <guide.icon className="w-12 h-12 text-indigo-400 mb-8" />
+              <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest mb-2">{guide.role}</h3>
+              <h4 className="text-2xl font-black mb-4 tracking-tight">{guide.title}</h4>
+              <p className="text-indigo-100/70 font-medium leading-relaxed">
+                {guide.guide}
+              </p>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* Premium Plans Section */}

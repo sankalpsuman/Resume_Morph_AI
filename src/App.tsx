@@ -9,8 +9,10 @@ import About from './components/About';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Contact from './components/Contact';
 import Feedback from './components/Feedback';
+import PortfolioGenerator from './components/PortfolioGenerator';
 import Login from './components/Login';
-import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2 } from 'lucide-react';
+import SmartEditor from './components/SmartEditor';
+import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, storage } from './firebase';
@@ -24,7 +26,7 @@ import PremiumModal from './components/PremiumModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
 
-type Tab = 'builder' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -40,6 +42,7 @@ export default function App() {
   const [hasNotified, setHasNotified] = useState(false);
   const [pendingDeletions, setPendingDeletions] = useState<Record<string, NodeJS.Timeout>>({});
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
+  const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -245,6 +248,8 @@ export default function App() {
 
   const tabs: { id: Tab; label: string; icon: any }[] = [
     { id: 'builder', label: 'Morph Engine', icon: Layout },
+    { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
+    { id: 'portfolio', label: 'Portfolio', icon: Globe },
     { id: 'guide', label: 'User Guide', icon: BookOpen },
     { id: 'account', label: 'Account', icon: UserIcon },
     { id: 'about', label: 'About', icon: Info },
@@ -289,7 +294,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
       {/* Global Navigation */}
-      <nav className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-2rem)] md:w-auto">
+      {!isPortfolioFullscreen && (
+        <nav className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-2rem)] md:w-auto">
         <div className="bg-white/80 backdrop-blur-2xl border border-gray-200/50 rounded-[24px] md:rounded-[28px] p-1.5 shadow-2xl shadow-indigo-100/30 flex items-center justify-between md:justify-start gap-1">
           {/* Desktop Tabs */}
           <div className="hidden md:flex items-center gap-1">
@@ -304,6 +310,32 @@ export default function App() {
             >
               <Layout className="w-4 h-4" />
               Morph Engine
+            </button>
+
+            <button 
+              onClick={() => handleTabChange('smart-editor')}
+              className={cn(
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
+                activeTab === 'smart-editor' 
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+              )}
+            >
+              <Sparkles className="w-4 h-4" />
+              Smart Editor
+            </button>
+
+            <button 
+              onClick={() => handleTabChange('portfolio')}
+              className={cn(
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
+                activeTab === 'portfolio' 
+                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+              )}
+            >
+              <Globe className="w-4 h-4" />
+              Portfolio Gen
             </button>
 
             <button 
@@ -571,6 +603,30 @@ export default function App() {
                   <Layout className="w-5 h-5" />
                   Morph Engine
                 </button>
+                <button 
+                  onClick={() => handleTabChange('smart-editor')}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
+                    activeTab === 'smart-editor' 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Smart Editor
+                </button>
+                <button 
+                  onClick={() => handleTabChange('portfolio')}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
+                    activeTab === 'portfolio' 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
+                  )}
+                >
+                  <Globe className="w-5 h-5" />
+                  Portfolio Gen
+                </button>
 
                 <button 
                   onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
@@ -693,11 +749,18 @@ export default function App() {
           )}
         </AnimatePresence>
       </nav>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-grow relative">
         <div className={cn(activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
+        </div>
+        <div className={cn(activeTab !== 'smart-editor' && "hidden")}>
+          <SmartEditor />
+        </div>
+        <div className={cn(activeTab !== 'portfolio' && "hidden")}>
+          <PortfolioGenerator onFullscreenChange={setIsPortfolioFullscreen} />
         </div>
         <div className={cn(activeTab !== 'guide' && "hidden")}>
           <UserGuide />
@@ -730,12 +793,14 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+      {!isPortfolioFullscreen && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {[
           { id: 'builder', icon: Layout, label: 'Morph' },
+          { id: 'smart-editor', icon: Sparkles, label: 'Smart' },
+          { id: 'portfolio', icon: Globe, label: 'Portfolio' },
           { id: 'guide', icon: BookOpen, label: 'Guide' },
           { id: 'account', icon: UserIcon, label: 'Account' },
-          { id: 'contact', icon: Send, label: 'Help' }
         ].map((item) => (
           <button
             key={item.id}
@@ -750,6 +815,7 @@ export default function App() {
           </button>
         ))}
       </div>
+      )}
 
       {/* Admin Panel */}
       <AdminPanel 

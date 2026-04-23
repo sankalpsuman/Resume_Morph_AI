@@ -12,6 +12,7 @@ import { cn } from '../lib/utils';
 import { auth, db, storage } from '../firebase';
 import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment } from 'firebase/firestore';
 import { ref, uploadString, deleteObject } from 'firebase/storage';
+import { uploadWithRetry } from '../lib/storage';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 
 interface FileData {
@@ -44,7 +45,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
-  const [needsApiKey, setNeedsApiKey] = useState(false);
   const [matchDescription, setMatchDescription] = useState('');
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
@@ -62,30 +62,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strictLayout, setStrictLayout] = useState(true);
-
-  useEffect(() => {
-    const checkKey = async () => {
-      const apiKey = 
-        (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) || 
-        (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) ||
-        ((import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-        (window as any).GEMINI_API_KEY ||
-        "";
-      
-      if (!apiKey) {
-        const hasKey = await (window as any).aistudio?.hasSelectedApiKey?.();
-        if (!hasKey) {
-          setNeedsApiKey(true);
-          setError("Gemini API Key is missing. Please select your API key to enable the Morph Engine.");
-        }
-      } else {
-        setNeedsApiKey(false);
-        setError(null);
-      }
-    };
-    
-    checkKey();
-  }, []);
 
   useEffect(() => {
     if (userData?.showResetSurprise) {
@@ -134,15 +110,24 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     const file = acceptedFiles[0];
     if (!file) return;
 
+    // Supported formats check
+    const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const isText = file.type === 'text/plain';
+    const isAiSupported = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+
+    if (!isWord && !isText && !isAiSupported) {
+      setError("Unsupported file format. Please upload PDF, Word (.docx), or Image (PNG/JPG).");
+      return;
+    }
+
     setError(null);
-    setNeedsApiKey(false);
     try {
       let text = '';
-      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      if (isWord) {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
-      } else if (file.type === 'text/plain') {
+      } else if (isText) {
         text = await file.text();
       }
       
@@ -169,15 +154,24 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     const file = acceptedFiles[0];
     if (!file) return;
 
+    // Supported formats check
+    const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const isText = file.type === 'text/plain';
+    const isAiSupported = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type);
+
+    if (!isWord && !isText && !isAiSupported) {
+      setError("Unsupported file format. Please upload PDF, Word (.docx), or Image (PNG/JPG).");
+      return;
+    }
+
     setError(null);
-    setNeedsApiKey(false);
     try {
       let text = '';
-      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      if (isWord) {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
-      } else if (file.type === 'text/plain') {
+      } else if (isText) {
         text = await file.text();
       } else {
         // For PDF/Images, we'll need to extract text later via AI
@@ -229,7 +223,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       // Parallelize Storage and Firestore updates
       // We don't strictly need to await Storage upload for the UI to feel "saved"
       // because the HTML is already in Firestore.
-      uploadString(resumeRef, html, 'raw', { contentType: 'text/html' }).catch(err => console.error("Background storage upload failed:", err));
+      uploadWithRetry(resumeRef, html, 'raw', { contentType: 'text/html' }).catch(err => console.error("Background storage upload failed:", err));
       
       await updateDoc(userRef, {
         resumeHistory: updatedHistory,
@@ -294,7 +288,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     setIsGenerating(true);
     setError(null);
-    setNeedsApiKey(false);
     
     try {
       // Unified call: Merges layout analysis, text extraction, JD matching, and resume generation
@@ -339,8 +332,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
-        setNeedsApiKey(true);
-        setError("API Key required. Please select your Gemini API key to continue.");
+        setError("AI configuration is missing. Please contact support.");
       } else if (err.message === "QUOTA_EXCEEDED") {
         setError("Daily AI limit reached. Please try again later or use a different API key.");
       } else {
@@ -357,7 +349,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     setIsAnalyzing(true);
     setError(null);
-    setNeedsApiKey(false);
     
     try {
       let currentLayout = layoutAnalysis;
@@ -372,8 +363,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
-        setNeedsApiKey(true);
-        setError("API Key required. Please select your Gemini API key to continue.");
+        setError("AI configuration is missing. Please contact support.");
       } else if (err.message === "QUOTA_EXCEEDED") {
         setError("Daily AI limit reached. Please try again later.");
       } else {
@@ -402,7 +392,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     setIsGenerating(true);
     setError(null);
-    setNeedsApiKey(false);
     try {
       const result = await generateResume(
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
@@ -444,8 +433,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
-        setNeedsApiKey(true);
-        setError("API Key required. Please select your Gemini API key to continue.");
+        setError("AI configuration is missing. Please contact support.");
       } else if (err.message === "QUOTA_EXCEEDED") {
         setError("Daily AI limit reached. Please try again later.");
       } else {
@@ -505,7 +493,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     setIsPlanning(true);
     setError(null);
-    setNeedsApiKey(false);
     try {
       const plan = await getOptimizationPlan(contentFile.text, jobDescription);
       setOptimizationPlan(plan);
@@ -541,7 +528,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     setShowPlanModal(false);
     setIsGenerating(true);
     setError(null);
-    setNeedsApiKey(false);
     try {
       const result = await generateResume(
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
@@ -583,33 +569,17 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     } catch (err: any) {
       console.error(err);
       if (err.message === "API_KEY_MISSING") {
-        setNeedsApiKey(true);
-        setError("API Key required. Please select your Gemini API key to continue.");
+        setError("AI configuration is missing. Please contact support.");
       } else if (err.message === "QUOTA_EXCEEDED") {
         setError("Daily AI limit reached. Please try again later.");
       } else {
-        setError("Failed to maximize ATS score. Please try again.");
+        setError("An error occurred. Please try again.");
       }
     } finally {
       setIsGenerating(false);
     }
   };
-
-  const handleSelectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio?.openSelectKey) {
-      try {
-        await aistudio.openSelectKey();
-        // After selection, we reload to ensure the new key is active
-        window.location.reload();
-      } catch (err) {
-        console.error("Failed to open key selector", err);
-      }
-    } else {
-      setError("Please configure your GEMINI_API_KEY in the Secrets panel.");
-    }
-  };
-
+  
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -636,9 +606,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Inter', sans-serif; margin: 0; padding: 2rem; background: white; }
+            body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 2rem; background: white; }
             .resume-container { max-width: 800px; margin: 0 auto; }
             @media print {
               @page { margin: 0; size: auto; }
@@ -675,9 +645,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
           <meta charset='utf-8'>
           <title>Resume</title>
           <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
           <style>
-            body { font-family: 'Inter', sans-serif; margin: 0; padding: 2rem; background: white; }
+            body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 2rem; background: white; }
             .resume-container { max-width: 800px; margin: 0 auto; }
             /* Word-specific overrides for layout */
             .grid { display: table !important; width: 100% !important; }
@@ -1022,6 +992,18 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     return limit !== -1 && usedMorphs >= limit;
                   })()}
                 />
+
+                <div className="mt-4">
+                  <a 
+                    href="https://word.cloud.microsoft/create/en/resume-templates/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 border-2 border-dashed border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all flex items-center justify-center gap-3 group"
+                  >
+                    <Layout className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    Browse Free Reference Layouts
+                  </a>
+                </div>
                 
                 {referenceFile && !layoutAnalysis && (
                   <motion.button
@@ -1258,15 +1240,6 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-bold uppercase tracking-wider text-center space-y-3"
                 >
                   <p>{error}</p>
-                  {needsApiKey && (
-                    <button 
-                      onClick={handleSelectKey}
-                      className="w-full py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-                      disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
-                    >
-                      Select API Key
-                    </button>
-                  )}
                 </motion.div>
               )}
             </div>
@@ -1392,10 +1365,10 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                             <script src="https://cdn.tailwindcss.com"></script>
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
                             <style>
                               body { 
-                                font-family: 'Inter', sans-serif; 
+                                font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
                                 margin: 0; 
                                 padding: 3rem; 
                                 background: white; 

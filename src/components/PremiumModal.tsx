@@ -13,30 +13,33 @@ interface PremiumModalProps {
 
 const PLANS = [
   {
-    id: 'premium',
-    name: 'Premium Pack',
-    morphs: 7,
-    price: 39,
-    description: 'Perfect for quick updates',
+    id: 'portfolio_starter',
+    name: 'Portfolio Starter',
+    morphs: 0,
+    portfolios: 2,
+    price: 299,
+    description: 'Perfect for freshers',
     icon: Star,
     color: 'from-blue-500 to-indigo-500'
   },
   {
-    id: 'gold',
-    name: 'Gold Pack',
-    morphs: 12,
-    price: 79,
-    description: 'Best for job seekers',
+    id: 'portfolio_pro',
+    name: 'Portfolio Pro',
+    morphs: 0,
+    portfolios: 5,
+    price: 999,
+    description: 'Best for professionals',
     icon: Trophy,
     color: 'from-indigo-500 to-purple-500',
     popular: true
   },
   {
-    id: 'unlimited',
-    name: 'Unlimited Access',
-    morphs: -1,
-    price: 499,
-    description: '30 days of total freedom',
+    id: 'combo_pack',
+    name: 'Master Combo',
+    morphs: 15,
+    portfolios: 10,
+    price: 1499,
+    description: 'Morph Engine + Portfolio Gen',
     icon: Sparkles,
     color: 'from-purple-500 to-pink-500'
   }
@@ -146,7 +149,9 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         <div className="mt-auto">
                           <p className="text-2xl font-black text-gray-900">₹{plan.price}</p>
                           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                            {plan.morphs === -1 ? 'Unlimited Morphs' : `${plan.morphs} Morphs`}
+                            {plan.morphs > 0 && `${plan.morphs} Morphs`}
+                            {plan.morphs > 0 && plan.portfolios > 0 && ' + '}
+                            {plan.portfolios > 0 && `${plan.portfolios} Portfolios`}
                           </p>
                         </div>
                         {selectedPlan === plan.id && (

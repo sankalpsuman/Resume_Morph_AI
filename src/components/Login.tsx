@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogIn, RefreshCw, ShieldCheck, Zap, Target, Star, MessageSquare, User, Info, Heart, Code } from 'lucide-react';
+import { LogIn, RefreshCw, ShieldCheck, Zap, Target, Star, MessageSquare, User, Info, Heart, Code, Layout, Sparkles } from 'lucide-react';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -16,6 +16,20 @@ interface FeedbackItem {
 
 export default function Login() {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [showNewFeaturePopup, setShowNewFeaturePopup] = useState(false);
+
+  useEffect(() => {
+    const hasSeenPopup = localStorage.getItem('hasSeenNewFeaturePopup');
+    if (!hasSeenPopup) {
+      const timer = setTimeout(() => setShowNewFeaturePopup(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const closePopup = () => {
+    setShowNewFeaturePopup(false);
+    localStorage.setItem('hasSeenNewFeaturePopup', 'true');
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'), limit(6));
@@ -79,6 +93,62 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] font-sans selection:bg-indigo-100">
+      {/* New Feature Popup */}
+      <AnimatePresence>
+        {showNewFeaturePopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-gray-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[48px] p-10 md:p-16 max-w-2xl w-full shadow-2xl shadow-indigo-200 border border-indigo-50 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+              
+              <div className="relative z-10 text-center space-y-8">
+                <div className="w-20 h-20 bg-indigo-600 rounded-[28px] flex items-center justify-center mx-auto shadow-xl shadow-indigo-200 rotate-6">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-indigo-600 text-[10px] font-black uppercase tracking-widest">
+                    <Zap className="w-3 h-3" />
+                    Major Update Available
+                  </div>
+                  <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 leading-[0.9]">
+                    Portfolio <br />
+                    <span className="text-indigo-600">Generator.</span>
+                  </h2>
+                  <p className="text-lg text-gray-500 font-medium leading-relaxed">
+                    We've just launched our most requested feature. Convert any resume into a premium SaaS-style portfolio website in seconds.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 text-left">
+                    <Layout className="w-6 h-6 text-indigo-600 mb-3" />
+                    <h4 className="font-black text-gray-900 text-sm mb-1">3 Templates</h4>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Minimal, Dev, Pro</p>
+                  </div>
+                  <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 text-left">
+                    <Code className="w-6 h-6 text-purple-600 mb-3" />
+                    <h4 className="font-black text-gray-900 text-sm mb-1">Source Code</h4>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Full JSON Export</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={closePopup}
+                  className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-2xl shadow-indigo-200"
+                >
+                  Explore Now
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
       <div className="flex items-center justify-center p-6 md:p-12 lg:p-24">
         <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-16 items-center">

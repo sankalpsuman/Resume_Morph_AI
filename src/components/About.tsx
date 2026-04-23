@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Github, Linkedin, Mail, ExternalLink, Award, Zap, Shield, 
-  Globe, Cpu, Sparkles, RefreshCw 
+  Globe, Cpu, Sparkles, RefreshCw, Rocket, Layers 
 } from 'lucide-react';
 
 export default function About() {
@@ -137,10 +137,55 @@ export default function About() {
         </div>
       </section>
 
+      {/* Portfolio Generator Story */}
+      <section className="py-16 md:py-24 bg-indigo-50/30">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="order-2 md:order-1"
+            >
+              <div className="bg-white rounded-[40px] p-10 shadow-2xl shadow-indigo-100 border border-indigo-50 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-indigo-200">
+                  <Rocket className="text-white w-8 h-8" />
+                </div>
+                <h3 className="text-3xl font-black text-gray-900 mb-6 tracking-tight">Beyond the Paper.</h3>
+                <p className="text-gray-500 font-medium leading-relaxed mb-8 text-lg">
+                  A resume is a snapshot, but a portfolio is a story. We realized that in today's digital-first world, a static PDF isn't enough. You need a living, breathing presence that showcases your code, your projects, and your personality.
+                </p>
+                <div className="flex items-center gap-4 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <Sparkles className="text-indigo-600 w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-bold text-indigo-900">Instantly convert any resume into a premium SaaS-style portfolio.</p>
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="space-y-8 order-1 md:order-2">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 rounded-full text-indigo-700 text-[10px] font-black uppercase tracking-widest">
+                <Layers className="w-3 h-3" />
+                New Feature: Portfolio Gen
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-gray-900 leading-[0.9]">
+                The Next <br />
+                <span className="text-indigo-600">Evolution.</span>
+              </h2>
+              <p className="text-xl text-gray-500 font-medium leading-relaxed">
+                We've integrated the same "Visual DNA" engine to not just format text, but to architect entire websites. Whether you're a student looking for your first internship or a senior dev targeting a lead role, our Portfolio Generator builds your digital home in seconds.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Developer Profile */}
       <section className="py-20 md:py-32 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <div className="bg-gray-900 rounded-[32px] md:rounded-[48px] p-8 md:p-20 relative overflow-hidden">
+          <div className="bg-gray-900 rounded-[32px] md:rounded-[48px] p-8 md:p-20 relative overflow-hidden mb-12">
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/10 to-transparent" />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center relative z-10">
@@ -195,6 +240,56 @@ export default function About() {
                 {/* Decorative elements */}
                 <div className="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 w-24 h-24 md:w-32 md:h-32 bg-indigo-600 rounded-2xl md:rounded-3xl -z-10 rotate-12 opacity-50" />
                 <div className="absolute -top-4 -left-4 md:-top-6 md:-left-6 w-16 h-16 md:w-24 md:h-24 border-4 border-indigo-500/30 rounded-full -z-10" />
+              </div>
+            </div>
+          </div>
+
+          {/* Technical Architecture Section */}
+          <div className="bg-white rounded-[32px] md:rounded-[48px] p-8 md:p-20 border border-gray-100 shadow-2xl shadow-indigo-100/20">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-8">
+                <Layers className="w-3 h-3" />
+                System Architecture
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-8">How it's Built.</h2>
+              
+              <div className="space-y-12">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-black text-indigo-600 uppercase tracking-widest">Frontend Stack</h4>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      Built with <span className="text-gray-900 font-bold">React 18</span> and <span className="text-gray-900 font-bold">TypeScript</span> for a robust, type-safe development experience. Styling is handled via <span className="text-gray-900 font-bold">Tailwind CSS</span>, utilizing utility-first principles for a highly customizable and responsive UI.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-black text-indigo-600 uppercase tracking-widest">Animations</h4>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      Fluid transitions and interactive elements are powered by <span className="text-gray-900 font-bold">Framer Motion</span>, ensuring a premium SaaS-like feel with smooth, hardware-accelerated animations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-black text-indigo-600 uppercase tracking-widest">Backend & Database</h4>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      Leverages <span className="text-gray-900 font-bold">Firebase (Google Cloud)</span> for real-time data synchronization. <span className="text-gray-900 font-bold">Firestore</span> acts as the primary NoSQL database, while <span className="text-gray-900 font-bold">Firebase Authentication</span> handles secure user sessions.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-black text-indigo-600 uppercase tracking-widest">Hosting & Deployment</h4>
+                    <p className="text-gray-600 font-medium leading-relaxed">
+                      The application is containerized and deployed on <span className="text-gray-900 font-bold">Google Cloud Run</span>, providing serverless scalability and high availability across global regions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-indigo-50 rounded-3xl border border-indigo-100">
+                  <h4 className="text-lg font-black text-indigo-900 uppercase tracking-widest mb-4">AI Integration</h4>
+                  <p className="text-indigo-900/70 font-medium leading-relaxed">
+                    The core "Morph Engine" utilizes <span className="text-indigo-900 font-bold">Google Gemini AI</span> models to analyze resume structures and generate professional content. This integration allows for sophisticated style cloning and role-specific optimization that goes beyond simple keyword matching.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
