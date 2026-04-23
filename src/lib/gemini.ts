@@ -98,31 +98,27 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `VISIONARY DESIGN AUDITOR & SYSTEM ARCHITECT.
+    const prompt = `SUPREME DESIGN AUDITOR & SPATIAL ARCHITECT.
     
-    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Implementation Manifest".
+    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Implementation Manifest" for a web clone.
     
-    AUDIT REQUIREMENTS (Be mathematically precise):
-    1. CANVAS & ZONING: 
-       - Identify the Page Format (e.g., Single Column, Split Sidebar, Asymmetric 3-Column).
-       - Determine exact width percentages for columns (e.g., "Left Sidebar: 33%, Main: 67%").
-       - Detect "Bleed" or "Full-Height" color zones (e.g., "Sidebar spans 100% height with #1a202c background").
-    2. COLOR STRATUM:
-       - Extract HEX codes for: Backgrounds, Section Headers, Body Text, Accent Borders, and Secondary text.
-       - Note any gradients (linear-gradient(direction, startColor, endColor)).
+    AUDIT REQUIREMENTS (Identify EXACT dimensions and colors):
+    1. SPATIAL GEOMETRY & GRID: 
+       - Identify the layout engine (e.g., "Full-height left sidebar at 30% width", "Header block at 200px height with overflow profile image").
+       - Calculate percentage-based zoning for all major sections.
+    2. THEMATIC ATMOSPHERE:
+       - Determine the exact HEX/RGB codes for ALL background layers, decorative borders, and text accents.
+       - Identify "Atmospheric Effects": Drop shadows (\`shadow-lg\`), rounded corners (\`rounded-[40px]\`), or background gradients.
     3. TYPOGRAPHIC BLUEPRINT:
-       - Mirror the "Mood": Formal Serif, Tech Mono, Minimalist Sans.
-       - Identify Font Weights (100-900), Letter Spacing (Tracking), and Line Heights (Leading).
-       - Note Case Styling: UPPERCASE headers, Sentence case body, etc.
-    4. COMPONENT ARCHAEOLOGY:
-       - SHAPES: Detect circular profile images, rounded containers (radius in px/rem), or geometric dividers.
-       - ICONS: Identify where icons are used (Contact section, Skills, Section Titles).
-       - DECOR: Note "Progress Bars" for skills, "Star Ratings", or "Dot Matrices".
-    5. SPACING CONSTANTS:
-       - Measure the "Gutters" (gap between columns).
-       - Measure Section Margins (Vertical spacing between Work and Education).
+       - Mirror the "Typographic Personality": Is it Bold Modern, Classical Serif, or Technical Mono?
+       - Define scale: Header size vs. Body size (e.g., "Main Header is 3xl, Section Header is xl with tracking-widest").
+    4. COMPONENT ARCHITECTURE:
+       - Detect specific "Design Elements": Bullet styles (checkboxes, arrows, dots), Divider styles (dot-dash, solid line thickness), and Icon placement.
+       - Identify "Infographic Widgets": Skill progress bars, level meters, or timeline dots.
+    5. DATA FLOW MAPPING:
+       - Specify where "Experience", "Skills", and "Contact" reside visually.
     
-    OUTPUT: A technical "Design Token Object" (in Tailwind terminology) that describes the exact visual identity. No fluff. Just specs.`;
+    OUTPUT: A technical "Visual DNA Spec" (Tailwind tokens + Structural logic) that guarantees a 1:1 design clone.`;
 
     const contents: any[] = [];
     if (fileBase64 && mimeType && isSupportedMime(mimeType)) {
@@ -243,35 +239,26 @@ export async function generateResume(
       ? `\n\nATS ENHANCEMENT: While keeping the REFERENCE structure, ensure headings are standard (e.g., "Experience" instead of "History") and font sizes are legible.`
       : "";
 
-    const prompt = `EXPERT FULL-STACK DESIGN SYSTEM ENGINEER.
+    const prompt = `SUPREME DESIGN SYSTEM ENGINEER.
     
-    TASK: Implement a "Pixel-Perfect Digital Clone" of the REFERENCE VISUAL using Tailwind CSS. 
-    You are coding a live website based on a professional designer's mockup.
+    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure with 100% fidelity using Tailwind CSS.
     
-    PRIMARY OBJECTIVE: Replicate the Reference Visual's geometry, colors, and atmosphere with 99% accuracy. 
-    Ignore the User Content's original layout; strictly map its data into the Reference's containers.
+    CORE COMMANDS (STRICT ENFORCEMENT):
+    1. LAYOUT CLONING: 
+       - You MUST build the exact same grid/flex structure as the reference. If there's a sidebar, replicate its relative width and background color exactly.
+       - Use arbitrary Tailwind values for pixel-perfection: \`bg-[#...] \`, \`w-[...%]\`, \`p-[...px]\`.
+    2. COMPONENT ARCHETYPES:
+       - Mirror the "Design Language" of dividers, buttons, and skill displays.
+       - If the reference uses "Infographic" styles (progress bars, rated dots, timelines), you MUST code them using div structures.
+       - REPLICATE shapes like circular profile pics or rounded section boxes.
+    3. DATA REMAPPING:
+       - Pour USER CONTENT into the reference's visual slots. If the reference shows "Experience" as a multi-line entry with a logo, format the user's data the same way.
+    4. ACCURACY & POLISH:
+       - match font-weights, tracking, and leading of the reference.
+       - Use Lucide icons or raw SVG for all icons/graphics.
+       - Ensure exact color-matching for every text and background element.
     
-    CORE IMPLEMENTATION COMMANDS:
-    1. GEOMETRIC ARCHITECTURE: 
-       - Build the exact layout (Split-screens, Sidebars, Bento Grids, Inline-Header styles).
-       - Use arbitrary Tailwind values for precision: \`w-[32%]\`, \`bg-[#121212]\`, \`p-[2.5rem]\`.
-       - If there is a sidebar, it must be the exact color and width ratio as the reference.
-    2. THEMATIC COLORS:
-       - Mirror every color. If the reference is dark-themed, use a dark theme. 
-       - If there are accent lines, sidebar borders, or colorful header blocks, replicate them exactly.
-    3. COMPONENT FIDELITY: 
-       - Mirror the "Component Archetypes": Boxed skills, progress bars, circular profile images (\`rounded-full w-32 h-32\`), and specific icon placements.
-       - Use inline SVG code or Lucide icons for any graphics found in the reference.
-    4. DATA SLOT MAPPING:
-       - Intelligently place user content into the Reference's slots. 
-       - Reference's "Profile" slot → User's "Professional Summary".
-       - Reference's "Skills" pill grid → User's Skill list as a pill grid.
-       - Reference's "Experience" timeline → User's Work History as a timeline.
-    5. ADVANCED STYLING:
-       - Use \`z-index\`, \`absolute/relative\` positioning if the reference shows overlapping or complex floating elements.
-       - Ensure the text contrast and typography (weights, spacing) match the "Design Blueprint" provided.
-    
-    STRICT CONSTRAINT: You are NOT allowed to simplify. If the reference is a complex infographic, you MUST write the complex Tailwind code to match it.
+    OUTPUT: A single self-contained HTML structure with Tailwind classes. No <html> or <body> tags. High complexity is expected.
     
     ADVANCED GRAPHICS DIRECTIVE: If the reference uses overlapping elements, negative margins, or layered images, you MUST implement them. Use \`z-index\`, \`relative/absolute\`, and \`overflow-hidden\` to achieve the high-graphic look. Do NOT simplify the design.
     
