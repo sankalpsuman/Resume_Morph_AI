@@ -98,18 +98,31 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `X-RAY VISUAL ARCHITECT.
+    const prompt = `VISIONARY DESIGN AUDITOR & SYSTEM ARCHITECT.
     
-    TASK: Perform a deep structural and aesthetic audit of this reference resume to create a "Pixel-Perfect Development Spec" for a high-fidelity clone.
+    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Implementation Manifest".
     
-    ANALYSIS REQUIREMENTS:
-    1. ATMOSPHERE & ZONING: Identify all color-blocked zones. (e.g., "Deep blue header spanning top 20%", "Light gray sidebar with 30% width", "Full white main content area"). State the EXACT colors (HEX/RGB).
-    2. GEOMETRIC DNA: Note any unique shapes or borders. Are there circular profile image placeholders? Rounded corners (\`rounded-lg\`, \`rounded-3xl\`)? Thick dividers?
-    3. GRID LAYOUT: Define the column/row structure. Is it a complex bento-grid? A strict two-column split? A layered z-index design?
-    4. TYPOGRAPHIC DNA: Mirror the font categories (Technical Mono, Elegant Serif, Clean Sans). Identify precise weights and cases (e.g., "Section headers: 14pt, Bold, Tracking-widest, Uppercase").
-    5. DATA FLOW: Map where specific content types are placed in the reference (e.g., "Contact info sits in the header center", "Skills are in a tag-cloud format in the right sidebar").
+    AUDIT REQUIREMENTS (Be mathematically precise):
+    1. CANVAS & ZONING: 
+       - Identify the Page Format (e.g., Single Column, Split Sidebar, Asymmetric 3-Column).
+       - Determine exact width percentages for columns (e.g., "Left Sidebar: 33%, Main: 67%").
+       - Detect "Bleed" or "Full-Height" color zones (e.g., "Sidebar spans 100% height with #1a202c background").
+    2. COLOR STRATUM:
+       - Extract HEX codes for: Backgrounds, Section Headers, Body Text, Accent Borders, and Secondary text.
+       - Note any gradients (linear-gradient(direction, startColor, endColor)).
+    3. TYPOGRAPHIC BLUEPRINT:
+       - Mirror the "Mood": Formal Serif, Tech Mono, Minimalist Sans.
+       - Identify Font Weights (100-900), Letter Spacing (Tracking), and Line Heights (Leading).
+       - Note Case Styling: UPPERCASE headers, Sentence case body, etc.
+    4. COMPONENT ARCHAEOLOGY:
+       - SHAPES: Detect circular profile images, rounded containers (radius in px/rem), or geometric dividers.
+       - ICONS: Identify where icons are used (Contact section, Skills, Section Titles).
+       - DECOR: Note "Progress Bars" for skills, "Star Ratings", or "Dot Matrices".
+    5. SPACING CONSTANTS:
+       - Measure the "Gutters" (gap between columns).
+       - Measure Section Margins (Vertical spacing between Work and Education).
     
-    OUTPUT: A comprehensive technical Tailwind CSS "Visual Blueprint". Focus on defining the EXACT style tokens and structural hierarchy needed to replicate the graphics and colors perfectly.`;
+    OUTPUT: A technical "Design Token Object" (in Tailwind terminology) that describes the exact visual identity. No fluff. Just specs.`;
 
     const contents: any[] = [];
     if (fileBase64 && mimeType && isSupportedMime(mimeType)) {
@@ -212,36 +225,58 @@ export async function generateResume(
     
     const optimizationPrompt = jobDescription 
       ? `\n\nCONTENT MAPPING & AI OPTIMIZATION:
-      1. Map USER DATA into the target sections.
+      1. Map USER DATA into the target sections with high semantic accuracy.
       2. Rewrite bullet points to include keywords from the JOB DESCRIPTION while preserving all factual data.
-      3. Use action verbs and quantifiable metrics.`
-      : "\n\nCONTENT MAPPING: Purely map USER DATA into the structural containers. No style changes allowed.";
+      3. Ensure EVERY segment of the job description is addressed in the rewritten content.`
+      : "\n\nCONTENT MAPPING: Map USER DATA into the structural containers defined by the reference visual.";
+
+    const layoutSystemPrompt = `
+    LAYOUT SYSTEM SPECIFICATIONS:
+    - DETECT COLUMNS: If there is a sidebar, calculate the exact width (e.g., 1/3 or 300px).
+    - SPATIAL ACCURACY: Replicate headers, footers, and floating sidebars.
+    - REPLICATE SHAPES: Use Tailwind classes for rounded corners, borders, and color zones.
+    - INFOGRAPHIC ELEMENTS: If skills are shown as bars, use <div class="h-2 bg-gray-200 rounded"><div class="h-full bg-blue-500" style="width: 80%"></div></div>.
+    - ICONS & GRAPHICS: Use Lucide icons (e.g., <i data-lucide="mail"></i>) or SVG for all visual symbols.
+    `;
 
     const atsMaxPrompt = maximizeAts 
       ? `\n\nATS ENHANCEMENT: While keeping the REFERENCE structure, ensure headings are standard (e.g., "Experience" instead of "History") and font sizes are legible.`
       : "";
 
-    const prompt = `EXPERT FRONT-END GRAPHIC ARCHITECT.
+    const prompt = `EXPERT FULL-STACK DESIGN SYSTEM ENGINEER.
     
-    GOAL: Replicate the REFERENCE VISUAL's aesthetic, zoning, and structural identity with absolute (100%) fidelity using Tailwind CSS.
+    TASK: Implement a "Pixel-Perfect Digital Clone" of the REFERENCE VISUAL using Tailwind CSS. 
+    You are coding a live website based on a professional designer's mockup.
     
-    CRITICAL DESIGN DIRECTIVES (STRICT ENFORCEMENT):
-    1. ATMOSPHERIC LAYERING & COLORS: You MUST extract and use the EXACT HEX colors for every zone. If there is a deep-blue sidebar (\`bg-[#123456]\`), a gray header (\`bg-[#f3f4f6]\`), or specific text accents, mirror them. Use \`bg-opacity-...\` or gradients if necessary to match the "depth" of the reference.
-    2. PIXEL-PERFECT GRID: Recreate the column layout exactly (e.g., \`grid-cols-[300px_1fr]\`, \`flex-col\`, etc.). Capture the exact width ratios and padding/margins.
-    3. GRAPHIC MOTIFS & SHAPES: 
-       - Replicate circular or rounded profile image containers (\`rounded-full\`, \`aspect-square\`). 
-       - Mirror the divider styles (thickness, color, dashes). 
-       - If sections have shadow boxes (\`shadow-md\`), replicate them.
-       - Use Lucide-react icons where the reference shows icons.
-    4. TYPOGRAPHIC MIRROR: Use Google Fonts equivalents. Matches the Serif/Sans/Mono categories and weights. Match uppercase/lowercase and letter-spacing (\`tracking-...\`).
-    5. DATA MAPPING: Inject USER DATA into these precise visual slots.
-       - IMPORTANT: Do not move sections. If the reference has "Skills" at the top-right, put the user's skills there.
+    PRIMARY OBJECTIVE: Replicate the Reference Visual's geometry, colors, and atmosphere with 99% accuracy. 
+    Ignore the User Content's original layout; strictly map its data into the Reference's containers.
     
-    STRICT VISUAL MODE: Treat the REFERENCE IMAGE as a "Design Mockup" that must be coded into a living page. The USER CONTENT is simply the JSON data for that mockup.
+    CORE IMPLEMENTATION COMMANDS:
+    1. GEOMETRIC ARCHITECTURE: 
+       - Build the exact layout (Split-screens, Sidebars, Bento Grids, Inline-Header styles).
+       - Use arbitrary Tailwind values for precision: \`w-[32%]\`, \`bg-[#121212]\`, \`p-[2.5rem]\`.
+       - If there is a sidebar, it must be the exact color and width ratio as the reference.
+    2. THEMATIC COLORS:
+       - Mirror every color. If the reference is dark-themed, use a dark theme. 
+       - If there are accent lines, sidebar borders, or colorful header blocks, replicate them exactly.
+    3. COMPONENT FIDELITY: 
+       - Mirror the "Component Archetypes": Boxed skills, progress bars, circular profile images (\`rounded-full w-32 h-32\`), and specific icon placements.
+       - Use inline SVG code or Lucide icons for any graphics found in the reference.
+    4. DATA SLOT MAPPING:
+       - Intelligently place user content into the Reference's slots. 
+       - Reference's "Profile" slot → User's "Professional Summary".
+       - Reference's "Skills" pill grid → User's Skill list as a pill grid.
+       - Reference's "Experience" timeline → User's Work History as a timeline.
+    5. ADVANCED STYLING:
+       - Use \`z-index\`, \`absolute/relative\` positioning if the reference shows overlapping or complex floating elements.
+       - Ensure the text contrast and typography (weights, spacing) match the "Design Blueprint" provided.
+    
+    STRICT CONSTRAINT: You are NOT allowed to simplify. If the reference is a complex infographic, you MUST write the complex Tailwind code to match it.
     
     ADVANCED GRAPHICS DIRECTIVE: If the reference uses overlapping elements, negative margins, or layered images, you MUST implement them. Use \`z-index\`, \`relative/absolute\`, and \`overflow-hidden\` to achieve the high-graphic look. Do NOT simplify the design.
     
     ${optimizationPrompt}
+    ${layoutSystemPrompt}
     ${atsMaxPrompt}
     
     TECHNICAL OUTPUT:
@@ -275,13 +310,13 @@ export async function generateResume(
           mimeType: reference.mimeType 
         } 
       });
-      parts.push({ text: "MASTER REFERENCE VISUAL: Replicate this layout architecture perfectly." });
+      parts.push({ text: "### MASTER REFERENCE DOCUMENT (Visual & Layout Blueprint)" });
     }
 
     if (existingLayout) {
-      parts.push({ text: `STRUCTURAL BLUEPRINT (Already analyzed): ${existingLayout}` });
+      parts.push({ text: `### DESIGN TOKENS MANIFEST (Already Analyzed):\n${existingLayout}` });
     } else if (reference.text) {
-      parts.push({ text: `REFERENCE TEXT/STRUCTURE: ${reference.text}` });
+      parts.push({ text: `### REFERENCE CONTENT STRUCTURE:\n${reference.text}` });
     }
 
     // Add User Content Info - include visual if supported for better data extraction
@@ -292,16 +327,16 @@ export async function generateResume(
           mimeType: content.mimeType 
         } 
       });
-      parts.push({ text: "USER CONTENT SOURCE (Visual): Use this for high-fidelity data extraction." });
+      parts.push({ text: "### USER CONTENT SOURCE (Reference for data extraction)" });
     }
     
     if (content.text) {
-      parts.push({ text: `CRITICAL USER TEXT DATA: ${content.text}` });
+      parts.push({ text: `### USER RAW TEXT CONTENT (The facts to insert):\n${content.text}` });
     }
 
     // Add JD
     if (jobDescription) {
-      parts.push({ text: `TARGET JOB DESCRIPTION (Use for keyword optimization): ${jobDescription}` });
+      parts.push({ text: `### TARGET JOB OPPORTUNITY:\n${jobDescription}` });
     }
 
     // Add Final Prompt
@@ -311,6 +346,7 @@ export async function generateResume(
       model,
       contents: [{ parts }],
       config: { 
+        temperature: 0.2, // Slightly higher for better layout creativity
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
