@@ -18,6 +18,7 @@ export default function ResumeAIAssistant() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState<string>('');
   const [resumeText, setResumeText] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export default function ResumeAIAssistant() {
 
     setFileName(file.name);
     setIsExtracting(true);
+    setLoadingStatus('Reading document...');
     
     const formData = new FormData();
     formData.append('resume', file);
@@ -48,12 +50,22 @@ export default function ResumeAIAssistant() {
 
       let extractedText = "";
       if (response.ok) {
-        const data = await response.json();
-        extractedText = data.text || "";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const data = await response.json();
+            extractedText = data.text || "";
+          } else {
+            console.error("Server returned non-JSON response:", await response.text());
+          }
+        } catch (jsonErr) {
+          console.error("Failed to parse JSON from server:", jsonErr);
+        }
       }
 
       // 2. If server failed or text is too short, fallback to AI Extraction in frontend
       if (extractedText.trim().length < 50) {
+        setLoadingStatus('Employing AI Extraction...');
         console.log("Server extraction minimal, trying frontend AI fallback...");
         const apiKey = process.env.GEMINI_API_KEY;
         if (apiKey) {
@@ -108,6 +120,7 @@ export default function ResumeAIAssistant() {
     } finally {
       setIsTyping(false);
       setIsExtracting(false);
+      setLoadingStatus('');
     }
   };
 
@@ -116,7 +129,10 @@ export default function ResumeAIAssistant() {
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt']
+      'application/msword': ['.doc'],
+      'text/plain': ['.txt'],
+      'text/html': ['.html', '.htm'],
+      'application/json': ['.json']
     },
     multiple: false
   } as any);
@@ -134,6 +150,7 @@ export default function ResumeAIAssistant() {
     const newMessages: Message[] = [...messages, { role: 'user', text: userMessage }];
     setMessages(newMessages);
     setIsTyping(true);
+    setLoadingStatus('Analyzing resume...');
 
     try {
       const apiKey = process.env.GEMINI_API_KEY;
@@ -176,6 +193,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
       setMessages(prev => [...prev, { role: 'model', text: `I'm having trouble analyzing your resume: ${error.message}. Please try again later.` }]);
     } finally {
       setIsTyping(false);
+      setLoadingStatus('');
     }
   };
 
@@ -214,7 +232,17 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
               {isExtracting ? (
                 <div className="space-y-3">
                   <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">Reading Resume...</p>
+                  <div className="space-y-2">
+                    <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">{loadingStatus || 'Reading Resume...'}</p>
+                    <div className="w-24 h-1 bg-gray-100 rounded-full overflow-hidden mx-auto">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className="h-full bg-indigo-600"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : resumeText ? (
                 <div className="space-y-2">
@@ -319,7 +347,17 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                     <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                   </div>
-                  <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">Analyzing...</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">{loadingStatus || 'Analyzing...'}</span>
+                    <div className="w-20 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 5, repeat: Infinity }}
+                        className="h-full bg-indigo-400"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

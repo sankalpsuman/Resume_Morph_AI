@@ -43,25 +43,30 @@ async function startServer() {
         return res.status(400).json({ error: "No resume file uploaded" });
       }
 
+      console.log(`Extracting file: ${file.originalname} (${file.mimetype})`);
+
       let resumeText = "";
-      if (file.mimetype === "application/pdf") {
-        console.log("Extracting PDF...");
+      
+      // 1. PDF Handling
+      if (file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith('.pdf')) {
         try {
           if (pdf) {
             const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
             if (typeof pdfParser === 'function') {
               const data = await pdfParser(file.buffer);
               resumeText = data.text;
-              console.log("Local PDF extraction success, text length:", resumeText.length);
-            } else {
-              console.warn("pdf-parse is not a function:", typeof pdfParser);
+              console.log("Local PDF extraction success");
             }
           }
-        } catch (pdfError: any) {
+        } catch (pdfError) {
           console.error("Local PDF Parsing Error:", pdfError);
         }
-      } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        console.log("Extracting DOCX...");
+      } 
+      // 2. DOCX Handling
+      else if (
+        file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+        file.originalname.toLowerCase().endsWith('.docx')
+      ) {
         try {
           const result = await mammoth.extractRawText({ buffer: file.buffer });
           resumeText = result.value;
@@ -69,16 +74,29 @@ async function startServer() {
         } catch (docxError) {
           console.error("DOCX Parsing Error:", docxError);
         }
-      } else {
+      }
+      // 3. Simple text-based formats (txt, html, json)
+      else if (
+        file.mimetype === "text/plain" || 
+        file.mimetype === "text/html" || 
+        file.mimetype === "application/json" ||
+        file.originalname.toLowerCase().endsWith('.txt') ||
+        file.originalname.toLowerCase().endsWith('.html') ||
+        file.originalname.toLowerCase().endsWith('.json')
+      ) {
         resumeText = file.buffer.toString("utf-8");
       }
 
-      // Return whatever we got (even if empty, frontend will handle fallback)
-      res.json({ text: resumeText || "" });
+      if (!resumeText || resumeText.trim().length === 0) {
+        // Return empty text so frontend can handle fallback to AI
+        return res.json({ text: "" });
+      }
+
+      res.json({ text: resumeText });
     } catch (error: any) {
-      console.error("Extraction Error Detail:", error);
+      console.error("Global Extraction Error:", error);
       res.status(500).json({ 
-        error: error.message || "Failed to extract text from resume"
+        error: error.message || "Failed to process resume file"
       });
     }
   });

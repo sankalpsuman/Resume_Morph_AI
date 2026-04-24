@@ -34,6 +34,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<string>('');
   const [jobDescription, setJobDescription] = useState('');
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [resumeMetadata, setResumeMetadata] = useState<{ name: string; yoe: string; profile: string } | null>(null);
@@ -115,11 +116,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     // Supported formats check
     const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    const isText = file.type === 'text/plain';
+    const isOldWord = file.type === 'application/msword' || file.name.endsWith('.doc');
+    const isText = ['text/plain', 'text/html', 'application/json'].includes(file.type) || /\.(txt|html|htm|json)$/i.test(file.name);
     const isAiSupported = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type);
 
-    if (!isWord && !isText && !isAiSupported) {
-      setError("Unsupported file format. Please upload PDF, Word (.docx), or Image (PNG/JPG).");
+    if (!isWord && !isOldWord && !isText && !isAiSupported) {
+      setError("Unsupported file format. Please upload PDF, Word, HTML, JSON, or Text files.");
       return;
     }
 
@@ -132,6 +134,27 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         text = result.value;
       } else if (isText) {
         text = await file.text();
+      }
+
+      // Fallback to server-side extraction for formats we can't parse locally (like .doc)
+      if (!text && !['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        const formData = new FormData();
+        formData.append('resume', file);
+        try {
+          const response = await fetch('/api/extract-text', {
+            method: 'POST',
+            body: formData
+          });
+          if (response.ok) {
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const data = await response.json();
+              text = data.text;
+            }
+          }
+        } catch (fetchErr) {
+          console.error("Server extraction fallback failed:", fetchErr);
+        }
       }
       
       const base64 = await fileToBase64(file);
@@ -159,11 +182,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     // Supported formats check
     const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    const isText = file.type === 'text/plain';
+    const isOldWord = file.type === 'application/msword' || file.name.endsWith('.doc');
+    const isText = ['text/plain', 'text/html', 'application/json'].includes(file.type) || /\.(txt|html|htm|json)$/i.test(file.name);
     const isAiSupported = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type);
 
-    if (!isWord && !isText && !isAiSupported) {
-      setError("Unsupported file format. Please upload PDF, Word (.docx), or Image (PNG/JPG).");
+    if (!isWord && !isOldWord && !isText && !isAiSupported) {
+      setError("Unsupported file format. Please upload PDF, Word, HTML, JSON, or Text files.");
       return;
     }
 
@@ -177,8 +201,26 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       } else if (isText) {
         text = await file.text();
       } else {
-        // For PDF/Images, we'll need to extract text later via AI
-        // but we don't do it automatically now to save quota
+        // Fallback for doc/pdf/images - we try server extraction for .doc specifically
+        if (!['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+          const formData = new FormData();
+          formData.append('resume', file);
+          try {
+            const response = await fetch('/api/extract-text', {
+              method: 'POST',
+              body: formData
+            });
+            if (response.ok) {
+              const contentType = response.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                text = data.text;
+              }
+            }
+          } catch (fetchErr) {
+            console.error("Server extraction fallback failed:", fetchErr);
+          }
+        }
       }
 
       const base64 = await fileToBase64(file);
@@ -290,6 +332,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
 
     setIsGenerating(true);
+    setGenerationStatus('Cloning layout...');
     setError(null);
     
     try {
@@ -304,6 +347,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { lengthMode }
       );
 
+      setGenerationStatus('Optimizing content...');
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
@@ -317,6 +361,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
 
+      setGenerationStatus('Finalizing...');
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
@@ -345,6 +390,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     } finally {
       setIsAnalyzing(false);
       setIsGenerating(false);
+      setGenerationStatus('');
     }
   };
 
@@ -357,7 +403,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     try {
       let currentLayout = layoutAnalysis;
       if (!currentLayout) {
-        if (referenceFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || referenceFile.type === 'text/plain') {
+        if (referenceFile.text) {
           currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
         } else if (referenceFile.base64) {
           currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
@@ -395,6 +441,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
 
     setIsGenerating(true);
+    setGenerationStatus('Tailoring resume...');
     setError(null);
     try {
       const result = await generateResume(
@@ -406,6 +453,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         strictLayout,
         { lengthMode }
       );
+      setGenerationStatus('Perfecting layout...');
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
@@ -419,6 +467,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
 
+      setGenerationStatus('Finalizing...');
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
@@ -446,6 +495,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       }
     } finally {
       setIsGenerating(false);
+      setGenerationStatus('');
     }
   };
 
@@ -468,6 +518,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
 
     setIsMatching(true);
+    setGenerationStatus('Scanning job description...');
     setError(null);
     try {
       const result = await checkMatch(contentFile.text, matchDescription);
@@ -482,6 +533,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       }
     } finally {
       setIsMatching(false);
+      setGenerationStatus('');
     }
   };
 
@@ -497,6 +549,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
 
     setIsPlanning(true);
+    setGenerationStatus('Developing ATS strategy...');
     setError(null);
     try {
       const plan = await getOptimizationPlan(contentFile.text, jobDescription);
@@ -511,6 +564,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       }
     } finally {
       setIsPlanning(false);
+      setGenerationStatus('');
     }
   };
 
@@ -532,6 +586,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
     setShowPlanModal(false);
     setIsGenerating(true);
+    setGenerationStatus('Maximizing ATS score...');
     setError(null);
     try {
       const result = await generateResume(
@@ -543,6 +598,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         strictLayout,
         { lengthMode }
       );
+      setGenerationStatus('Applying keywords...');
       setGeneratedHtml(result.html);
       setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
       setAtsScore(result.atsScore);
@@ -556,6 +612,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
       }
 
+      setGenerationStatus('Finalizing...');
       // Trigger Smart Save Flow
       setPendingResume({ html: result.html, name: result.name });
       setShowSaveModal(true);
@@ -583,6 +640,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       }
     } finally {
       setIsGenerating(false);
+      setGenerationStatus('');
     }
   };
   
@@ -1432,9 +1490,20 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                         <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
                         <RefreshCw className="absolute inset-0 m-auto w-8 h-8 text-indigo-600 animate-pulse" />
                       </div>
-                      <div>
-                        <p className="font-black text-2xl tracking-tight">Morphing Content...</p>
-                        <p className="text-sm text-gray-400 font-medium mt-1">Applying visual DNA to your professional data</p>
+                      <div className="space-y-4 w-full max-w-sm">
+                        <div>
+                          <p className="font-black text-2xl tracking-tight">{generationStatus || 'Morphing Content...'}</p>
+                          <p className="text-sm text-gray-400 font-medium mt-1">Applying visual DNA to your professional data</p>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden px-0">
+                          <motion.div 
+                            initial={{ width: "0%" }}
+                            animate={{ width: "100%" }}
+                            transition={{ duration: 15, ease: "linear" }}
+                            className="h-full bg-indigo-600 rounded-full"
+                          />
+                        </div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Est. time: 15-20 seconds</p>
                       </div>
                     </motion.div>
                   ) : generatedHtml ? (
@@ -1903,7 +1972,10 @@ function Dropzone({ onDrop, isProcessing, file, label, color, disabled }: {
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'],
       'text/plain': ['.txt'],
+      'text/html': ['.html', '.htm'],
+      'application/json': ['.json'],
       'image/*': ['.png', '.jpg', '.jpeg']
     }
   } as any);
