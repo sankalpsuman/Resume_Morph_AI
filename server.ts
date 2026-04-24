@@ -9,8 +9,13 @@ import mammoth from "mammoth";
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
-const { GoogleGenAI } = require('@google/genai');
+// Most common way to import pdf-parse in ESM/Node
+let pdf: any;
+try {
+  pdf = require('pdf-parse');
+} catch (e) {
+  console.warn("Failed to require pdf-parse, PDF extraction might fail.");
+}
 
 dotenv.config();
 
@@ -26,75 +31,55 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("GEMINI_API_KEY is not set. Smart Editor features will be disabled.");
-  }
-
-  // @ts-ignore
-  const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
-
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", message: "Server is running" });
   });
 
-  app.post("/api/smart-insert", upload.single("resume"), async (req, res) => {
+  app.post("/api/extract-text", upload.single("resume"), async (req, res) => {
     try {
-      if (!genAI) {
-        return res.status(503).json({ error: "AI service is not configured. Please check GEMINI_API_KEY." });
-      }
-      const { title, description } = req.body;
       const file = req.file;
-
       if (!file) {
         return res.status(400).json({ error: "No resume file uploaded" });
       }
 
       let resumeText = "";
       if (file.mimetype === "application/pdf") {
-        const data = await pdf(file.buffer);
-        resumeText = data.text;
+        console.log("Extracting PDF...");
+        try {
+          if (pdf) {
+            const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
+            if (typeof pdfParser === 'function') {
+              const data = await pdfParser(file.buffer);
+              resumeText = data.text;
+              console.log("Local PDF extraction success, text length:", resumeText.length);
+            } else {
+              console.warn("pdf-parse is not a function:", typeof pdfParser);
+            }
+          }
+        } catch (pdfError: any) {
+          console.error("Local PDF Parsing Error:", pdfError);
+        }
       } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        const result = await mammoth.extractRawText({ buffer: file.buffer });
-        resumeText = result.value;
+        console.log("Extracting DOCX...");
+        try {
+          const result = await mammoth.extractRawText({ buffer: file.buffer });
+          resumeText = result.value;
+          console.log("Local DOCX extraction success");
+        } catch (docxError) {
+          console.error("DOCX Parsing Error:", docxError);
+        }
       } else {
         resumeText = file.buffer.toString("utf-8");
       }
 
-      const prompt = `
-        You are an expert Resume Intelligence System.
-        
-        RESUME CONTENT:
-        """
-        ${resumeText}
-        """
-        
-        NEW CONTENT TO INSERT:
-        Title: ${title}
-        Description: ${description}
-        
-        TASK:
-        1. Parse the resume and identify sections (Experience, Projects, Skills, Education, Certifications).
-        2. Classify the NEW CONTENT into the most appropriate section (Experience, Project, Skill, or Certification).
-        3. Convert the NEW CONTENT into 2-4 professional, ATS-friendly bullet points using strong action verbs.
-        4. Insert this new entry into the correct section of the resume.
-        5. DO NOT rewrite the entire resume. Maintain the original formatting and style as much as possible.
-        6. Wrap the newly inserted content in <mark class="new-content"> ... </mark> tags so it can be highlighted in the UI.
-        7. If the section doesn't exist, create a minimal new section at an appropriate location.
-        8. Return ONLY the updated resume text with the <mark> tags. No explanations.
-      `;
-
-      const result = await genAI.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }]
+      // Return whatever we got (even if empty, frontend will handle fallback)
+      res.json({ text: resumeText || "" });
+    } catch (error: any) {
+      console.error("Extraction Error Detail:", error);
+      res.status(500).json({ 
+        error: error.message || "Failed to extract text from resume"
       });
-      const updatedResume = result.text;
-
-      res.json({ updatedResume });
-    } catch (error) {
-      console.error("Smart Insert Error:", error);
-      res.status(500).json({ error: "Failed to process resume" });
     }
   });
 

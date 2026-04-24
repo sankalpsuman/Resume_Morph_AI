@@ -20,6 +20,13 @@ const TOUR_STEPS: Step[] = [
     position: 'bottom'
   },
   {
+    targetId: 'tab-ai-assistant',
+    title: 'AI Coach',
+    content: 'Get instant feedback on your resume, ask questions, and receive professional improvement suggestions.',
+    icon: Sparkles,
+    position: 'bottom'
+  },
+  {
     targetId: 'tab-smart-editor',
     title: 'Smart Editor',
     content: 'A powerful markdown editor with AI-assisted rewriting and design controls for final polishing.',

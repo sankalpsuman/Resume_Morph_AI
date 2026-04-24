@@ -26,10 +26,12 @@ import AdminPanel from './components/AdminPanel';
 import UserGuide from './components/UserGuide';
 import PremiumModal from './components/PremiumModal';
 import InteractiveTour from './components/InteractiveTour';
+import ResumeAIAssistant from './components/ResumeAIAssistant';
+import AppChatbot from './components/AppChatbot';
 import { handleFirestoreError, OperationType } from './lib/firestore';
-import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
+import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -46,6 +48,21 @@ export default function App() {
   const [pendingDeletions, setPendingDeletions] = useState<Record<string, NodeJS.Timeout>>({});
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
+
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -90,7 +107,12 @@ export default function App() {
       }
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      console.error("Firestore user snapshot error:", error);
+      if (error.code === 'unavailable') {
+        setIsOffline(true);
+      } else {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      }
       setLoading(false);
     });
 
@@ -321,6 +343,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
+      {/* Offline Banner */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest text-center py-2 z-[200] flex items-center justify-center gap-2"
+          >
+            <Zap className="w-3 h-3 animate-pulse" />
+            Connecting to Morph Cloud... (Check connection)
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Global Top Header */}
       {/* Unified Global Header */}
       {!isPortfolioFullscreen && (
@@ -342,6 +379,7 @@ export default function App() {
               <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth">
                 {[
                   { id: 'builder', label: 'Morph Engine', icon: Layout },
+                  { id: 'ai-assistant', label: 'AI Coach', icon: BrainCircuit },
                   { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
                   { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
                   { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
@@ -532,6 +570,7 @@ export default function App() {
                   <div className="space-y-1">
                     {[
                       { id: 'builder', label: 'Morph Engine', icon: Layout },
+                      { id: 'ai-assistant', label: 'AI Coach', icon: BrainCircuit },
                       { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
                       { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
                       { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
@@ -603,6 +642,10 @@ export default function App() {
       )}>
         <div className={cn(activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
+        </div>
+
+        <div className={cn(activeTab !== 'ai-assistant' && "hidden")}>
+          <ResumeAIAssistant />
         </div>
         <div className={cn(activeTab !== 'smart-editor' && "hidden")}>
           <SmartEditor />
@@ -715,6 +758,7 @@ export default function App() {
       />
 
       <InteractiveTour />
+      <AppChatbot />
 
       {/* Global Footer */}
       <footer className="py-12 border-t border-gray-100 bg-white">

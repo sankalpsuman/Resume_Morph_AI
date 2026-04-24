@@ -591,9 +591,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     setIsImportingLinkedIn(false);
     setIsGenerating(true);
     try {
-      // We'll treat the text as "content"
+      // We'll treat the text as "content" - creating a minimal File-like object or adjusting the state
       setContentFile({
-        name: 'LinkedIn_Profile.txt',
+        file: new File([linkedinText], 'LinkedIn_Profile.txt', { type: 'text/plain' }),
         type: 'text/plain',
         text: linkedinText
       });
