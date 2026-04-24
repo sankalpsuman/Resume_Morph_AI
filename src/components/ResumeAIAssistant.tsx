@@ -106,7 +106,7 @@ export default function ResumeAIAssistant() {
         setResumeText(extractedText);
         setMessages(prev => [...prev, { 
           role: 'model', 
-          text: `Success! I've read your resume ("${file.name}"). What would you like to know? I can help with:\n\n• Identifying ATS issues\n• Fixing bullet points\n• Recommending skills\n• General feedback` 
+          text: `### ✅ Resume Successfully Analyzed\n\nI've successfully parsed your professional data from **"${file.name}"**. I'm now equipped with your career history and ready to help you stand out.\n\n**What shall we focus on first?**\n\n*   **🔍 ATS Optimization** — *Check if filters will flag your resume*\n*   **🚀 Impact Analysis** — *Transform passive tasks into active wins*\n*   **🎯 Skill Benchmarking** — *See how you compare to top industry candidates*\n*   **💬 General Strategic Review** — *Get a full grade on your profile*` 
         }]);
       } else {
         throw new Error("Unable to extract text from this file.");
