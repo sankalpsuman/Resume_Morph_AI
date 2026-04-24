@@ -25,6 +25,7 @@ import AccountModal from './components/AccountModal';
 import AdminPanel from './components/AdminPanel';
 import UserGuide from './components/UserGuide';
 import PremiumModal from './components/PremiumModal';
+import InteractiveTour from './components/InteractiveTour';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen } from 'lucide-react';
 
@@ -348,6 +349,7 @@ export default function App() {
                 ].map((tab) => (
                   <button 
                     key={tab.id}
+                    id={`tab-${tab.id}`}
                     onClick={() => handleTabChange(tab.id as Tab)}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
@@ -366,6 +368,7 @@ export default function App() {
 
               <div className="relative shrink-0">
                 <button 
+                  id="resources-btn"
                   onClick={() => setIsResourcesOpen(!isResourcesOpen)}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
@@ -413,6 +416,7 @@ export default function App() {
             {userData && (
               <>
                 <button 
+                  id="tab-account"
                   onClick={() => handleTabChange('account')}
                   className={cn(
                     "hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all",
@@ -709,6 +713,8 @@ export default function App() {
         onClose={() => setShowUpgradeModal(false)} 
         user={user}
       />
+
+      <InteractiveTour />
 
       {/* Global Footer */}
       <footer className="py-12 border-t border-gray-100 bg-white">

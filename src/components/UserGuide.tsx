@@ -175,10 +175,21 @@ export default function UserGuide() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-lg text-gray-500 max-w-2xl mx-auto font-medium"
+          className="text-lg text-gray-500 max-w-2xl mx-auto font-medium mb-10"
         >
           Explore the new <strong>Unified Interface</strong>. We've consolidated branding, accounts, and navigation to give you a seamless studio experience.
         </motion.p>
+
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
+          className="inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 group"
+        >
+          <Rocket className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          Restart Interface Tour
+        </motion.button>
       </div>
 
       {/* New UI Tour Section */}
