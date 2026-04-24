@@ -62,13 +62,35 @@ export default function App() {
     if (!user) return;
 
     const userRef = doc(db, 'users', user.uid);
-    const unsubscribeUser = onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        setUserData(doc.data());
+    const unsubscribeUser = onSnapshot(userRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        setUserData(docSnap.data());
+      } else {
+        // Create initial user profile if it doesn't exist
+        try {
+          const initialData = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || 'Morph User',
+            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'MU')}&background=6366f1&color=fff`,
+            morphCount: 0,
+            usedMorphs: 0,
+            plan: 'free',
+            planLimit: 2,
+            createdAt: serverTimestamp(),
+            resumeHistory: [],
+            updatedAt: serverTimestamp()
+          };
+          await setDoc(userRef, initialData);
+          setUserData(initialData);
+        } catch (err) {
+          console.error("Failed to initialize user data:", err);
+        }
       }
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      setLoading(false);
     });
 
     return () => unsubscribeUser();
@@ -273,6 +295,7 @@ export default function App() {
     setActiveTab(tab);
     setIsMenuOpen(false);
     setIsResourcesOpen(false);
+    setIsUserDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -297,518 +320,283 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
-      {/* Global Navigation */}
+      {/* Global Top Header */}
+      {/* Unified Global Header */}
       {!isPortfolioFullscreen && (
-        <nav className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-[110] w-[calc(100%-2rem)] md:w-auto">
-        <div className="bg-white/80 backdrop-blur-2xl border border-gray-200/50 rounded-[24px] md:rounded-[28px] p-1.5 shadow-2xl shadow-indigo-100/30 flex items-center justify-between md:justify-start gap-1">
-          {/* Desktop Tabs */}
-          <div className="hidden md:flex items-center gap-1">
-            <button 
-              onClick={() => handleTabChange('builder')}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                activeTab === 'builder' 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
-                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Layout className="w-4 h-4" />
-              Morph Engine
-            </button>
-
-            <button 
-              onClick={() => handleTabChange('smart-editor')}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                activeTab === 'smart-editor' 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
-                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Sparkles className="w-4 h-4" />
-              Smart Editor
-            </button>
-
-            <button 
-              onClick={() => handleTabChange('portfolio')}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                activeTab === 'portfolio' 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
-                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Globe className="w-4 h-4" />
-              Portfolio Gen
-            </button>
-
-            <button 
-              onClick={() => handleTabChange('cover-letter')}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                activeTab === 'cover-letter' 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
-                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <FileText className="w-4 h-4" />
-              Cover Letter
-            </button>
-
-            <button 
-              onClick={() => handleTabChange('tracker')}
-              className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                activeTab === 'tracker' 
-                  ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
-                  : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Briefcase className="w-4 h-4" />
-              Applications
-            </button>
-
-            <button 
-              onClick={() => setShowUpgradeModal(true)}
-              className="flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black text-amber-600 hover:bg-amber-50 transition-all duration-500 whitespace-nowrap group"
-            >
-              <Zap className="w-4 h-4 fill-amber-600 group-hover:scale-110 transition-transform" />
-              Premium
-            </button>
-
-            {/* Resources Dropdown */}
-            <div className="relative">
-              <button 
-                onClick={() => setIsResourcesOpen(!isResourcesOpen)}
-                className={cn(
-                  "flex items-center gap-2.5 px-5 py-2.5 rounded-[22px] text-sm font-black transition-all duration-500 whitespace-nowrap",
-                  ['about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
-                    ? "bg-indigo-50 text-indigo-600" 
-                    : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                )}
-              >
-                <Info className="w-4 h-4" />
-                Resources
-                <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", isResourcesOpen && "rotate-180")} />
-              </button>
-
-              <AnimatePresence>
-                {isResourcesOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full left-0 mt-2 w-48 bg-white/90 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl p-1.5 overflow-y-auto max-h-[70vh] scrollbar-hide"
-                  >
-                    {[
-                      { id: 'guide', label: 'User Guide', icon: BookOpen },
-                      { id: 'about', label: 'About', icon: Info },
-                      { id: 'privacy', label: 'Privacy', icon: Shield },
-                      { id: 'contact', label: 'Contact', icon: Send },
-                      { id: 'feedback', label: 'Feedback', icon: MessageSquare },
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleTabChange(item.id as Tab)}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
-                          activeTab === item.id 
-                            ? "bg-indigo-50 text-indigo-600" 
-                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                      >
-                        <item.icon className="w-4 h-4" />
-                        {item.label}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 z-[120] flex items-center px-4 md:px-8 shadow-sm">
+          {/* Logo Section */}
+          <div className="flex items-center gap-3 shrink-0 mr-4 md:mr-10 cursor-pointer group" onClick={() => handleTabChange('builder')}>
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
+              <RefreshCw className="text-white w-5 h-5 md:w-7 md:h-7" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-lg md:text-xl font-black tracking-tight text-gray-900 leading-none">Resume Morph</h1>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-1">AI Clone Engine</p>
             </div>
           </div>
 
-          {/* User Profile & Avatar Dropdown */}
-          <div className="hidden md:flex items-center gap-2 ml-4 pl-4 border-l border-gray-100">
+          {/* Desktop/Tablet Navigation - Scrollable Flex Center */}
+          <nav className="flex-grow flex items-center justify-center h-full overflow-visible">
+            <div className="flex items-center gap-1 md:gap-2 max-w-full h-full px-2 overflow-visible">
+              <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth">
+                {[
+                  { id: 'builder', label: 'Morph Engine', icon: Layout },
+                  { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
+                  { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
+                  { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
+                  { id: 'tracker', label: 'Applications', icon: Briefcase },
+                ].map((tab) => (
+                  <button 
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id as Tab)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
+                      activeTab === tab.id 
+                        ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                        : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                    )}
+                  >
+                    <tab.icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", activeTab === tab.id ? "scale-110" : "")} />
+                    <span className="hidden xl:inline">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="h-6 w-px bg-gray-100 mx-2 hidden lg:block" />
+
+              <div className="relative shrink-0">
+                <button 
+                  onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
+                    ['about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
+                      ? "bg-indigo-50 text-indigo-600" 
+                      : "text-gray-400 hover:text-indigo-600 hover:bg-gray-50"
+                  )}
+                >
+                  <Info className="w-4 h-4" />
+                  <span className="hidden lg:inline">Resources</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isResourcesOpen && "rotate-180")} />
+                </button>
+                <AnimatePresence>
+                  {isResourcesOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-full right-0 lg:left-0 mt-3 w-48 bg-white border border-gray-100 rounded-3xl shadow-2xl p-2 z-[130] ring-1 ring-black/5"
+                    >
+                      {[
+                        { id: 'guide', label: 'User Guide', icon: BookOpen },
+                        { id: 'about', label: 'About', icon: Info },
+                        { id: 'feedback', label: 'Community Feedback', icon: MessageSquare },
+                        { id: 'contact', label: 'Contact Support', icon: Send },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => handleTabChange(item.id as Tab)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                        >
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </nav>
+
+          {/* User Section */}
+          <div className="flex items-center gap-3 md:gap-6 shrink-0 ml-4 md:ml-10 border-l border-gray-100 pl-4 md:pl-8">
             {userData && (
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col items-end">
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full border shadow-sm",
-                    userLevel.bg, userLevel.border
-                  )}>
-                    <Star className={cn("w-3 h-3 fill-current", userLevel.color)} />
-                    <span className={cn("text-[10px] font-black uppercase tracking-wider", userLevel.color)}>
-                      {userLevel.name}
-                    </span>
-                  </div>
-                  <span className="text-[11px] font-bold text-gray-900 mt-0.5 flex items-center gap-1">
-                    {user.displayName}
-                    {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-3 h-3 text-indigo-600" />}
-                  </span>
-                </div>
-                
-                <div className="relative">
+              <>
+                <button 
+                  onClick={() => handleTabChange('account')}
+                  className={cn(
+                    "hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all",
+                    activeTab === 'account' 
+                      ? "bg-indigo-50 text-indigo-600 shadow-sm" 
+                      : "text-gray-400 hover:text-indigo-600 hover:bg-gray-50"
+                  )}
+                >
+                  <UserIcon className="w-4 h-4" />
+                  <span className="hidden xl:inline">Account</span>
+                </button>
+
+                <div className="relative group">
                   <button 
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    className="relative group focus:outline-none"
+                    className="relative focus:outline-none"
                   >
-                    <div className="relative p-1 rounded-2xl bg-white shadow-lg group-hover:shadow-indigo-200/50 transition-all duration-300">
-                      {/* Progress Ring */}
+                    <div className="relative p-1 rounded-2xl bg-white shadow-lg group-hover:shadow-indigo-100 transition-all">
                       <svg className="absolute inset-0 w-full h-full -rotate-90">
-                        <circle
-                          cx="24"
-                          cy="24"
-                          r="21"
-                          fill="transparent"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          className="text-gray-100"
-                        />
+                        <circle cx="20" cy="20" r="18" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-gray-100" />
                         <motion.circle
                           initial={{ strokeDasharray: "0 100" }}
                           animate={{ strokeDasharray: `${progress} 100` }}
-                          cx="24"
-                          cy="24"
-                          r="21"
-                          fill="transparent"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeDasharray="100 100"
-                          className="text-indigo-600"
+                          cx="20" cy="20" r="18" fill="transparent" stroke="currentColor" strokeWidth="2" strokeDasharray="100 100" className="text-indigo-600"
                         />
                       </svg>
-                      
                       <img 
-                        src={user.photoURL || ''} 
-                        alt={user.displayName || ''} 
-                        className="w-10 h-10 rounded-[14px] border-2 border-white shadow-sm object-cover relative z-10"
+                        src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || '')}&background=6366f1&color=fff`} 
+                        alt="Profile" 
+                        className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-[14px] object-cover relative z-10"
+                        referrerPolicy="no-referrer"
                       />
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-20" />
                     </div>
                   </button>
 
                   <AnimatePresence>
                     {isUserDropdownOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-[-1]" 
-                          onClick={() => setIsUserDropdownOpen(false)} 
-                        />
-                        <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-2xl border border-gray-200/50 rounded-[32px] shadow-2xl p-2 overflow-y-auto max-h-[80vh] ring-1 ring-black/5"
-                        >
-                          {/* Profile Header */}
-                          <div className="p-5 bg-gradient-to-br from-gray-50 to-white rounded-[24px] mb-2 border border-gray-100">
-                            <div className="flex items-center gap-4">
-                              <div className="relative">
-                                <img 
-                                  src={user.photoURL || ''} 
-                                  alt={user.displayName || ''} 
-                                  className="w-16 h-16 rounded-2xl border-2 border-white shadow-md object-cover"
-                                />
-                                <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-indigo-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
-                                  {userLevel.name}
-                                </div>
-                              </div>
-                              <div className="flex-grow min-w-0">
-                                <h4 className="font-black text-gray-900 text-base truncate flex items-center gap-1.5">
-                                  {user.displayName}
-                                  {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-4 h-4 text-indigo-600" />}
-                                </h4>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-600 text-white rounded-lg">
-                                    <Zap className="w-2.5 h-2.5 fill-white" />
-                                    <span className="text-[9px] font-black uppercase tracking-wider">{userData.plan || 'Free'} Plan</span>
-                                  </div>
-                                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Since {memberSince}</span>
-                                </div>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full right-0 mt-3 w-72 bg-white border border-gray-100 rounded-[32px] shadow-2xl p-2 z-[130] ring-1 ring-black/5"
+                      >
+                        <div className="p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl mb-2 border border-indigo-100/30">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="relative">
+                              <img src={user.photoURL || ''} className="w-12 h-12 rounded-xl object-cover" />
+                              <div className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-indigo-600 text-white rounded-lg text-[7px] font-black uppercase tracking-widest">
+                                {userLevel.name}
                               </div>
                             </div>
-                          </div>
-
-                          {/* Stats & Progress */}
-                          <div className="px-2 mb-2 space-y-2">
-                            <div className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
-                                <p className="text-[10px] font-black text-indigo-600">
-                                  {userData.planLimit === -1 ? '∞' : `${usedMorphs} / ${userData.planLimit || 2}`}
-                                </p>
-                              </div>
-                              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${progress}%` }}
-                                  className="h-full bg-indigo-600 rounded-full"
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Account Status</p>
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                  <p className="text-xs font-black text-gray-900">Verified</p>
-                                </div>
-                              </div>
-                              <div className="p-3 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">User Level</p>
-                                <p className={cn("text-xs font-black", userLevel.color)}>{userLevel.name}</p>
-                              </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-gray-900 truncate">{user.displayName}</p>
+                              <p className="text-[10px] font-bold text-gray-400 truncate">{user.email}</p>
                             </div>
                           </div>
-
-                          {/* Actions */}
-                          <div className="space-y-1">
-                            <button
-                              onClick={() => { handleTabChange('account'); setIsUserDropdownOpen(false); }}
-                              className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all group"
-                            >
-                              <div className="flex items-center gap-3">
-                                <UserIcon className="w-4 h-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                                Account Settings
-                              </div>
-                              <ChevronDown className="w-4 h-4 -rotate-90 text-gray-300 group-hover:text-indigo-300" />
-                            </button>
-                            
-                            <div className="h-px bg-gray-100/50 mx-4 my-1" />
-                            
-                            <button
-                              onClick={handleLogout}
-                              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all group"
-                            >
-                              <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors" />
-                              Logout
-                            </button>
+                          <div className="w-full h-1 bg-white rounded-full overflow-hidden mb-1">
+                            <div className="h-full bg-indigo-600" style={{ width: `${progress}%` }} />
                           </div>
-                        </motion.div>
-                      </>
+                          <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Usage: {progress.toFixed(0)}% used</p>
+                        </div>
+                        <div className="space-y-1">
+                          <button onClick={() => { handleTabChange('account'); setIsUserDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-all">
+                            <UserIcon className="w-4 h-4" /> Account Settings
+                          </button>
+                          <button onClick={() => { setShowUpgradeModal(true); setIsUserDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-600 hover:bg-amber-50 transition-all">
+                            <Zap className="w-4 h-4 fill-amber-600" /> Upgrade Plan
+                          </button>
+                          <div className="h-px bg-gray-100 my-1 mx-2" />
+                          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all">
+                            <LogOut className="w-4 h-4" /> Sign Out
+                          </button>
+                        </div>
+                      </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-              </div>
+
+                {/* Mobile Menu Toggle */}
+                <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="md:hidden p-2 -mr-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                >
+                  {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                </button>
+              </>
             )}
           </div>
-
-          {/* Mobile Logo & Menu Toggle */}
-          <div className="flex md:hidden items-center gap-3 px-4 py-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
-              <RefreshCw className="text-white w-4 h-4" />
-            </div>
-            <span className="font-black text-sm tracking-tight">Resume Morph</span>
-          </div>
-
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 text-gray-400 hover:text-gray-900 transition-colors"
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="absolute top-full left-0 right-0 mt-3 bg-white/95 backdrop-blur-2xl rounded-[32px] border border-gray-200/50 shadow-2xl p-4 md:hidden overflow-y-auto max-h-[80vh] ring-1 ring-black/5 scrollbar-hide"
-            >
-              <div className="space-y-1">
-                <button 
-                  onClick={() => handleTabChange('builder')}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
-                    activeTab === 'builder' 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  <Layout className="w-5 h-5" />
-                  Morph Engine
-                </button>
-                <button 
-                  onClick={() => handleTabChange('smart-editor')}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
-                    activeTab === 'smart-editor' 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  <Sparkles className="w-5 h-5" />
-                  Smart Editor
-                </button>
-                <button 
-                  onClick={() => handleTabChange('portfolio')}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
-                    activeTab === 'portfolio' 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  <Globe className="w-5 h-5" />
-                  Portfolio Gen
-                </button>
-
-                <button 
-                  onClick={() => handleTabChange('cover-letter')}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
-                    activeTab === 'cover-letter' 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  <FileText className="w-5 h-5" />
-                  Cover Letter
-                </button>
-
-                <button 
-                  onClick={() => handleTabChange('tracker')}
-                  className={cn(
-                    "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black transition-all",
-                    activeTab === 'tracker' 
-                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                      : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  <Briefcase className="w-5 h-5" />
-                  Applications
-                </button>
-
-                <button 
-                  onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-black text-amber-600 hover:bg-amber-50 transition-all"
-                >
-                  <Zap className="w-5 h-5 fill-amber-600" />
-                  Upgrade to Premium
-                </button>
-
-                <div className="py-2">
-                  <p className="px-5 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-2">Resources</p>
-                  {[
-                    { id: 'guide', label: 'User Guide', icon: BookOpen },
-                    { id: 'about', label: 'About & Founder', icon: Info },
-                    { id: 'privacy', label: 'Privacy Policy', icon: Shield },
-                    { id: 'contact', label: 'Contact Us', icon: Send },
-                    { id: 'feedback', label: 'Share Feedback', icon: MessageSquare },
-                  ].map((tab) => (
-                    <button 
-                      key={tab.id}
-                      onClick={() => handleTabChange(tab.id as Tab)}
-                      className={cn(
-                        "w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all",
-                        activeTab === tab.id 
-                          ? "bg-indigo-50 text-indigo-600" 
-                          : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
-                      )}
-                    >
-                      <tab.icon className="w-5 h-5" />
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Mobile User Info */}
-              {userData && (
-                <div className="mt-4 pt-4 border-t border-gray-100 px-2 pb-2">
-                  <div className="bg-gray-50/50 rounded-[32px] p-5 mb-4 border border-gray-100">
-                    <div className="flex items-center gap-4 mb-5">
-                      <div className="relative">
-                        <img 
-                          src={user.photoURL || ''} 
-                          alt={user.displayName || ''} 
-                          className="w-16 h-16 rounded-[20px] border-4 border-white shadow-lg object-cover"
-                        />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full shadow-sm" />
-                        <div className="absolute -top-2 -left-2 px-2 py-0.5 bg-indigo-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg">
-                          {userLevel.name}
-                        </div>
-                      </div>
-                      <div className="flex-grow min-w-0">
-                        <h4 className="font-black text-gray-900 text-lg truncate flex items-center gap-1.5">
-                          {user.displayName}
-                          {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-4 h-4 text-indigo-600" />}
-                        </h4>
-                        <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-xl">
-                            <Zap className="w-3 h-3 fill-white" />
-                            <span className="text-[10px] font-black uppercase tracking-wider">{userData.plan || 'Free'} Plan</span>
-                          </div>
-                          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Since {memberSince}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="w-full">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Morph Engine Usage</p>
-                          <p className="text-[10px] font-black text-indigo-600">
-                            {userData.planLimit === -1 ? '∞' : `${usedMorphs} / ${userData.planLimit || 2}`}
-                          </p>
-                        </div>
-                        <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-gray-100 shadow-inner">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            className="h-full bg-indigo-600 rounded-full"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">User Level</p>
-                          <p className={cn("text-sm font-black", userLevel.color)}>{userLevel.name}</p>
-                        </div>
-                        <div className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                          <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Status</p>
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
-                            <p className="text-sm font-black text-gray-900">Active</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={() => { handleTabChange('account'); setIsMenuOpen(false); }}
-                      className="flex items-center justify-center gap-3 py-4 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                      Account
-                    </button>
-                    <button 
-                      onClick={handleLogout}
-                      className="flex items-center justify-center gap-3 py-4 bg-red-50 text-red-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </nav>
+        </header>
       )}
 
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[140] md:hidden"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-100 z-[150] md:hidden overflow-y-auto"
+            >
+              <div className="p-6 space-y-6">
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Main Navigation</p>
+                  <div className="space-y-1">
+                    {[
+                      { id: 'builder', label: 'Morph Engine', icon: Layout },
+                      { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
+                      { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
+                      { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
+                      { id: 'tracker', label: 'Applications', icon: Briefcase },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                          activeTab === item.id 
+                            ? "bg-indigo-600 text-white" 
+                            : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                        )}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Support & More</p>
+                  <div className="space-y-1">
+                    {[
+                      { id: 'guide', label: 'User Guide', icon: BookOpen },
+                      { id: 'about', label: 'About Morph', icon: Info },
+                      { id: 'feedback', label: 'Public Feedback', icon: MessageSquare },
+                      { id: 'contact', label: 'Contact Support', icon: Send },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                          activeTab === item.id 
+                            ? "bg-indigo-50 text-indigo-600" 
+                            : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
+                        )}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-indigo-100 mt-4"
+                >
+                  <Zap className="w-5 h-5 fill-white" />
+                  Upgrade to Premium
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+
       {/* Main Content Area */}
-      <main className="flex-grow relative">
+      <main className={cn(
+        "flex-grow relative",
+        !isPortfolioFullscreen && "pt-24 md:pt-28 pb-24 md:pb-0"
+      )}>
         <div className={cn(activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
         </div>

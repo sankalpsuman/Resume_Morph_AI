@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, Shield, Trophy, Activity, Clock, Trash2, AlertCircle } from 'lucide-react';
+import { X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, Reply, CheckCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -26,8 +28,25 @@ export default function AccountModal({
   onDeleteResume,
   isTabMode = false
 }: AccountModalProps) {
-  const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userFeedback, setUserFeedback] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'feedbacks'),
+      where('uid', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUserFeedback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   if (!user || !userData) return null;
 
@@ -77,10 +96,10 @@ export default function AccountModal({
     <>
       <div className={cn(
         "relative w-full bg-white flex flex-col",
-        isTabMode ? "min-h-screen pt-24 pb-32" : "max-w-3xl rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 max-h-[80vh]"
+        isTabMode ? "w-full pb-32" : "max-w-3xl rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 max-h-[80vh]"
       )}>
         {/* Header - Only show in modal mode */}
-        {!isTabMode && (
+        {!isTabMode ? (
           <div className="p-6 md:p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-br from-gray-50 to-white">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-100">
@@ -97,6 +116,18 @@ export default function AccountModal({
             >
               <X className="w-6 h-6 text-gray-400" />
             </button>
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto w-full px-8 py-10 md:py-16">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-16 h-16 bg-indigo-600 rounded-[24px] flex items-center justify-center shadow-2xl shadow-indigo-200">
+                <User className="text-white w-8 h-8" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-black text-gray-900 tracking-tight">Account Settings</h1>
+                <p className="text-gray-500 font-black uppercase tracking-widest text-[10px]">Identity & Session Control</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -292,6 +323,62 @@ export default function AccountModal({
                 </div>
                 <h4 className="text-lg font-black text-gray-900 mb-2">No History Found</h4>
                 <p className="text-gray-400 font-bold text-sm max-w-xs mx-auto">Start your first resume transformation to see your history here.</p>
+              </div>
+            )}
+          </div>
+
+          {/* User Feedback History */}
+          <div className="space-y-8">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
+                  <MessageSquare className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Your Feedback</h3>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">History of your shared thoughts</p>
+                </div>
+              </div>
+              <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                {userFeedback.length} Submissions
+              </div>
+            </div>
+
+            {userFeedback.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {userFeedback.map((feedback: any) => (
+                  <div 
+                    key={feedback.id}
+                    className="p-6 bg-white rounded-[32px] border border-gray-100 space-y-4 hover:border-indigo-100 transition-all shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <Clock className="w-3 h-3" />
+                        {feedback.createdAt?.toDate ? feedback.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                      </div>
+                      {feedback.reply && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[8px] font-black uppercase tracking-widest">
+                          <CheckCircle className="w-3 h-3" />
+                          Responded
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 font-medium leading-relaxed">"{feedback.message}"</p>
+                    {feedback.reply && (
+                      <div className="pl-4 border-l-2 border-indigo-100 pt-1">
+                        <div className="flex items-center gap-2 text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+                          <Reply className="w-3 h-3" />
+                          Team Reply
+                        </div>
+                        <p className="text-xs text-gray-500 font-medium italic">"{feedback.reply}"</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-12 text-center bg-gray-50/30 rounded-[40px] border-2 border-dashed border-gray-100">
+                <p className="text-gray-400 font-bold text-sm">No feedback submitted yet.</p>
               </div>
             )}
           </div>

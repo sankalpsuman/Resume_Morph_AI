@@ -51,7 +51,11 @@ interface GenerationStep {
   status: 'pending' | 'loading' | 'completed' | 'error';
 }
 
-export default function PortfolioGenerator() {
+interface PortfolioGeneratorProps {
+  onFullscreenChange?: (isFullscreen: boolean) => void;
+}
+
+export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioContent | null>(null);
   const [template, setTemplate] = useState<PortfolioTemplate>('minimal');
@@ -984,7 +988,11 @@ export default function PortfolioGenerator() {
                 <div className="h-8 w-px bg-neutral-200/50 mx-1" />
 
                 <button 
-                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  onClick={() => {
+                    const nextVal = !isFullscreen;
+                    setIsFullscreen(nextVal);
+                    onFullscreenChange?.(nextVal);
+                  }}
                   className="p-3 hover:bg-neutral-100 rounded-2xl transition-all text-neutral-500"
                   title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                 >

@@ -829,107 +829,102 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-200 rotate-3 hover:rotate-0 transition-transform duration-300">
-              <RefreshCw className="text-white w-5 h-5 md:w-7 md:h-7" />
-            </div>
-            <div>
-              <h1 className="text-lg md:text-2xl font-black tracking-tight text-gray-900 leading-tight">Resume Morph</h1>
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold">AI Style Cloning Engine</p>
-              </div>
-            </div>
+      {/* Header - Simplified for Global Header Context */}
+      <div className="max-w-[1500px] mx-auto px-4 md:px-10 py-6 flex items-center justify-between border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-[120px] md:top-[140px] z-40 rounded-b-[40px] shadow-sm mb-8">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Engine Online</span>
           </div>
-          
-          <div className="flex items-center gap-2 md:gap-4">
-            {generatedHtml && (
-              <div className="relative hidden md:block">
-                <button 
-                  onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                  className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-gray-900 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200"
-                >
-                  <Download className="w-3 h-3 md:w-4 md:h-4" />
-                  <span className="hidden xs:inline">Export</span>
-                  <span className="hidden sm:inline">Resume</span>
-                  <Hand className={cn("w-3 h-3 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-12")} />
-                </button>
-
-                <AnimatePresence>
-                  {showDownloadMenu && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10" 
-                        onClick={() => setShowDownloadMenu(false)} 
-                      />
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl border border-gray-100 p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
-                      >
-                        <button 
-                          onClick={handleDownloadHTML}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
-                            <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-700">Download HTML</span>
-                            <span className="text-[10px] text-gray-400">Perfect for web viewing</span>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={handleDownloadWord}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-                            <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-700">Download Word</span>
-                            <span className="text-[10px] text-gray-400">Editable .doc format</span>
-                          </div>
-                        </button>
-                        <div className="h-px bg-gray-100 my-2 mx-2" />
-                        <button 
-                          onClick={handlePrintPDF}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                            <Printer className="w-4 h-4 text-purple-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-700">Save as PDF</span>
-                            <span className="text-[10px] text-gray-400">High-fidelity print</span>
-                          </div>
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-            
-            {(referenceFile || contentFile) && (
-              <button 
-                onClick={reset}
-                disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
-                className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all disabled:opacity-30"
-                title="Reset All"
-              >
-                <MousePointerClick className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+          <div className="h-4 w-px bg-gray-200" />
+          <p className="text-[11px] font-bold text-gray-400">Structural Mirroring Active</p>
         </div>
-      </header>
+        
+        <div className="flex items-center gap-2 md:gap-4">
+          {generatedHtml && (
+            <div className="relative">
+              <button 
+                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                title="Export Resume: Download as PDF, Word, or HTML"
+                className="flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-2.5 bg-gray-900 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:bg-black hover:shadow-2xl hover:shadow-indigo-100 transition-all active:scale-95 shadow-xl shadow-gray-200"
+              >
+                <Download className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden xs:inline">Export</span>
+                <span className="hidden sm:inline">Resume</span>
+                <Hand className={cn("w-3 h-3 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-12")} />
+              </button>
 
-      <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-8 md:py-12">
+              <AnimatePresence>
+                {showDownloadMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setShowDownloadMenu(false)} 
+                    />
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl border border-gray-100 p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
+                    >
+                      <button 
+                        onClick={handleDownloadHTML}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                          <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-700">Download HTML</span>
+                          <span className="text-[10px] text-gray-400">Perfect for web viewing</span>
+                        </div>
+                      </button>
+                      <button 
+                        onClick={handleDownloadWord}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                          <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-700">Download Word</span>
+                          <span className="text-[10px] text-gray-400">Editable .doc format</span>
+                        </div>
+                      </button>
+                      <div className="h-px bg-gray-100 my-2 mx-2" />
+                      <button 
+                        onClick={handlePrintPDF}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
+                          <Printer className="w-4 h-4 text-purple-600 group-hover:text-white" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-700">Save as PDF</span>
+                          <span className="text-[10px] text-gray-400">High-fidelity print</span>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+          
+          {(referenceFile || contentFile) && (
+            <button 
+              onClick={reset}
+              disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
+              title="Reset All: Clear current files and start fresh"
+              className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow-sm rounded-2xl transition-all disabled:opacity-30 group"
+            >
+              <MousePointerClick className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
         <div className="mb-8 md:mb-12">
           <div className="flex flex-wrap items-center gap-4 md:gap-8 bg-white/50 backdrop-blur-md border border-gray-200/50 rounded-[32px] p-5 md:p-8 shadow-sm">
@@ -1012,11 +1007,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   <h2 className="font-black text-xl tracking-tight">The Content</h2>
                   <button
                     onClick={() => setIsImportingLinkedIn(true)}
-                    title="Import data directly from your LinkedIn profile"
+                    title="Import your professional data directly from your LinkedIn profile to save time"
                     className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100"
                   >
                     <Linkedin className="w-3.5 h-3.5" />
-                    LinkedIn Import
+                    Import LinkedIn
                   </button>
                 </div>
                 <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
@@ -1027,7 +1022,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   onDrop={onDropReference} 
                   isProcessing={isAnalyzing} 
                   file={referenceFile?.file}
-                  label="Drop reference resume"
+                  label="Upload Reference Layout (PDF/Image)"
                   color="indigo"
                   disabled={(() => {
                     const limit = userData?.planLimit || 2;
@@ -1186,7 +1181,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   onDrop={onDropContent} 
                   isProcessing={isGenerating} 
                   file={contentFile?.file}
-                  label="Drop your content file"
+                  label="Upload Your Content (Resume/Doc)"
                   color="indigo"
                   disabled={(() => {
                     const limit = userData?.planLimit || 2;
@@ -1204,6 +1199,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       onClick={onUpgrade}
+                      title="Upgrade to Premium for unlimited morphs and advanced features"
                       className="w-full mt-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
                     >
                       <Zap className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
@@ -1215,6 +1211,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       animate={{ opacity: 1, y: 0 }}
                       onClick={handleGenerate}
                       disabled={isGenerating || isAnalyzing}
+                      title="Click to start the Morphing process using your data and the reference style"
                       className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGenerating || isAnalyzing ? (

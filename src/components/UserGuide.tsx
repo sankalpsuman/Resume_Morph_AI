@@ -177,8 +177,47 @@ export default function UserGuide() {
           transition={{ delay: 0.1 }}
           className="text-lg text-gray-500 max-w-2xl mx-auto font-medium"
         >
-          Everything you need to know to transform your professional identity in seconds. Follow our step-by-step guide to get started.
+          Explore the new <strong>Unified Interface</strong>. We've consolidated branding, accounts, and navigation to give you a seamless studio experience.
         </motion.p>
+      </div>
+
+      {/* New UI Tour Section */}
+      <div className="mb-40 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-100">
+            <Layout className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="text-xl font-black text-gray-900 mb-3">Global Header</h3>
+          <p className="text-gray-500 text-sm font-medium mb-4">Your branding and account identity are now anchored at the very top, providing quick access to profile settings and usage stats.</p>
+          <div className="flex flex-col gap-2">
+            <span className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Persistent Branding</span>
+            <span className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Account Integration</span>
+          </div>
+        </div>
+
+        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
+          <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-100">
+            <Layers className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="text-xl font-black text-gray-900 mb-3">Navigation Stack</h3>
+          <p className="text-gray-500 text-sm font-medium mb-4">Switch between tools instantly using the floating navigation bar. It's designed to stay out of your way while keeping every tool one click away.</p>
+          <div className="flex flex-col gap-2">
+            <span className="flex items-center gap-2 text-[10px] font-black text-purple-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Fast Switching</span>
+            <span className="flex items-center gap-2 text-[10px] font-black text-purple-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Mobile Scrollable</span>
+          </div>
+        </div>
+
+        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
+          <div className="w-12 h-12 bg-amber-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-100">
+            <Star className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="text-xl font-black text-gray-900 mb-3">Experience Progress</h3>
+          <p className="text-gray-500 text-sm font-medium mb-4">Watch your user level grow! The progress ring around your avatar tracks your Morph Engine usage in real-time.</p>
+          <div className="flex flex-col gap-2">
+            <span className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Live Progress Ring</span>
+            <span className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Tier Achievement</span>
+          </div>
+        </div>
       </div>
 
       {/* Steps Grid */}

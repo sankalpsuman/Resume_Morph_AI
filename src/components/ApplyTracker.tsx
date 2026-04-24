@@ -190,7 +190,8 @@ export default function ApplyTracker() {
 
         <button 
           onClick={() => setShowAddModal(true)}
-          className="px-8 py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+          title="Add a new job application to your tracker"
+          className="px-8 py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
         >
           <Plus className="w-5 h-5" />
           Add Job

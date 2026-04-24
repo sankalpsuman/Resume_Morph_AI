@@ -367,25 +367,22 @@ export default function SmartEditor() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0 z-30">
+    <div className="h-[calc(100vh-160px)] bg-gray-50 flex flex-col overflow-hidden">
+      {/* Local Context Header */}
+      <div className="h-16 bg-white/50 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-8 md:px-12 shrink-0 z-30">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setStep('import')}
-            className="p-3 hover:bg-gray-50 rounded-2xl transition-colors text-gray-400 hover:text-gray-900"
+            title="Go back to the import screen to upload a different resume"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-500 hover:text-indigo-600 group"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-xs font-black uppercase tracking-widest leading-none">Studio</span>
           </button>
-          <div className="h-8 w-px bg-gray-100" />
-          <div>
-            <h1 className="text-lg font-black text-gray-900 tracking-tight leading-none mb-1">
-              Resume Studio
-            </h1>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Live Editor Active</span>
-            </div>
+          <div className="h-6 w-px bg-gray-100" />
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Live Editor</span>
           </div>
         </div>
 
@@ -394,27 +391,27 @@ export default function SmartEditor() {
             onClick={refreshPreview}
             disabled={isRefreshing}
             title="Synchronize your changes with the live design"
-            className="flex items-center gap-2 px-6 py-3 bg-gray-50 text-gray-900 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 text-gray-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100"
           >
             <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-            Sync Design
+            Sync
           </button>
           <button 
             onClick={downloadPdf}
             disabled={loading}
             title="Download your refined resume as a high-fidelity PDF"
-            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 group"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 group"
           >
             <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Export PDF
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Sidebar: Controls */}
-        <aside className="w-[450px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20">
+        <aside className="w-full lg:w-[450px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-gray-50 shrink-0">
             {(['content', 'design', 'sections', 'analyze'] as const).map((tab) => (

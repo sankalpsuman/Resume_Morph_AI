@@ -133,15 +133,17 @@ export default function CoverLetterGenerator({ resumeData }: { resumeData: any }
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={copyToClipboard}
-                      className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all relative"
+                      title="Copy cover letter to clipboard"
+                      className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all relative group"
                     >
-                      {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
+                      {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />}
                     </button>
                     <button 
                       onClick={downloadTxt}
-                      className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg"
+                      title="Download cover letter as a text file"
+                      className="flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg hover:shadow-indigo-100 group"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
                       Download .txt
                     </button>
                   </div>
