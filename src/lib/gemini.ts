@@ -842,3 +842,36 @@ export async function generateResumeFromData(
     return JSON.parse(extractJson(response.text || "{\"html\": \"\"}"));
   });
 }
+
+export async function compareResumes(oldResume: string, newResume: string): Promise<string> {
+  return withRetry(async (ai) => {
+    const model = "gemini-3-flash-preview";
+
+    const prompt = `You are a career change analyst. Compare these two versions of a resume and summarize the key textual differences and improvements. 
+    Focus on how the AI "Morphed" or improved the content.
+    
+    OLD VERSION (RAW):
+    ${oldResume.substring(0, 5000)}
+    
+    NEW VERSION (GENERATED):
+    ${newResume.substring(0, 5000)}
+    
+    Format the output in clear Markdown:
+    - ### Summary of Changes
+    - ### Improvements Made (Bullet points)
+    - ### Formatting & Structure (Bullet points)
+    - ### Missing Elements (If any)
+    
+    Be objective and professional. Limit the response to 300 words.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0.1,
+      }
+    });
+
+    return response.text || "Could not generate comparison.";
+  });
+}

@@ -9,7 +9,7 @@ import {
   serverTimestamp, deleteDoc, doc, updateDoc, getDoc
 } from 'firebase/firestore';
 import { 
-  signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged 
+  signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signOut, onAuthStateChanged 
 } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { cn } from '../lib/utils';
@@ -35,8 +35,10 @@ export default function Feedback() {
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState<string | null>(null);
   const [deletingItem, setDeletingItem] = useState<{id: string, uid: string} | null>(null);
+
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -45,8 +47,9 @@ export default function Feedback() {
         // Check if user is admin
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
-          const userData = userDoc.data();
-          if (userData?.role === 'admin' || user.email === 'sankalpsmn@gmail.com') {
+          const data = userDoc.data();
+          setUserData(data);
+          if (data?.role === 'admin' || user.email === 'sankalpsmn@gmail.com') {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);
@@ -56,6 +59,7 @@ export default function Feedback() {
         }
       } else {
         setIsAdmin(false);
+        setUserData(null);
       }
     });
 
@@ -76,21 +80,20 @@ export default function Feedback() {
     };
   }, []);
 
-  const handleLogin = async () => {
+  const handleLogin = async (providerType: 'google' | 'github') => {
     if (isLoggingIn) return;
-    setIsLoggingIn(true);
-    const provider = new GoogleAuthProvider();
+    setIsLoggingIn(providerType);
+    const provider = providerType === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        // User closed the popup, no need to log as a critical error
-        console.log('Login popup closed by user');
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        console.log('Login popup closed or cancelled');
       } else {
         console.error('Login failed:', error);
       }
     } finally {
-      setIsLoggingIn(false);
+      setIsLoggingIn(null);
     }
   };
 
@@ -151,8 +154,8 @@ export default function Feedback() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 pt-24 md:pt-32 pb-16 md:pb-24">
-      <div className="max-w-4xl mx-auto px-6 md:px-8">
+    <div className="bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 py-12 md:py-20 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden relative">
+      <div className="max-w-4xl mx-auto px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -183,31 +186,40 @@ export default function Feedback() {
                   <h3 className="text-xl font-black tracking-tight">Sign in to share feedback</h3>
                   <p className="text-gray-500 font-medium">We use Google login to ensure authentic feedback.</p>
                 </div>
-                <button 
-                  onClick={handleLogin}
-                  disabled={isLoggingIn}
-                  className="inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoggingIn ? (
-                    <>
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <button 
+                    onClick={() => handleLogin('google')}
+                    disabled={!!isLoggingIn}
+                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
+                  >
+                    {isLoggingIn === 'google' ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    <>
+                    ) : (
                       <LogIn className="w-5 h-5" />
-                      Sign in with Google
-                    </>
-                  )}
-                </button>
+                    )}
+                    Google
+                  </button>
+                  <button 
+                    onClick={() => handleLogin('github')}
+                    disabled={!!isLoggingIn}
+                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl disabled:opacity-50"
+                  >
+                    {isLoggingIn === 'github' ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <LogIn className="w-5 h-5" />
+                    )}
+                    GitHub
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <img src={user.photoURL} alt={user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100" />
+                    <img src={userData?.photo || user.photoURL} alt={userData?.name || user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100" />
                     <div>
-                      <p className="text-sm font-black text-gray-900">{user.displayName}</p>
+                      <p className="text-sm font-black text-gray-900">{userData?.name || user.displayName}</p>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Logged in</p>
                     </div>
                   </div>

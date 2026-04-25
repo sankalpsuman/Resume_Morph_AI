@@ -153,157 +153,151 @@ export default function UserGuide() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 md:py-20">
-      {/* Hero Section */}
-      <div className="text-center mb-20">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-xs font-black uppercase tracking-widest mb-6"
-        >
-          <BookOpen className="w-4 h-4" />
-          User Guide & Documentation
-        </motion.div>
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-6xl font-black text-gray-900 tracking-tight mb-6"
-        >
-          Master the <span className="text-indigo-600">Morph Engine</span>
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-lg text-gray-500 max-w-2xl mx-auto font-medium mb-10"
-        >
-          Explore the new <strong>Unified Interface</strong>. We've consolidated branding, accounts, and navigation to give you a seamless studio experience.
-        </motion.p>
-
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
-          className="inline-flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 group"
-        >
-          <Rocket className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          Restart Interface Tour
-        </motion.button>
+    <div className="relative min-h-screen selection:bg-indigo-100 font-sans">
+      {/* Background Decorations */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+        <div className="absolute top-[-5%] right-[-10%] w-[600px] h-[600px] bg-indigo-50/50 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] left-[-10%] w-[500px] h-[500px] bg-purple-50/50 rounded-full blur-[100px]" />
       </div>
 
-      {/* New UI Tour Section */}
-      <div className="mb-40 grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-100">
-            <Layout className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-xl font-black text-gray-900 mb-3">Global Header</h3>
-          <p className="text-gray-500 text-sm font-medium mb-4">Your branding and account identity are now anchored at the very top, providing quick access to profile settings and usage stats.</p>
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Persistent Branding</span>
-            <span className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Account Integration</span>
-          </div>
+      <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-32">
+        {/* Hero Section */}
+        <div className="text-center mb-24 md:mb-40">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100/50 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10 shadow-sm"
+          >
+            <BookOpen className="w-4 h-4" />
+            Central Knowledge Hub
+          </motion.div>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-5xl md:text-8xl lg:text-9xl font-black text-gray-900 tracking-tighter mb-10 leading-[0.9] md:leading-[0.8]"
+          >
+            Master the <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600">Morph Engine.</span>
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-lg md:text-2xl text-gray-400 max-w-3xl mx-auto font-medium mb-12 md:mb-16 leading-relaxed"
+          >
+            Your all-in-one guide to professional transformation. Explore how we combine AI precision with high-fidelity design cloning.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-6"
+          >
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-4 px-10 py-6 bg-gray-950 text-white rounded-[32px] text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-2xl shadow-indigo-900/20 group scale-100 active:scale-95"
+            >
+              <Rocket className="w-6 h-6 group-hover:scale-110 transition-transform" />
+              Restart Interface Tour
+            </button>
+            <button
+              onClick={() => document.getElementById('core-workflow')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-4 px-10 py-6 bg-white border border-gray-200 text-gray-600 rounded-[32px] text-xs font-black uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm"
+            >
+              Explore Workflow
+              <ArrowRight className="w-6 h-6" />
+            </button>
+          </motion.div>
         </div>
 
-        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
-          <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-purple-100">
-            <Layers className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-xl font-black text-gray-900 mb-3">Navigation Stack</h3>
-          <p className="text-gray-500 text-sm font-medium mb-4">Switch between tools instantly using the floating navigation bar. It's designed to stay out of your way while keeping every tool one click away.</p>
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-2 text-[10px] font-black text-purple-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Fast Switching</span>
-            <span className="flex items-center gap-2 text-[10px] font-black text-purple-400 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Mobile Scrollable</span>
-          </div>
-        </div>
+        {/* New UI Tour Section - Bento Grid */}
+        <div className="mb-24 md:mb-48 grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+          <motion.div 
+            whileHover={{ y: -8 }}
+            className="p-10 md:p-12 bg-white border border-gray-100 rounded-[56px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 relative overflow-hidden group transition-all duration-500"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-50 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-700" />
+            <div className="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center mb-10 relative z-10 shadow-2xl shadow-indigo-100 group-hover:scale-110 transition-transform">
+              <Layout className="w-8 h-8 text-white" />
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight leading-none">Global Header</h3>
+              <p className="text-gray-500 text-base font-medium mb-8 leading-relaxed">Branding and account identity are anchored at the top for surgical access to profile settings and usage metrics.</p>
+              <div className="flex flex-col gap-4">
+                <span className="flex items-center gap-3 text-[10px] font-black text-indigo-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Persistent Branding</span>
+                <span className="flex items-center gap-3 text-[10px] font-black text-indigo-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Account Integration</span>
+              </div>
+            </div>
+          </motion.div>
 
-        <div className="p-8 bg-white border border-indigo-50 rounded-[40px] shadow-sm">
-          <div className="w-12 h-12 bg-amber-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-amber-100">
-            <Star className="w-6 h-6 text-white" />
+          <motion.div 
+            whileHover={{ y: -8 }}
+            className="p-10 md:p-12 bg-white border border-gray-100 rounded-[56px] shadow-sm hover:shadow-2xl hover:shadow-purple-100/50 relative overflow-hidden group transition-all duration-500"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-purple-50 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-700" />
+            <div className="w-16 h-16 bg-purple-600 rounded-3xl flex items-center justify-center mb-10 relative z-10 shadow-2xl shadow-purple-100 group-hover:scale-110 transition-transform">
+              <Layers className="w-8 h-8 text-white" />
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight leading-none">Navigation Stack</h3>
+              <p className="text-gray-500 text-base font-medium mb-8 leading-relaxed">Switch tools instantly via the floating bar. Designed to stay out of your way while keeping every tool one click away.</p>
+              <div className="flex flex-col gap-4">
+                <span className="flex items-center gap-3 text-[10px] font-black text-purple-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Fast Switching</span>
+                <span className="flex items-center gap-3 text-[10px] font-black text-purple-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Mobile Scrollable</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -8 }}
+            className="p-10 md:p-12 bg-white border border-gray-100 rounded-[56px] shadow-sm hover:shadow-2xl hover:shadow-amber-100/50 relative overflow-hidden group transition-all duration-500"
+          >
+            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-50 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-700" />
+            <div className="w-16 h-16 bg-amber-600 rounded-3xl flex items-center justify-center mb-10 relative z-10 shadow-2xl shadow-amber-100 group-hover:scale-110 transition-transform">
+              <Star className="w-8 h-8 text-white" />
+            </div>
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black text-gray-900 mb-4 tracking-tight leading-none">Usage Progress</h3>
+            <p className="text-gray-500 text-base font-medium mb-8 leading-relaxed">Watch your user level grow! The progress ring around your avatar tracks your Morph Engine usage in real-time.</p>
+            <div className="flex flex-col gap-4">
+              <span className="flex items-center gap-3 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Live Progress Ring</span>
+              <span className="flex items-center gap-3 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-4 h-4" /> Tier Achievement</span>
+            </div>
           </div>
-          <h3 className="text-xl font-black text-gray-900 mb-3">Experience Progress</h3>
-          <p className="text-gray-500 text-sm font-medium mb-4">Watch your user level grow! The progress ring around your avatar tracks your Morph Engine usage in real-time.</p>
-          <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Live Progress Ring</span>
-            <span className="flex items-center gap-2 text-[10px] font-black text-amber-500 uppercase tracking-widest"><CheckCircle2 className="w-3 h-3" /> Tier Achievement</span>
-          </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Steps Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-40">
-        {steps.map((step, index) => (
-          <motion.div 
-            key={step.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1 }}
-            className="p-10 bg-white border border-gray-100 rounded-[40px] shadow-sm hover:shadow-xl hover:shadow-indigo-100/50 transition-all group"
-          >
-            <div className={`w-16 h-16 ${step.color} rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-100 mb-8 group-hover:scale-110 transition-transform`}>
-              <step.icon className="text-white w-8 h-8" />
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-gray-100">0{index + 1}</span>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">{step.title}</h2>
-              </div>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                {step.description}
-              </p>
-              <div className="space-y-2 pt-4">
-                {step.details.map((detail) => (
-                  <div key={detail} className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    {detail}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Portfolio Generation Steps */}
-      <div className="mb-40">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-full text-xs font-black uppercase tracking-widest mb-6"
-          >
-            <Rocket className="w-4 h-4" />
-            Portfolio Generation Guide
-          </motion.div>
-          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">Build Your <span className="text-purple-600">Digital Home</span></h2>
-          <p className="text-gray-500 font-medium max-w-xl mx-auto">
-            Transform your resume into a high-performance portfolio website in three simple steps.
-          </p>
+      <div id="core-workflow" className="scroll-mt-32 mb-32 md:mb-56">
+        <div className="text-center mb-20 md:mb-24">
+          <h2 className="text-4xl md:text-7xl font-black text-gray-900 tracking-tighter leading-none">The Engineering <br /><span className="text-indigo-600">Workflow.</span></h2>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {portfolioSteps.map((step, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 lg:gap-16">
+          {steps.map((step, index) => (
             <motion.div 
               key={step.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="p-10 bg-white border border-gray-100 rounded-[40px] shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all group"
+              className="p-10 md:p-16 bg-white border border-gray-100 rounded-[64px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 transition-all group relative overflow-hidden"
             >
-              <div className={`w-16 h-16 ${step.color} rounded-3xl flex items-center justify-center shadow-2xl shadow-purple-100 mb-8 group-hover:scale-110 transition-transform`}>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-[100px] -mr-8 -mt-8 pointer-events-none transition-transform group-hover:scale-110" />
+              <div className={`w-16 h-16 ${step.color} rounded-[28px] flex items-center justify-center shadow-2xl shadow-indigo-100 mb-10 group-hover:scale-110 transition-transform relative z-10`}>
                 <step.icon className="text-white w-8 h-8" />
               </div>
-              <div className="space-y-4">
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{step.title}</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">
+              <div className="space-y-8 relative z-10">
+                <div className="flex items-center gap-6">
+                  <span className="text-5xl md:text-7xl font-black text-indigo-50 leading-none">0{index + 1}</span>
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-tight">{step.title}</h2>
+                </div>
+                <p className="text-gray-500 font-medium leading-relaxed text-base md:text-xl">
                   {step.description}
                 </p>
-                <div className="space-y-2 pt-4">
+                <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-100">
                   {step.details.map((detail) => (
-                    <div key={detail} className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <div key={detail} className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-3">
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
                       {detail}
                     </div>
@@ -315,12 +309,65 @@ export default function UserGuide() {
         </div>
       </div>
 
-      {/* Role Guides */}
-      <div className="mb-40">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">Guides for <span className="text-indigo-600">Every Role</span></h2>
+      {/* Portfolio Generation Steps */}
+      <div className="mb-32 md:mb-56 bg-gray-950 rounded-[80px] p-12 md:p-24 relative overflow-hidden border border-white/5 shadow-2xl">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
+        
+        <div className="relative z-10 text-center mb-24 md:mb-32">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            className="inline-flex items-center gap-2 px-6 py-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10"
+          >
+            <Rocket className="w-5 h-5" />
+            Precision Deployment
+          </motion.div>
+          <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter mb-10 leading-none">Build Your <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-purple-500 to-pink-500 whitespace-nowrap">Digital Identity.</span></h2>
+          <p className="text-gray-400 font-medium max-w-2xl mx-auto text-lg md:text-2xl leading-relaxed">
+            Transform your static narrative into a high-performance, SaaS-style portfolio in three architectural phases.
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 relative z-10">
+          {portfolioSteps.map((step, index) => (
+            <motion.div 
+              key={step.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+              className="p-12 bg-white/[0.03] border border-white/10 rounded-[56px] backdrop-blur-3xl hover:bg-white/[0.06] transition-all group"
+            >
+              <div className={`w-16 h-16 ${step.color} rounded-[28px] flex items-center justify-center shadow-2xl mb-10 group-hover:scale-110 transition-transform`}>
+                <step.icon className="text-white w-8 h-8" />
+              </div>
+              <div className="space-y-6">
+                <h3 className="text-3xl font-black text-white tracking-tight leading-none">{step.title}</h3>
+                <p className="text-gray-400 font-medium leading-relaxed text-base md:text-lg">
+                  {step.description}
+                </p>
+                <div className="flex flex-wrap gap-3 pt-6 border-t border-white/5">
+                  {step.details.map((detail) => (
+                    <div key={detail} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                      {detail}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Role Guides */}
+      <div className="mb-32 md:mb-56">
+        <div className="text-center mb-20 md:mb-24">
+          <h2 className="text-4xl md:text-7xl font-black text-gray-900 tracking-tighter leading-none">Architected for <br /><span className="text-indigo-600">Every Professional.</span></h2>
+          <p className="text-gray-400 font-medium max-w-2xl mx-auto text-lg md:text-2xl leading-relaxed mt-8 px-4">Specialized strategic guides to navigate every unique career transition phase.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {roleGuides.map((guide, index) => (
             <motion.div
               key={guide.role}
@@ -328,38 +375,40 @@ export default function UserGuide() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="p-10 bg-indigo-900 text-white rounded-[48px] relative overflow-hidden"
+              className="p-12 md:p-14 bg-indigo-950 text-white rounded-[64px] relative overflow-hidden group flex flex-col h-full shadow-2xl shadow-indigo-900/20"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
-              <guide.icon className="w-12 h-12 text-indigo-400 mb-8" />
-              <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest mb-2">{guide.role}</h3>
-              <h4 className="text-2xl font-black mb-4 tracking-tight">{guide.title}</h4>
-              <p className="text-indigo-100/70 font-medium leading-relaxed">
-                {guide.guide}
-              </p>
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-1000 pointer-events-none" />
+              <guide.icon className="w-14 h-14 text-indigo-400 mb-12 group-hover:rotate-12 transition-transform shrink-0" />
+              <div className="flex-grow space-y-6">
+                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">{guide.role}</h3>
+                <h4 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">{guide.title}</h4>
+                <p className="text-indigo-100/70 font-medium leading-relaxed text-base md:text-lg">
+                  {guide.guide}
+                </p>
+              </div>
             </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Premium Plans Section */}
-      <div className="mb-40">
-        <div className="text-center mb-16">
+      {/* Pricing Section - High Resolution Refined */}
+      <div className="mb-32 md:mb-56">
+        <div className="text-center mb-24 md:mb-32">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-full text-xs font-black uppercase tracking-widest mb-6"
+            className="inline-flex items-center gap-2 px-6 py-2 bg-amber-50 text-amber-600 border border-amber-100/50 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10 shadow-sm"
           >
-            <Zap className="w-4 h-4 fill-amber-600" />
-            Premium Access
+            <Zap className="w-5 h-5 fill-amber-600" />
+            Strategic Investment
           </motion.div>
-          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">Simple, Transparent <span className="text-indigo-600">Pricing</span></h2>
-          <p className="text-gray-500 font-medium max-w-xl mx-auto">
-            Choose the plan that fits your career goals. All premium plans include high-priority AI processing and expert support.
+          <h2 className="text-5xl md:text-8xl font-black text-gray-900 tracking-tighter mb-10 leading-none">Simple, Modular <span className="text-indigo-600">Pricing.</span></h2>
+          <p className="text-lg md:text-2xl text-gray-400 font-medium max-w-2xl mx-auto leading-relaxed">
+            Choose the strategic plan that fits your career velocity. Precision AI processing and executive templates included.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.id}
@@ -368,40 +417,42 @@ export default function UserGuide() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
               className={cn(
-                "p-10 rounded-[40px] border-2 transition-all relative overflow-hidden group",
-                plan.popular ? "border-indigo-600 bg-indigo-50/30" : "border-gray-100 bg-white"
+                "p-12 md:p-16 rounded-[64px] border-2 transition-all relative overflow-hidden group flex flex-col h-full",
+                plan.popular ? "border-indigo-600 bg-indigo-50/20 shadow-[0_40px_80px_-20px_rgba(79,70,229,0.2)]" : "border-gray-100 bg-white"
               )}
             >
               {plan.popular && (
-                <div className="absolute top-6 right-6 px-3 py-1 bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                  Most Popular
+                <div className="absolute top-10 right-10 px-5 py-2 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">
+                  Strategic Choice
                 </div>
               )}
-              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-lg", plan.bg)}>
-                <plan.icon className={cn("w-7 h-7", plan.color)} />
+              <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-12 shadow-lg shrink-0", plan.bg)}>
+                <plan.icon className={cn("w-8 h-8", plan.color)} />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">{plan.name}</h3>
-              <p className="text-gray-500 text-sm font-medium mb-8">{plan.desc}</p>
+              <div className="flex-grow space-y-4 mb-12">
+                <h3 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight leading-none">{plan.name}</h3>
+                <p className="text-gray-500 text-base md:text-lg font-medium leading-relaxed">{plan.desc}</p>
+              </div>
               
-              <div className="space-y-4 mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-gray-900">{plan.price}</span>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">/ {plan.morphs}</span>
+              <div className="mb-12">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-5xl md:text-6xl font-black text-gray-900 tracking-tighter">{plan.price}</span>
+                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">/ {plan.morphs}</span>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <div className="space-y-5 pt-12 border-t border-gray-100">
+                <div className="flex items-center gap-4 text-xs font-black text-gray-600 uppercase tracking-widest">
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
                   Premium Templates
                 </div>
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  Priority Support
+                <div className="flex items-center gap-4 text-xs font-black text-gray-600 uppercase tracking-widest">
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  Priority Pipeline
                 </div>
                 {plan.name === "Unlimited Access" && (
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    <Clock className="w-4 h-4 text-indigo-500" />
+                  <div className="flex items-center gap-4 text-xs font-black text-indigo-600 uppercase tracking-widest">
+                    <Clock className="w-5 h-5" />
                     30 Days Validity
                   </div>
                 )}
@@ -411,76 +462,84 @@ export default function UserGuide() {
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="p-12 md:p-20 bg-gray-900 rounded-[64px] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600 rounded-full -mr-48 -mt-48 blur-[120px] opacity-20" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600 rounded-full -ml-48 -mb-48 blur-[120px] opacity-20" />
+      {/* Features Grid Polished */}
+      <div className="p-12 md:p-24 bg-gray-950 rounded-[80px] relative overflow-hidden border border-white/5 shadow-2xl mb-32 md:mb-56">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
         
-        <div className="relative z-10 text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-6">Powerful Features</h2>
-          <p className="text-gray-400 font-medium max-w-xl mx-auto">
-            Our platform is built with the latest AI technology to ensure your resume stands out from the crowd.
+        <div className="relative z-10 text-center mb-24 md:mb-32">
+          <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-none mb-10">Architected for <br /><span className="text-indigo-400">Total Dominance.</span></h2>
+          <p className="text-gray-400 font-medium max-w-2xl mx-auto text-lg md:text-2xl leading-relaxed">
+            Our platform merges executive career strategy with bleeding-edge AI to guarantee surgical precision in every application.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
           {features.map((feature) => (
             <div 
               key={feature.id}
-              className="p-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] hover:bg-white/10 transition-all group"
+              className="p-10 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[48px] hover:bg-white/[0.06] transition-all group"
             >
-              <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <feature.icon className="w-6 h-6 text-indigo-400" />
+              <div className="w-16 h-16 bg-indigo-500/10 rounded-[28px] flex items-center justify-center mb-10 group-hover:scale-110 transition-transform">
+                <feature.icon className="w-8 h-8 text-indigo-400" />
               </div>
-              <h3 className="text-xl font-black text-white mb-2">{feature.title}</h3>
-              <p className="text-gray-400 text-sm font-medium">{feature.desc}</p>
+              <h3 className="text-2xl font-black text-white mb-4 tracking-tight leading-none">{feature.title}</h3>
+              <p className="text-gray-400 text-base md:text-lg font-medium leading-relaxed">{feature.desc}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Manual Upgrade Instructions */}
-      <div className="mt-40 p-12 md:p-20 bg-indigo-50 rounded-[64px] border border-indigo-100">
-        <div className="max-w-3xl mx-auto text-center space-y-8">
-          <div className="w-20 h-20 bg-indigo-600 rounded-[28px] flex items-center justify-center mx-auto shadow-xl shadow-indigo-200">
-            <MessageCircle className="w-10 h-10 text-white fill-white" />
+      {/* Manual Activation Protocol */}
+      <div className="p-12 md:p-24 bg-white border border-gray-100 rounded-[80px] shadow-2xl shadow-indigo-100/20 mb-32 md:mb-56 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600" />
+        <div className="max-w-4xl mx-auto text-center space-y-12">
+          <div className="w-24 h-24 bg-indigo-600 rounded-[32px] flex items-center justify-center mx-auto shadow-2xl shadow-indigo-200">
+            <MessageCircle className="w-12 h-12 text-white fill-white" />
           </div>
-          <h2 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight">Manual Upgrade Process</h2>
-          <p className="text-lg text-gray-600 font-medium">
-            Since we are in early access, we handle premium upgrades manually to ensure the best experience.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div className="p-6 bg-white rounded-3xl border border-indigo-100">
-              <div className="text-2xl font-black text-indigo-600 mb-2">01</div>
-              <p className="text-sm font-bold text-gray-700">Select your preferred plan from the upgrade modal.</p>
+          <div className="space-y-6">
+            <h2 className="text-4xl md:text-7xl font-black text-gray-900 tracking-tighter leading-none">Manual Account <br /><span className="text-indigo-600">Verification.</span></h2>
+            <p className="text-lg md:text-2xl text-gray-400 font-medium leading-relaxed max-w-2xl mx-auto">
+              We bridge technology with a human touch. Every premium account is manually verified by our team to guarantee flawless engine configuration.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-left pt-12">
+            <div className="p-12 bg-gray-50 rounded-[48px] border border-gray-100 hover:border-indigo-200 transition-colors group">
+              <div className="text-5xl font-black text-indigo-100 mb-8 group-hover:text-indigo-200 transition-colors">01</div>
+              <h4 className="text-base font-black text-gray-900 uppercase tracking-widest mb-4 leading-tight">Config</h4>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] leading-relaxed">Choose your strategic plan from the dashboard matrix.</p>
             </div>
-            <div className="p-6 bg-white rounded-3xl border border-indigo-100">
-              <div className="text-2xl font-black text-indigo-600 mb-2">02</div>
-              <p className="text-sm font-bold text-gray-700">Submit your request and click "Contact on WhatsApp".</p>
+            <div className="p-12 bg-gray-50 rounded-[48px] border border-gray-100 hover:border-indigo-200 transition-colors group">
+              <div className="text-5xl font-black text-indigo-100 mb-8 group-hover:text-indigo-200 transition-colors">02</div>
+              <h4 className="text-base font-black text-gray-900 uppercase tracking-widest mb-4 leading-tight">Sync</h4>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] leading-relaxed">Secure activation via our direct WhatsApp support desk.</p>
             </div>
-            <div className="p-6 bg-white rounded-3xl border border-indigo-100">
-              <div className="text-2xl font-black text-indigo-600 mb-2">03</div>
-              <p className="text-sm font-bold text-gray-700">Admin will verify and activate your plan instantly.</p>
+            <div className="p-12 bg-gray-50 rounded-[48px] border border-gray-100 hover:border-indigo-200 transition-colors group">
+              <div className="text-5xl font-black text-indigo-100 mb-8 group-hover:text-indigo-200 transition-colors">03</div>
+              <h4 className="text-base font-black text-gray-900 uppercase tracking-widest mb-4 leading-tight">Launch</h4>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-[0.15em] leading-relaxed">Instant upgrade with personalized boarding experience.</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="mt-40 text-center">
-        <div className="inline-block p-1 rounded-[32px] bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-2xl shadow-indigo-200/50">
-          <div className="bg-white rounded-[30px] px-12 py-16 md:px-24">
-            <h2 className="text-3xl md:text-5xl font-black text-gray-900 mb-6">Ready to Morph?</h2>
-            <p className="text-gray-500 font-medium mb-10 max-w-md mx-auto">
-              Join thousands of professionals who have transformed their careers with Resume Morph.
+      {/* Global Call to Action */}
+      <div className="relative z-10">
+        <div className="px-12 py-24 md:py-48 bg-gray-950 rounded-[100px] text-center relative overflow-hidden border border-white/5 shadow-[0_60px_120px_-30px_rgba(79,70,229,0.3)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.25),transparent_70%)]" />
+          <div className="relative z-10 max-w-4xl mx-auto px-6">
+            <h2 className="text-5xl md:text-9xl font-black text-white tracking-tighter mb-12 leading-[0.85]">Ready to <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-indigo-500 to-purple-400">Transform?</span></h2>
+            <p className="text-gray-400 text-lg md:text-2xl font-medium mb-16 md:mb-24 leading-relaxed px-4">
+              Empower your professional narrative with surgical precision. Join thousands of world-class leaders today.
             </p>
-            <button className="px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] font-black text-lg shadow-2xl shadow-indigo-200 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 mx-auto">
+            <button className="px-12 py-8 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[40px] font-black text-2xl shadow-2xl shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-6 mx-auto group">
               Get Started Now
-              <ArrowRight className="w-6 h-6" />
+              <ArrowRight className="w-10 h-10 group-hover:translate-x-3 transition-transform" />
             </button>
           </div>
         </div>
       </div>
     </div>
+  </div>
   );
 }

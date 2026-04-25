@@ -25,6 +25,8 @@ service cloud.firestore {
              data.email is string &&
              data.email.size() > 0 &&
              (data.createdAt is timestamp || data.createdAt == serverTimestamp()) &&
+             (!('name' in data) || data.name is string) &&
+             (!('photo' in data) || data.photo is string) &&
              (!('morphCount' in data) || data.morphCount is number) &&
              (!('usedMorphs' in data) || data.usedMorphs is number) &&
              (!('freeMorphsUsed' in data) || data.freeMorphsUsed is number) &&
@@ -36,6 +38,7 @@ service cloud.firestore {
              (!('adminMessage' in data) || data.adminMessage is string || data.adminMessage == null) &&
              (!('revokeReason' in data) || data.revokeReason is string || data.revokeReason == null) &&
              (!('lastResetAt' in data) || data.lastResetAt is timestamp || data.lastResetAt == null || data.lastResetAt == serverTimestamp()) &&
+             (!('lastActivityAt' in data) || data.lastActivityAt is timestamp || data.lastActivityAt == null || data.lastActivityAt == serverTimestamp()) &&
              (!('role' in data) || data.role is string) &&
              (!('resumeHistory' in data) || data.resumeHistory is list);
     }
@@ -88,11 +91,17 @@ service cloud.firestore {
     // Collections
     // ===============================================================
 
+    match /test/connection {
+      allow read: if true;
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isAuthenticated() && (
-        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'premiumExpiryDate'])) ||
+        (isOwner(userId) && 
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'premiumExpiryDate', 'createdAt', 'userId']) &&
+         isValidUser(request.resource.data)) ||
         isAdmin()
       );
     }

@@ -67,7 +67,8 @@ export default function ResumeAIAssistant() {
       if (extractedText.trim().length < 50) {
         setLoadingStatus('Employing AI Extraction...');
         console.log("Server extraction minimal, trying frontend AI fallback...");
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Use more robust key detection
+        const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
         if (apiKey) {
           const ai = new GoogleGenAI({ apiKey });
           
@@ -153,7 +154,8 @@ export default function ResumeAIAssistant() {
     setLoadingStatus('Analyzing resume...');
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      // Use more robust key detection
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error("AI configuration missing");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -205,11 +207,11 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
   ];
 
   return (
-    <div className="max-w-6xl mx-auto p-6 md:p-12">
-      <div className="flex flex-col lg:flex-row gap-8 min-h-[700px]">
+    <div className="max-w-6xl mx-auto p-4 md:p-12">
+      <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:min-h-[700px]">
         {/* Left Panel: Upload & Info */}
         <div className="lg:w-1/3 space-y-6">
-          <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm space-y-6">
+          <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6">
             <div className="space-y-2">
               <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
                 <Sparkles className="w-6 h-6 text-white fill-white" />
@@ -223,7 +225,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
             <div 
               {...getRootProps()}
               className={cn(
-                "p-8 border-2 border-dashed rounded-[32px] transition-all cursor-pointer flex flex-col items-center justify-center gap-4 text-center",
+                "p-6 md:p-8 border-2 border-dashed rounded-[24px] md:rounded-[32px] transition-all cursor-pointer flex flex-col items-center justify-center gap-4 text-center",
                 isDragActive ? "border-indigo-500 bg-indigo-50/50" : "border-gray-100 hover:border-indigo-300 hover:bg-gray-50/50",
                 resumeText && "border-green-500 bg-green-50/30"
               )}
@@ -292,14 +294,14 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
         </div>
 
         {/* Right Panel: Chat Interface */}
-        <div className="flex-grow bg-white rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden max-h-[800px]">
+        <div className="flex-grow bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden h-[500px] md:h-[700px] lg:h-auto lg:max-h-[800px]">
           {/* Chat Header */}
-          <div className="p-6 border-b border-gray-50 flex items-center justify-between">
+          <div className="p-4 md:p-6 border-b border-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-4 h-4 text-white fill-white" />
               </div>
-              <h3 className="text-lg font-black text-gray-900 tracking-tight">Strategy Chat</h3>
+              <h3 className="text-base md:text-lg font-black text-gray-900 tracking-tight">Strategy Chat</h3>
             </div>
             <button 
               onClick={() => {
@@ -309,47 +311,47 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
               }}
               className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-red-500 transition-colors"
             >
-              Clear Conversation
+              Clear
             </button>
           </div>
 
           {/* Messages */}
           <div 
             ref={scrollRef}
-            className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar scrolling-touch"
+            className="flex-grow overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 no-scrollbar scrolling-touch"
           >
             {messages.map((msg, i) => (
               <div 
                 key={i} 
                 className={cn(
-                  "flex flex-col max-w-[90%]",
+                  "flex flex-col max-w-[95%] md:max-w-[90%]",
                   msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
                 )}
               >
                 <div className={cn(
-                  "px-6 py-4 rounded-[24px] text-sm md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none",
+                  "px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] text-sm md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none",
                   msg.role === 'user' 
                     ? "bg-indigo-600 text-white rounded-tr-none prose-invert" 
                     : "bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100"
                 )}>
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
-                <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2 px-1">
+                <span className="text-[9px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2 px-1">
                   {msg.role === 'user' ? 'You' : 'Morph Assistant'}
                 </span>
               </div>
             ))}
             {isTyping && (
               <div className="flex flex-col max-w-[90%] mr-auto items-start">
-                <div className="bg-gray-50 px-6 py-4 rounded-[24px] rounded-tl-none border border-gray-100 flex items-center gap-2">
+                <div className="bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] rounded-tl-none border border-gray-100 flex items-center gap-2">
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">{loadingStatus || 'Analyzing...'}</span>
-                    <div className="w-20 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex flex-col gap-0.5 md:gap-1">
+                    <span className="text-[10px] md:text-xs font-black text-indigo-400 uppercase tracking-widest">{loadingStatus || 'Analyzing...'}</span>
+                    <div className="w-16 md:w-20 h-0.5 bg-gray-100 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
@@ -364,7 +366,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
           </div>
 
           {/* Input */}
-          <div className="p-6 border-t border-gray-50 bg-gray-50/30">
+          <div className="p-4 md:p-6 border-t border-gray-50 bg-gray-50/30">
             <div className="relative">
               <input
                 type="text"
@@ -372,13 +374,13 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={resumeText ? "Ask anything about your resume..." : "Upload your resume first..."}
-                className="w-full pl-6 pr-16 py-5 bg-white rounded-[24px] border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-sm md:text-base font-medium transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
+                placeholder={resumeText ? "Ask anything..." : "Upload resume first..."}
+                className="w-full pl-5 pr-14 py-4 md:pl-6 md:pr-16 md:py-5 bg-white rounded-[20px] md:rounded-[24px] border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-sm md:text-base font-medium transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isTyping || !resumeText}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 md:p-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
                 <Send className="w-5 h-5" />
               </button>

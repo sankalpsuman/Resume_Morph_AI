@@ -4,8 +4,8 @@ import { Shield, Lock, Eye, FileText, Globe, RefreshCw } from 'lucide-react';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 pt-24 md:pt-32 pb-16 md:pb-24">
-      <div className="max-w-4xl mx-auto px-6 md:px-8">
+    <div className="bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 py-12 md:py-20 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden relative">
+      <div className="max-w-4xl mx-auto px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

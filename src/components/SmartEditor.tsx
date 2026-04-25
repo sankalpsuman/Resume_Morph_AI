@@ -304,7 +304,7 @@ export default function SmartEditor() {
 
   if (step === 'import') {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-12 md:py-24 min-h-screen">
+      <div className="max-w-6xl mx-auto px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-white border border-gray-100 shadow-sm">
         <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}

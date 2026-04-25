@@ -14,7 +14,7 @@ import Login from './components/Login';
 import SmartEditor from './components/SmartEditor';
 import CoverLetterGenerator from './components/CoverLetterGenerator';
 import ApplyTracker from './components/ApplyTracker';
-import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase } from 'lucide-react';
+import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, storage } from './firebase';
@@ -28,10 +28,11 @@ import PremiumModal from './components/PremiumModal';
 import InteractiveTour from './components/InteractiveTour';
 import ResumeAIAssistant from './components/ResumeAIAssistant';
 import AppChatbot from './components/AppChatbot';
+import Resources from './components/Resources';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
@@ -87,22 +88,29 @@ export default function App() {
         // Create initial user profile if it doesn't exist
         try {
           const initialData = {
-            uid: user.uid,
+            userId: user.uid,
             email: user.email,
-            displayName: user.displayName || 'Morph User',
-            photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'MU')}&background=6366f1&color=fff`,
+            name: user.displayName || 'Morph User',
+            photo: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'MU')}&background=6366f1&color=fff`,
             morphCount: 0,
             usedMorphs: 0,
+            freeMorphsUsed: 0,
+            premiumMorphsUsed: 0,
+            remainingMorphs: 2,
             plan: 'free',
             planLimit: 2,
+            hasReviewed: false,
+            role: 'user',
             createdAt: serverTimestamp(),
-            resumeHistory: [],
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
+            lastActivityAt: serverTimestamp(),
+            resumeHistory: []
           };
           await setDoc(userRef, initialData);
           setUserData(initialData);
         } catch (err) {
           console.error("Failed to initialize user data:", err);
+          handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
         }
       }
       setLoading(false);
@@ -293,18 +301,20 @@ export default function App() {
     }
   };
 
-  const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: 'builder', label: 'Morph Engine', icon: Layout },
-    { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
-    { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
-    { id: 'tracker', label: 'Applications', icon: Briefcase },
-    { id: 'portfolio', label: 'Portfolio', icon: Globe },
-    { id: 'guide', label: 'User Guide', icon: BookOpen },
-    { id: 'account', label: 'Account', icon: UserIcon },
-    { id: 'about', label: 'About', icon: Info },
-    { id: 'privacy', label: 'Privacy', icon: Shield },
-    { id: 'contact', label: 'Contact', icon: Send },
-    { id: 'feedback', label: 'Feedback', icon: MessageSquare },
+  const mainTabs = [
+    { id: 'builder', label: 'Morph Engine', desc: 'Transform raw data into AI-architected resumes', icon: Layout },
+    { id: 'ai-assistant', label: 'AI Coach', desc: 'Mock interviews, feedback, and career growth', icon: BrainCircuit },
+    { id: 'smart-editor', label: 'Smart Editor', desc: 'Live ATS optimization and content refining', icon: Sparkles },
+    { id: 'portfolio', label: 'Portfolio Gen', desc: 'Instant personal website from your resume', icon: Globe },
+    { id: 'cover-letter', label: 'Cover Letter', desc: 'AI-tailored letters for specific job roles', icon: FileText },
+    { id: 'tracker', label: 'Applications', desc: 'Organize and monitor your entire job search', icon: Briefcase },
+  ];
+
+  const resourceTabs = [
+    { id: 'guide', label: 'User Guide', desc: 'Master all Morph features with expert tips', icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'about', label: 'About Morph', desc: 'Our mission to humanize the job search', icon: Info, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { id: 'feedback', label: 'Community', desc: 'Request features and see what others want', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'contact', label: 'Help Desk', desc: '24/7 technical support and inquiries', icon: Send, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   const getLevel = (count: number) => {
@@ -359,65 +369,66 @@ export default function App() {
       </AnimatePresence>
 
       {/* Global Top Header */}
-      {/* Unified Global Header */}
       {!isPortfolioFullscreen && (
-        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 z-[120] flex items-center px-4 md:px-8 shadow-sm">
-          {/* Logo Section */}
-          <div className="flex items-center gap-3 shrink-0 mr-4 md:mr-10 cursor-pointer group" onClick={() => handleTabChange('builder')}>
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
-              <RefreshCw className="text-white w-5 h-5 md:w-7 md:h-7" />
+        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 z-[120] shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+            {/* Logo Section */}
+            <div className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
+              <div className="w-10 h-10 md:w-11 md:h-11 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
+                <RefreshCw className="text-white w-5 h-5 md:w-6 md:h-6" />
+              </div>
+              <div className="hidden xs:block">
+                <h1 className="text-base md:text-lg font-black tracking-tight text-gray-900 leading-none">Morph</h1>
+                <p className="text-[8px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-0.5">AI Engine</p>
+              </div>
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg md:text-xl font-black tracking-tight text-gray-900 leading-none">Resume Morph</h1>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-1">AI Clone Engine</p>
-            </div>
-          </div>
 
-          {/* Desktop/Tablet Navigation - Scrollable Flex Center */}
-          <nav className="flex-grow flex items-center justify-center h-full overflow-visible">
-            <div className="flex items-center gap-1 md:gap-2 max-w-full h-full px-2 overflow-visible">
-              <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth">
-                {[
-                  { id: 'builder', label: 'Morph Engine', icon: Layout },
-                  { id: 'ai-assistant', label: 'AI Coach', icon: BrainCircuit },
-                  { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
-                  { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
-                  { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
-                  { id: 'tracker', label: 'Applications', icon: Briefcase },
-                ].map((tab) => (
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-1 xl:gap-2">
+              {mainTabs.map((tab) => (
+                <div key={tab.id} className="relative group">
                   <button 
-                    key={tab.id}
-                    id={`tab-${tab.id}`}
                     onClick={() => handleTabChange(tab.id as Tab)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
+                      "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs font-black transition-all duration-300 whitespace-nowrap",
                       activeTab === tab.id 
-                        ? "bg-indigo-600 text-white shadow-xl shadow-indigo-200" 
+                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
                         : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
                     )}
                   >
-                    <tab.icon className={cn("w-4 h-4 transition-transform group-hover:scale-110", activeTab === tab.id ? "scale-110" : "")} />
-                    <span className="hidden xl:inline">{tab.label}</span>
+                    <tab.icon className="w-3.5 h-3.5" />
+                    <span className={activeTab === tab.id ? "inline" : "hidden lg:inline"}>{tab.label}</span>
                   </button>
-                ))}
-              </div>
 
-              <div className="h-6 w-px bg-gray-100 mx-2 hidden lg:block" />
+                  {/* Tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[150]">
+                    <div className="bg-gray-900 text-white p-3 rounded-2xl shadow-2xl relative">
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
+                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">{tab.label}</p>
+                      <p className="text-[9px] font-bold text-gray-300 leading-relaxed capitalize">{tab.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </nav>
 
-              <div className="relative shrink-0">
+            {/* Actions Section */}
+            <div className="flex items-center gap-2 md:gap-4">
+              {/* Resources Dropdown (Desktop) */}
+              <div className="hidden sm:block relative">
                 <button 
-                  id="resources-btn"
+                  onMouseEnter={() => setIsResourcesOpen(true)}
                   onClick={() => setIsResourcesOpen(!isResourcesOpen)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs md:text-[13px] font-black transition-all duration-300 whitespace-nowrap group",
-                    ['about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
-                      ? "bg-indigo-50 text-indigo-600" 
-                      : "text-gray-400 hover:text-indigo-600 hover:bg-gray-50"
+                    "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest",
+                    ['resources', 'about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
+                      ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
+                      : "text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
                   )}
                 >
-                  <Info className="w-4 h-4" />
-                  <span className="hidden lg:inline">Resources</span>
-                  <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isResourcesOpen && "rotate-180")} />
+                  <LifeBuoy className="w-4 h-4" />
+                  <span>Resources</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform duration-300", isResourcesOpen ? "rotate-180" : "")} />
                 </button>
                 <AnimatePresence>
                   {isResourcesOpen && (
@@ -425,123 +436,82 @@ export default function App() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute top-full right-0 lg:left-0 mt-3 w-48 bg-white border border-gray-100 rounded-3xl shadow-2xl p-2 z-[130] ring-1 ring-black/5"
+                      onMouseLeave={() => setIsResourcesOpen(false)}
+                      className="absolute top-full right-0 mt-3 w-64 bg-white border border-gray-100 rounded-[28px] shadow-2xl p-2 z-[130] ring-1 ring-black/5"
                     >
-                      {[
-                        { id: 'guide', label: 'User Guide', icon: BookOpen },
-                        { id: 'about', label: 'About', icon: Info },
-                        { id: 'feedback', label: 'Community Feedback', icon: MessageSquare },
-                        { id: 'contact', label: 'Contact Support', icon: Send },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => handleTabChange(item.id as Tab)}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                      <div className="p-3 mb-1">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Knowledge Base</p>
+                      </div>
+                      <div className="space-y-1">
+                        {resourceTabs.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => handleTabChange(item.id as Tab)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-indigo-50 transition-all group"
+                          >
+                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110", item.bg)}>
+                              <item.icon className={cn("w-4 h-4", item.color)} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-gray-900 leading-tight group-hover:text-indigo-600">{item.label}</p>
+                              <p className="text-[9px] font-bold text-gray-400 truncate uppercase mt-0.5 tracking-tighter">{item.desc}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-2 p-4 bg-indigo-600 rounded-2xl text-white">
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 italic">Morph Hub</p>
+                        <p className="text-[11px] font-medium leading-relaxed">Access 50+ resume modules and AI guides.</p>
+                        <button 
+                          onClick={() => handleTabChange('resources')}
+                          className="mt-3 w-full py-2 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-gray-50 active:scale-95"
                         >
-                          <item.icon className="w-4 h-4" />
-                          {item.label}
+                          Open Resources
                         </button>
-                      ))}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            </div>
-          </nav>
 
-          {/* User Section */}
-          <div className="flex items-center gap-3 md:gap-6 shrink-0 ml-4 md:ml-10 border-l border-gray-100 pl-4 md:pl-8">
-            {userData && (
-              <>
-                <button 
-                  id="tab-account"
-                  onClick={() => handleTabChange('account')}
-                  className={cn(
-                    "hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all",
-                    activeTab === 'account' 
-                      ? "bg-indigo-50 text-indigo-600 shadow-sm" 
-                      : "text-gray-400 hover:text-indigo-600 hover:bg-gray-50"
-                  )}
-                >
-                  <UserIcon className="w-4 h-4" />
-                  <span className="hidden xl:inline">Account</span>
-                </button>
-
-                <div className="relative group">
-                  <button 
-                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    className="relative focus:outline-none"
-                  >
-                    <div className="relative p-1 rounded-2xl bg-white shadow-lg group-hover:shadow-indigo-100 transition-all">
-                      <svg className="absolute inset-0 w-full h-full -rotate-90">
-                        <circle cx="20" cy="20" r="18" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-gray-100" />
-                        <motion.circle
-                          initial={{ strokeDasharray: "0 100" }}
-                          animate={{ strokeDasharray: `${progress} 100` }}
-                          cx="20" cy="20" r="18" fill="transparent" stroke="currentColor" strokeWidth="2" strokeDasharray="100 100" className="text-indigo-600"
-                        />
-                      </svg>
-                      <img 
-                        src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || '')}&background=6366f1&color=fff`} 
-                        alt="Profile" 
-                        className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-[14px] object-cover relative z-10"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  </button>
-
-                  <AnimatePresence>
-                    {isUserDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute top-full right-0 mt-3 w-72 bg-white border border-gray-100 rounded-[32px] shadow-2xl p-2 z-[130] ring-1 ring-black/5"
+              {/* Account / User Section */}
+              <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-gray-100">
+                {userData && (
+                  <>
+                    <div className="relative group">
+                      <button 
+                        onClick={() => handleTabChange('account')}
+                        className="relative p-0.5 rounded-xl bg-white shadow-lg border border-gray-100 transition-transform active:scale-95 overflow-hidden"
                       >
-                        <div className="p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl mb-2 border border-indigo-100/30">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="relative">
-                              <img src={user.photoURL || ''} className="w-12 h-12 rounded-xl object-cover" />
-                              <div className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-indigo-600 text-white rounded-lg text-[7px] font-black uppercase tracking-widest">
-                                {userLevel.name}
-                              </div>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-black text-gray-900 truncate">{user.displayName}</p>
-                              <p className="text-[10px] font-bold text-gray-400 truncate">{user.email}</p>
-                            </div>
-                          </div>
-                          <div className="w-full h-1 bg-white rounded-full overflow-hidden mb-1">
-                            <div className="h-full bg-indigo-600" style={{ width: `${progress}%` }} />
-                          </div>
-                          <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Usage: {progress.toFixed(0)}% used</p>
-                        </div>
-                        <div className="space-y-1">
-                          <button onClick={() => { handleTabChange('account'); setIsUserDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 hover:text-indigo-600 transition-all">
-                            <UserIcon className="w-4 h-4" /> Account Settings
-                          </button>
-                          <button onClick={() => { setShowUpgradeModal(true); setIsUserDropdownOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-600 hover:bg-amber-50 transition-all">
-                            <Zap className="w-4 h-4 fill-amber-600" /> Upgrade Plan
-                          </button>
-                          <div className="h-px bg-gray-100 my-1 mx-2" />
-                          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all">
-                            <LogOut className="w-4 h-4" /> Sign Out
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <img 
+                          src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || '')}&background=6366f1&color=fff`} 
+                          alt="Profile" 
+                          className="w-8 h-8 md:w-9 md:h-9 rounded-lg object-cover relative z-10"
+                          referrerPolicy="no-referrer"
+                        />
+                      </button>
 
-                {/* Mobile Menu Toggle */}
-                <button 
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="md:hidden p-2 -mr-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                >
-                  {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-              </>
-            )}
+                      {/* Tooltip */}
+                      <div className="absolute top-full right-0 mt-3 w-40 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[160]">
+                        <div className="bg-gray-900 text-white p-3 rounded-2xl shadow-2xl relative">
+                          <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 rotate-45" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Account</p>
+                          <p className="text-[9px] font-bold text-gray-300 leading-relaxed">View history, settings & plan status</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                      className="md:hidden p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                    >
+                      <Menu className="w-6 h-6" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </header>
       )}
@@ -568,14 +538,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Main Navigation</p>
                   <div className="space-y-1">
-                    {[
-                      { id: 'builder', label: 'Morph Engine', icon: Layout },
-                      { id: 'ai-assistant', label: 'AI Coach', icon: BrainCircuit },
-                      { id: 'smart-editor', label: 'Smart Editor', icon: Sparkles },
-                      { id: 'portfolio', label: 'Portfolio Gen', icon: Globe },
-                      { id: 'cover-letter', label: 'Cover Letter', icon: FileText },
-                      { id: 'tracker', label: 'Applications', icon: Briefcase },
-                    ].map((item) => (
+                    {mainTabs.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
@@ -596,14 +559,9 @@ export default function App() {
                 <div className="h-px bg-gray-100" />
 
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Support & More</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Support & Resources</p>
                   <div className="space-y-1">
-                    {[
-                      { id: 'guide', label: 'User Guide', icon: BookOpen },
-                      { id: 'about', label: 'About Morph', icon: Info },
-                      { id: 'feedback', label: 'Public Feedback', icon: MessageSquare },
-                      { id: 'contact', label: 'Contact Support', icon: Send },
-                    ].map((item) => (
+                    {resourceTabs.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
@@ -618,6 +576,19 @@ export default function App() {
                         {item.label}
                       </button>
                     ))}
+                    {/* Explicitly add Resources Hub if it's not in the main or resource tabs */}
+                    <button
+                      onClick={() => { handleTabChange('resources'); setIsMenuOpen(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                        activeTab === 'resources' 
+                          ? "bg-indigo-50 text-indigo-600" 
+                          : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
+                      )}
+                    >
+                      <LifeBuoy className="w-5 h-6" />
+                      Resources Hub
+                    </button>
                   </div>
                 </div>
                 
@@ -637,44 +608,47 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-grow relative",
-        !isPortfolioFullscreen && "pt-24 md:pt-28 pb-24 md:pb-0"
+        "flex-grow relative w-full",
+        !isPortfolioFullscreen && "pt-24 md:pt-28 pb-24 md:pb-12"
       )}>
-        <div className={cn(activeTab !== 'builder' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
         </div>
 
-        <div className={cn(activeTab !== 'ai-assistant' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'ai-assistant' && "hidden")}>
           <ResumeAIAssistant />
         </div>
-        <div className={cn(activeTab !== 'smart-editor' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'smart-editor' && "hidden")}>
           <SmartEditor />
         </div>
-        <div className={cn(activeTab !== 'cover-letter' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'cover-letter' && "hidden")}>
           <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.data || {}} />
         </div>
-        <div className={cn(activeTab !== 'tracker' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'tracker' && "hidden")}>
           <ApplyTracker />
         </div>
-        <div className={cn(activeTab !== 'portfolio' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'portfolio' && "hidden")}>
           <PortfolioGenerator onFullscreenChange={setIsPortfolioFullscreen} />
         </div>
-        <div className={cn(activeTab !== 'guide' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'guide' && "hidden")}>
           <UserGuide />
         </div>
-        <div className={cn(activeTab !== 'about' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'about' && "hidden")}>
           <About />
         </div>
-        <div className={cn(activeTab !== 'privacy' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'privacy' && "hidden")}>
           <PrivacyPolicy />
         </div>
-        <div className={cn(activeTab !== 'contact' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'contact' && "hidden")}>
           <Contact />
         </div>
-        <div className={cn(activeTab !== 'feedback' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'feedback' && "hidden")}>
           <Feedback />
         </div>
-        <div className={cn(activeTab !== 'account' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'resources' && "hidden")}>
+          <Resources onTabChange={handleTabChange} />
+        </div>
+        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'account' && "hidden")}>
           <AccountModal 
             isOpen={true} 
             onClose={() => handleTabChange('builder')} 
@@ -693,23 +667,24 @@ export default function App() {
       {!isPortfolioFullscreen && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {[
-          { id: 'builder', icon: Layout, label: 'Morph' },
-          { id: 'smart-editor', icon: Sparkles, label: 'Smart' },
-          { id: 'tracker', icon: Briefcase, label: 'Jobs' },
-          { id: 'portfolio', icon: Globe, label: 'Port' },
-          { id: 'account', icon: UserIcon, label: 'Me' },
+          { id: 'builder', icon: Layout, label: 'Morph', desc: 'AI-architected resumes' },
+          { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach', desc: 'Mock interviews & feedback' },
+          { id: 'smart-editor', icon: Sparkles, label: 'Smart', desc: 'Live ATS optimization' },
+          { id: 'tracker', icon: Briefcase, label: 'Jobs', desc: 'Track your search progress' },
+          { id: 'account', icon: UserIcon, label: 'Me', desc: 'Settings & account power' },
         ].map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleTabChange(item.id as Tab)}
-            className={cn(
-              "flex flex-col items-center gap-1 transition-all",
-              activeTab === item.id ? "text-indigo-600" : "text-gray-400"
-            )}
-          >
-            <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50")} />
-            <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-          </button>
+          <div key={item.id} className="relative group flex flex-col items-center">
+            <button
+              onClick={() => handleTabChange(item.id as Tab)}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all",
+                activeTab === item.id ? "text-indigo-600" : "text-gray-400"
+              )}
+            >
+              <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50")} />
+              <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+            </button>
+          </div>
         ))}
       </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, RefreshCw, ShieldCheck, Zap, Target, Star, MessageSquare, User, Info, Heart, Code, Layout, Sparkles, Globe } from 'lucide-react';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
@@ -17,6 +17,8 @@ interface FeedbackItem {
 export default function Login() {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [showNewFeaturePopup, setShowNewFeaturePopup] = useState(false);
+
+  const [isLoggingIn, setIsLoggingIn] = useState<string | null>(null);
 
   useEffect(() => {
     const hasSeenPopup = localStorage.getItem('hasSeenNewFeaturePopup');
@@ -47,47 +49,20 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn('google');
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      // Check if user exists in Firestore, if not create
-      const userRef = doc(db, 'users', user.uid);
-      let userSnap;
-      try {
-        userSnap = await getDoc(userRef);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-        return;
-      }
-
-      if (!userSnap.exists()) {
-        try {
-          await setDoc(userRef, {
-            userId: user.uid,
-            name: user.displayName,
-            email: user.email,
-            photo: user.photoURL,
-            createdAt: serverTimestamp(),
-            morphCount: 0,
-            usedMorphs: 0,
-            remainingMorphs: 2,
-            plan: 'free',
-            planLimit: 2,
-            hasReviewed: false,
-            resumeHistory: []
-          });
-        } catch (error) {
-          handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-        }
-      }
+      await signInWithPopup(auth, provider);
+      // Profile creation is handled globally in App.tsx via onAuthStateChanged/onSnapshot
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('Login popup closed by user');
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        console.log('Login popup closed or cancelled');
       } else {
         console.error('Login failed:', error);
       }
+    } finally {
+      setIsLoggingIn(null);
     }
   };
 
@@ -211,13 +186,20 @@ export default function Login() {
                 <p className="text-gray-500 font-medium text-lg">Sign in to start morphing your resume</p>
               </div>
 
-              <button 
-                onClick={handleLogin}
-                className="w-full flex items-center justify-center gap-4 px-8 py-6 bg-gray-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200 group"
-              >
-                <LogIn className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                Continue with Google
-              </button>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => handleLogin()}
+                  disabled={!!isLoggingIn}
+                  className="w-full flex items-center justify-center gap-4 px-8 py-6 bg-gray-900 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-2xl shadow-gray-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoggingIn === 'google' ? (
+                    <RefreshCw className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <LogIn className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  )}
+                  {isLoggingIn === 'google' ? 'Connecting...' : 'Continue with Google'}
+                </button>
+              </div>
 
               <div className="pt-10 border-t border-gray-100">
                 <div className="flex items-center justify-center gap-2 mb-2">

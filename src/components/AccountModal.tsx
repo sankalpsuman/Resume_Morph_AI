@@ -4,6 +4,9 @@ import { X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, Sh
 import { cn } from '../lib/utils';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { compareResumes } from '../lib/gemini';
+import { Loader2, Diff } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -31,6 +34,9 @@ export default function AccountModal({
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userFeedback, setUserFeedback] = useState<any[]>([]);
+  const [diffData, setDiffData] = useState<string | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  const [comparingResume, setComparingResume] = useState<any>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -85,10 +91,40 @@ export default function AccountModal({
 
   const handlePreview = (resume: any) => {
     if (!resume.html) return;
-    const win = window.open('', '_blank');
-    if (win) {
-      win.document.write(resume.html);
-      win.document.close();
+    try {
+      const blob = new Blob([resume.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e) {
+      // Fallback for some browsers
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(resume.html);
+        win.document.close();
+      }
+    }
+  };
+
+  const handleCompare = async (resume: any) => {
+    if (!resume.html) return;
+    setIsComparing(true);
+    setComparingResume(resume);
+    try {
+      // Create a plain text version for AI comparison
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = resume.html;
+      const cleanText = tempDiv.innerText || tempDiv.textContent || "";
+      
+      // Use original text if available, otherwise fallback to generic label
+      const originalText = resume.originalText || "Original Content (Not Available)";
+      
+      const comparison = await compareResumes(originalText, cleanText);
+      setDiffData(comparison);
+    } catch (err) {
+      console.error("Comparison failed:", err);
+      setDiffData("Failed to generate comparison. Please try again.");
+    } finally {
+      setIsComparing(false);
     }
   };
 
@@ -96,10 +132,12 @@ export default function AccountModal({
     <>
       <div className={cn(
         "relative w-full bg-white flex flex-col",
-        isTabMode ? "w-full pb-32" : "max-w-3xl rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 max-h-[80vh]"
+        isTabMode 
+          ? "w-full pb-32 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
+          : "max-w-3xl rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-gray-100 max-h-[85vh]"
       )}>
         {/* Header - Only show in modal mode */}
-        {!isTabMode ? (
+        {!isTabMode && (
           <div className="p-6 md:p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-br from-gray-50 to-white">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-100">
@@ -117,52 +155,40 @@ export default function AccountModal({
               <X className="w-6 h-6 text-gray-400" />
             </button>
           </div>
-        ) : (
-          <div className="max-w-6xl mx-auto w-full px-8 py-10 md:py-16">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-16 h-16 bg-indigo-600 rounded-[24px] flex items-center justify-center shadow-2xl shadow-indigo-200">
-                <User className="text-white w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-black text-gray-900 tracking-tight">Account Settings</h1>
-                <p className="text-gray-500 font-black uppercase tracking-widest text-[10px]">Identity & Session Control</p>
-              </div>
-            </div>
-          </div>
         )}
 
         <div className={cn(
-          "flex-grow p-6 md:p-10 space-y-10",
-          isTabMode ? "max-w-6xl mx-auto w-full" : "overflow-y-auto"
+          "flex-grow p-6 md:p-12 space-y-8 md:space-y-12",
+          isTabMode ? "w-full" : "overflow-y-auto"
         )}>
           {/* Profile Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8">
             {/* Left: Avatar & Basic Info */}
             <div className="lg:col-span-3 space-y-6">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-8 p-8 bg-white rounded-[40px] border border-gray-100 shadow-sm relative overflow-hidden group">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-6 md:p-8 bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 blur-3xl opacity-50 transition-all group-hover:bg-indigo-100" />
                 
-                <div className="relative shrink-0">
+                  <div className="relative shrink-0">
                   <img 
-                    src={user.photoURL} 
-                    alt={user.displayName} 
-                    className="w-32 h-32 rounded-[32px] border-4 border-white shadow-2xl object-cover relative z-10"
+                    src={userData.photo || user.photoURL} 
+                    alt={userData.name || user.displayName} 
+                    className="w-24 h-24 md:w-32 md:h-32 rounded-[24px] md:rounded-[32px] border-4 border-white shadow-2xl object-cover relative z-10"
                   />
                   <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg z-20">
                     {userLevel.name}
                   </div>
                 </div>
 
-                <div className="flex-grow text-center md:text-left space-y-4 relative z-10">
+                <div className="flex-grow text-center md:text-left space-y-4 relative z-10 w-full md:w-auto">
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900 flex items-center justify-center md:justify-start gap-2">
-                      {user.displayName}
+                    <h3 className="text-xl md:text-2xl font-black text-gray-900 flex items-center justify-center md:justify-start gap-2">
+                      {userData.name || user.displayName}
                       {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-5 h-5 text-indigo-600" />}
                     </h3>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2">
                       <div className="flex items-center gap-2 text-gray-400">
                         <Mail className="w-4 h-4" />
-                        <span className="text-xs font-bold">{user.email}</span>
+                        <span className="text-xs font-bold truncate max-w-[200px]">{user.email}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-400">
                         <Clock className="w-4 h-4" />
@@ -171,7 +197,7 @@ export default function AccountModal({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
                     <div className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
                       {userData.plan || 'Free'} Plan
                     </div>
@@ -181,7 +207,7 @@ export default function AccountModal({
                         className="px-4 py-2 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-gray-100 hover:bg-black transition-all flex items-center gap-2"
                       >
                         <Shield className="w-3.5 h-3.5" />
-                        Admin Panel
+                        Admin
                       </button>
                     )}
                     {user.email !== 'sankalpsmn@gmail.com' && (!userData.plan || userData.plan === 'free') && (
@@ -190,7 +216,7 @@ export default function AccountModal({
                         className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:shadow-indigo-200 transition-all flex items-center gap-2"
                       >
                         <Zap className="w-3.5 h-3.5 fill-white" />
-                        Upgrade Now
+                        Upgrade
                       </button>
                     )}
                   </div>
@@ -199,14 +225,14 @@ export default function AccountModal({
             </div>
 
             {/* Right: Stats Cards */}
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-              <div className="p-6 bg-gradient-to-br from-indigo-50 to-white rounded-[32px] border border-indigo-100/50 flex items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 shrink-0">
-                  <Activity className="w-7 h-7 text-white" />
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 h-fit">
+              <div className="p-6 bg-gradient-to-br from-indigo-50 to-white rounded-[32px] border border-indigo-100/50 flex items-center gap-4 md:gap-5 shadow-sm">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 shrink-0">
+                  <Activity className="w-6 h-6 md:w-7 md:h-7 text-white" />
                 </div>
                 <div>
-                  <p className="text-3xl font-black text-indigo-600 leading-none">{usedMorphs}</p>
-                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Total Morphs</p>
+                  <p className="text-2xl md:text-3xl font-black text-indigo-600 leading-none">{usedMorphs}</p>
+                  <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Total Morphs</p>
                 </div>
               </div>
               
@@ -290,7 +316,14 @@ export default function AccountModal({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar py-1">
+                      <button 
+                        onClick={() => handleCompare(resume)}
+                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-600 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 shadow-sm hover:bg-indigo-100 transition-all active:scale-95"
+                      >
+                        <Diff className="w-4 h-4" />
+                        Differences
+                      </button>
                       <button 
                         onClick={() => handlePreview(resume)}
                         className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white text-gray-600 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
@@ -387,7 +420,7 @@ export default function AccountModal({
         {/* Footer */}
         <div className={cn(
           "p-8 bg-gray-50/50 border-t border-gray-50 flex flex-col sm:flex-row items-center justify-between gap-6",
-          isTabMode && "max-w-6xl mx-auto w-full rounded-b-[48px] mb-20"
+          isTabMode && "w-full rounded-b-[40px] mb-20"
         )}>
           <button 
             onClick={onLogout}
@@ -406,6 +439,102 @@ export default function AccountModal({
           </div>
         </div>
       </div>
+
+      {/* Comparison Modal Overlay */}
+      <AnimatePresence>
+        {(isComparing || diffData) && (
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 md:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { if (!isComparing) { setDiffData(null); setComparingResume(null); } }}
+              className="absolute inset-0 bg-gray-900/80 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 40 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 40 }}
+              className="relative w-full max-w-2xl bg-white rounded-[48px] shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                    {isComparing ? (
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    ) : (
+                      <Diff className="w-6 h-6 text-white" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+                      {isComparing ? 'Analyzing Differences...' : 'Morph Analysis'}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">
+                       Textual evolution and AI improvements
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setDiffData(null); setComparingResume(null); }}
+                  className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
+                >
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-8 overflow-y-auto prose prose-indigo max-w-none">
+                {isComparing ? (
+                  <div className="py-20 text-center space-y-6">
+                    <div className="flex justify-center gap-2">
+                      <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                      <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    </div>
+                    <p className="text-gray-500 font-black text-xs uppercase tracking-widest animate-pulse">Running Deep Difference Analysis...</p>
+                    <p className="text-gray-400 text-sm font-medium">Comparing original intent with generated narrative fidelity.</p>
+                  </div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-6"
+                  >
+                    <div className="p-6 bg-indigo-50/50 rounded-[32px] border border-indigo-100 mb-8">
+                       <div className="flex items-center gap-3 mb-2">
+                          <CheckCircle className="w-4 h-4 text-indigo-600" />
+                          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Target Integrity: 100%</span>
+                       </div>
+                       <p className="text-xs text-indigo-800 font-medium leading-relaxed">
+                         Our Morph Engine has processed the content from <b>{comparingResume?.name}</b> and optimized it for higher ATS impact while maintaining strict structural harmony.
+                       </p>
+                    </div>
+                    <div className="markdown-content prose prose-indigo max-w-none">
+                      <ReactMarkdown>
+                        {diffData || ''}
+                      </ReactMarkdown>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {!isComparing && (
+                <div className="p-8 border-t border-gray-50 bg-gray-50/50 flex justify-end">
+                  <button
+                    onClick={() => { setDiffData(null); setComparingResume(null); }}
+                    className="px-10 py-4 bg-gray-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-gray-200"
+                  >
+                    Done Reviewing
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Overlay */}
       <AnimatePresence>

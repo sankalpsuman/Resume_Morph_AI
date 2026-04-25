@@ -252,7 +252,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         id: resumeId,
         name: name || 'Untitled Resume',
         timestamp: new Date().toISOString(),
-        html: html, // Keep HTML in Firestore for quick access as well
+        html: html, // Keep HTML in Firestore for quick access
+        originalText: contentFile.text || '', // Save original text for diffing
         storagePath: storagePath
       };
 
@@ -789,7 +790,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-indigo-100">
+    <div className="text-[#1A1A1A] font-sans selection:bg-indigo-100">
       {/* Notification Banners */}
       <AnimatePresence>
         {userData?.showRevokeNotice && (

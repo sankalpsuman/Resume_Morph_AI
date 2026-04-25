@@ -560,7 +560,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa] relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans">
+    <div className="relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-white border border-gray-100 shadow-sm relative">
       {/* Atmospheric Background Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-200/20 blur-[120px] animate-pulse" />
@@ -583,7 +583,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 lg:py-24">
+      <div className="relative z-10 max-w-7xl mx-auto px-6">
         
         {/* Hero Header */}
         <header className="max-w-4xl mb-16 lg:mb-28">
