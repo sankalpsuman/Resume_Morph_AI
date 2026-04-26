@@ -863,23 +863,23 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[48px] shadow-2xl overflow-hidden border border-gray-100 text-center p-10"
+              className="relative w-full max-w-md bg-[var(--bg-primary)] rounded-[48px] shadow-2xl overflow-hidden border border-[var(--border-color)] text-center p-10"
             >
-              <div className="w-24 h-24 bg-amber-50 rounded-[32px] flex items-center justify-center mx-auto mb-8 relative">
+              <div className="w-24 h-24 bg-amber-50 dark:bg-amber-900/20 rounded-[32px] flex items-center justify-center mx-auto mb-8 relative">
                 <Star className="w-12 h-12 text-amber-600 fill-amber-600 animate-bounce" />
                 <div className="absolute -top-2 -right-2 bg-indigo-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
                   +2 Bonus
                 </div>
               </div>
               
-              <h2 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Surprise! 🎁</h2>
-              <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+              <h2 className="text-4xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Surprise! 🎁</h2>
+              <p className="text-[var(--text-secondary)] font-medium mb-8 leading-relaxed">
                 An administrator has reset your usage and added <span className="text-indigo-600 font-black">+2 bonus credits</span> to your plan! Enjoy your fresh start.
               </p>
 
               <button
                 onClick={dismissResetSurprise}
-                className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
               >
                 Awesome, Thanks!
               </button>
@@ -889,14 +889,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       </AnimatePresence>
 
       {/* Header - Simplified for Global Header Context */}
-      <div className="max-w-[1500px] mx-auto px-4 md:px-10 py-5 md:py-6 flex flex-col sm:flex-row items-center justify-between border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-[64px] md:top-[140px] z-40 rounded-b-2xl md:rounded-b-[40px] shadow-sm mb-6 md:mb-8 gap-4 sm:gap-2">
+      <div className="max-w-[1500px] mx-auto px-4 md:px-10 py-5 md:py-6 flex flex-col sm:flex-row items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-primary)]/50 backdrop-blur-sm sticky top-[64px] md:top-[140px] z-40 rounded-b-2xl md:rounded-b-[40px] shadow-sm mb-6 md:mb-8 gap-4 sm:gap-2">
         <div className="flex items-center gap-3 md:gap-4 justify-between w-full sm:w-auto">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-500">Engine Online</span>
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Engine Online</span>
           </div>
-          <div className="h-3 w-px bg-gray-200 hidden sm:block" />
-          <p className="text-[10px] md:text-[11px] font-bold text-gray-400">Structural Mirroring Active</p>
+          <div className="h-3 w-px bg-[var(--border-color)] hidden sm:block" />
+          <p className="text-[10px] md:text-[11px] font-bold text-[var(--text-tertiary)]">Structural Mirroring Active</p>
         </div>
         
         <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
@@ -905,7 +905,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                 title="Export Resume: Download as PDF, Word, or HTML"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2.5 bg-gray-900 text-white rounded-xl md:rounded-2xl text-[10px] md:text-sm font-black hover:bg-black hover:shadow-2xl hover:shadow-indigo-100 transition-all active:scale-95 shadow-xl shadow-gray-200 uppercase tracking-widest sm:normal-case sm:tracking-normal"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl md:rounded-2xl text-[10px] md:text-sm font-black hover:opacity-90 hover:shadow-2xl transition-all active:scale-95 shadow-xl shadow-gray-200 dark:shadow-none uppercase tracking-widest sm:normal-case sm:tracking-normal"
               >
                 <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 <span>Export</span>
@@ -924,43 +924,43 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl border border-gray-100 p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
+                      className="absolute right-0 mt-3 w-64 bg-[var(--bg-primary)] rounded-[24px] shadow-2xl border border-[var(--border-color)] p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
                     >
                       <button 
                         onClick={handleDownloadHTML}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
                           <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-700">Download HTML</span>
-                          <span className="text-[10px] text-gray-400">Perfect for web viewing</span>
+                          <span className="font-bold text-[var(--text-primary)]">Download HTML</span>
+                          <span className="text-[10px] text-[var(--text-tertiary)]">Perfect for web viewing</span>
                         </div>
                       </button>
                       <button 
                         onClick={handleDownloadWord}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
                           <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-700">Download Word</span>
-                          <span className="text-[10px] text-gray-400">Editable .doc format</span>
+                          <span className="font-bold text-[var(--text-primary)]">Download Word</span>
+                          <span className="text-[10px] text-[var(--text-tertiary)]">Editable .doc format</span>
                         </div>
                       </button>
-                      <div className="h-px bg-gray-100 my-2 mx-2" />
+                      <div className="h-px bg-[var(--border-color)] my-2 mx-2" />
                       <button 
                         onClick={handlePrintPDF}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 rounded-xl flex items-center gap-3 transition-colors group"
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
                           <Printer className="w-4 h-4 text-purple-600 group-hover:text-white" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-700">Save as PDF</span>
-                          <span className="text-[10px] text-gray-400">High-fidelity print</span>
+                          <span className="font-bold text-[var(--text-primary)]">Save as PDF</span>
+                          <span className="text-[10px] text-[var(--text-tertiary)]">High-fidelity print</span>
                         </div>
                       </button>
                     </motion.div>
@@ -975,7 +975,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               onClick={reset}
               disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
               title="Reset All: Clear current files and start fresh"
-              className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow-sm rounded-2xl transition-all disabled:opacity-30 group"
+              className="p-3 text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm rounded-2xl transition-all disabled:opacity-30 group"
             >
               <MousePointerClick className="w-5 h-5 group-hover:rotate-12 transition-transform" />
             </button>
@@ -986,36 +986,36 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       <main className="max-w-[1440px] mx-auto px-1 sm:px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
         <div className="mb-8 md:mb-12">
-          <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-white/50 backdrop-blur-md border border-gray-200/50 rounded-3xl md:rounded-[32px] p-5 md:p-8 shadow-sm">
+          <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-3xl md:rounded-[32px] p-5 md:p-8 shadow-sm">
             <div className="flex items-center gap-4 md:gap-5 w-full lg:w-auto">
-              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[22px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 shrink-0">
+              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[22px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 dark:shadow-none shrink-0">
                 <Zap className="w-6 h-6 md:w-7 md:h-7 text-white fill-white" />
               </div>
               <div className="flex-grow">
-                <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
+                <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">
+                  <span className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">
                     {userData?.planLimit === -1 ? 'Unlimited' : `${usedMorphs} / ${userData?.planLimit || 2}`}
                   </span>
-                  <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                  <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
                     {userData?.plan || 'Free'} Plan
                   </span>
                 </div>
               </div>
             </div>
             
-            <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
+            <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
             
-            <div className="flex items-center justify-between w-full lg:w-auto gap-4 bg-gray-50/50 px-4 md:px-6 py-3 rounded-2xl border border-gray-100">
+            <div className="flex items-center justify-between w-full lg:w-auto gap-4 bg-[var(--bg-tertiary)] px-4 md:px-6 py-3 rounded-2xl border border-[var(--border-color)]">
               <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Strict Layout</span>
+                <span className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest leading-none">Strict Layout</span>
                 <span className="text-[7px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1">Structural Mirror</span>
               </div>
               <button 
                 onClick={() => setStrictLayout(!strictLayout)}
                 className={cn(
                   "w-10 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
-                  strictLayout ? "bg-indigo-600" : "bg-gray-200"
+                  strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
                 )}
               >
                 <motion.div 
@@ -1029,12 +1029,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
             
             <div className="w-full lg:flex-grow lg:max-w-md">
               <div className="flex items-center justify-between mb-2 md:mb-3">
-                <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Credits</p>
+                <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
                 <p className="text-[9px] md:text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
                   {userData?.planLimit === -1 ? '∞' : Math.max(0, (userData?.planLimit || 2) - usedMorphs)} Morphs Left
                 </p>
               </div>
-              <div className="w-full h-2.5 md:h-3 bg-white rounded-full overflow-hidden border border-gray-100 shadow-inner">
+              <div className="w-full h-2.5 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min((usedMorphs / (userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2))) * 100, 100)}%` }}
@@ -1058,25 +1058,25 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
           
           {/* Left Column: Controls */}
           <div className="lg:col-span-4 space-y-6 md:space-y-8">
-            <div className="bg-white p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-gray-200 shadow-sm space-y-6 md:space-y-10">
+            <div className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10">
               
               <section>
                 <div className="flex flex-col xs:flex-row xs:items-center gap-3 mb-5 md:mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100 shrink-0">1</div>
-                    <h2 className="font-black text-lg md:text-xl tracking-tight">The Content</h2>
+                    <h2 className="font-black text-lg md:text-xl tracking-tight text-[var(--text-primary)]">The Content</h2>
                   </div>
                   <button
                     onClick={() => setIsImportingLinkedIn(true)}
                     title="Import your professional data directly from your LinkedIn profile to save time"
-                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100 w-fit ml-auto xs:ml-0"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100 dark:border-blue-900/30 w-fit ml-auto xs:ml-0"
                   >
                     <Linkedin className="w-3.5 h-3.5" />
                     <span className="xs:hidden">Linked</span>
                     <span className="hidden xs:inline">Import LinkedIn</span>
                   </button>
                 </div>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
+                <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
                   Upload the resume layout you want to clone. We'll analyze its visual DNA.
                 </p>
                 
@@ -1098,7 +1098,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     href="https://word.cloud.microsoft/create/en/resume-templates/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-4 border-2 border-dashed border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all flex items-center justify-center gap-3 group"
+                    className="w-full py-4 border-2 border-dashed border-[var(--border-color)] hover:border-indigo-400 hover:bg-[var(--bg-secondary)] text-[var(--text-tertiary)] hover:text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all flex items-center justify-center gap-3 group"
                   >
                     <Layout className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     Browse Free Reference Layouts
@@ -1111,7 +1111,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     animate={{ opacity: 1, y: 0 }}
                     onClick={handleAnalyzeStyle}
                     disabled={isAnalyzing || isGenerating}
-                    className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <MousePointerClick className="w-3 h-3" />}
                     {isAnalyzing ? "Analyzing Style..." : "Analyze Style"}
@@ -1122,12 +1122,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mt-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center gap-3"
+                    className="mt-4 p-4 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-center gap-3"
                   >
                     <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
                       <CheckCircle className="w-4 h-4 text-white" />
                     </div>
-                    <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Style Captured</p>
+                    <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Style Captured</p>
                   </motion.div>
                 )}
               </section>
@@ -1136,19 +1136,19 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">2</div>
-                    <h2 className="font-black text-xl tracking-tight">Optimization</h2>
+                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Optimization</h2>
                   </div>
                   {jobDescription && (
                     <button 
                       onClick={() => setJobDescription('')}
                       title="Clear the current job description"
-                      className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-wider transition-colors"
+                      className="text-[10px] font-bold text-[var(--text-tertiary)] hover:text-red-500 uppercase tracking-wider transition-colors"
                     >
                       Clear
                     </button>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-medium">
                   Target a specific role? Paste the job description or requirements below.
                 </p>
                 <div className="relative">
@@ -1157,8 +1157,8 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     onChange={(e) => setJobDescription(e.target.value)}
                     placeholder="Paste job description here..."
                     className={cn(
-                      "w-full h-32 p-5 bg-gray-50 border border-gray-200 rounded-[24px] text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white transition-all resize-none placeholder:text-gray-300",
-                      jobDescription && "border-indigo-200 bg-indigo-50/20"
+                      "w-full h-32 p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[24px] text-sm text-[var(--text-primary)] font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-[var(--bg-primary)] transition-all resize-none placeholder:text-[var(--text-tertiary)]",
+                      jobDescription && "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-900/10"
                     )}
                   />
                   <div className="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-none">
@@ -1168,11 +1168,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                         <span className="text-[8px] font-black text-white uppercase tracking-widest">AI Ready</span>
                       </div>
                     ) : (
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest opacity-50">Optional</span>
+                      <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest opacity-50">Optional</span>
                     )}
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                <p className="text-[10px] text-[var(--text-tertiary)] font-bold leading-relaxed">
                   * AI will emphasize relevant skills without removing your original data or adding fake skills.
                 </p>
 
@@ -1198,9 +1198,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               <section className="space-y-4">
                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100">3</div>
-                    <h2 className="font-black text-xl tracking-tight">Smart Length</h2>
+                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Smart Length</h2>
                   </div>
-                  <div className="flex p-1 bg-gray-100 rounded-2xl">
+                  <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)]">
                     {[
                       { id: '1-page', label: '1 Page', sub: 'Standard' },
                       { id: '2-page', label: '2 Pages', sub: 'Senior' },
@@ -1212,7 +1212,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                         title={`Switch to ${mode.label} mode for ${mode.sub} profiles`}
                         className={cn(
                           "flex-1 py-3 px-2 rounded-xl transition-all flex flex-col items-center",
-                          lengthMode === mode.id ? "bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-50" : "text-gray-400 hover:text-gray-600"
+                          lengthMode === mode.id ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm ring-1 ring-indigo-50 dark:ring-indigo-900/30" : "text-[var(--text-tertiary)] hover:text-indigo-600"
                         )}
                       >
                         <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
@@ -1226,7 +1226,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">4</div>
-                    <h2 className="font-black text-xl tracking-tight">Your Content</h2>
+                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Your Content</h2>
                   </div>
                   <button 
                     onClick={() => setIsImportingLinkedIn(true)}
@@ -1236,7 +1236,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                   </button>
                 </div>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
+                <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
                   Upload your data. We'll morph it into the reference style.
                 </p>
                 
@@ -1288,12 +1288,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 )}
               </section>
 
-              <section className={cn("transition-all duration-500 pt-6 border-t border-gray-100", !contentFile && "opacity-30 pointer-events-none blur-[1px]")}>
+              <section className={cn("transition-all duration-500 pt-6 border-t border-[var(--border-color)]", !contentFile && "opacity-30 pointer-events-none blur-[1px]")}>
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">4</div>
-                  <h2 className="font-black text-xl tracking-tight">Match Analysis</h2>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">5</div>
+                  <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Match Analysis</h2>
                 </div>
-                <p className="text-sm text-gray-500 mb-6 leading-relaxed font-medium">
+                <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
                   Paste a specific job description to check your match score.
                 </p>
                 <div className="space-y-4">
@@ -1316,25 +1316,25 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-5 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-4"
+                      className="p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl space-y-4"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Match Score</span>
+                        <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Match Score</span>
                         <span className={cn(
                           "text-2xl font-black",
-                          matchScore >= 80 ? "text-green-600" : matchScore >= 50 ? "text-yellow-600" : "text-red-600"
+                          matchScore >= 80 ? "text-green-600 dark:text-green-400" : matchScore >= 50 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
                         )}>{matchScore}%</span>
                       </div>
                       
                       {missingKeywords.length > 0 && (
                         <div className="space-y-2">
-                          <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          <div className="flex items-center gap-1.5 text-[9px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">
                             <AlertCircle className="w-2.5 h-2.5" />
                             Missing Keywords
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {missingKeywords.map((kw) => (
-                              <span key={kw} className="px-2 py-1 bg-white border border-indigo-100 rounded-lg text-[9px] font-bold text-indigo-600">
+                              <span key={kw} className="px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
                                 {kw}
                               </span>
                             ))}
@@ -1346,15 +1346,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 </div>
               </section>
 
-              <section className="pt-6 border-t border-gray-100">
+              <section className="pt-6 border-t border-[var(--border-color)]">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-green-100">
                     <CheckCircle className="w-4 h-4" />
                   </div>
-                  <h2 className="font-black text-lg tracking-tight">ATS Morph Engine</h2>
+                  <h2 className="font-black text-lg tracking-tight text-[var(--text-primary)]">ATS Morph Engine</h2>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed font-medium">
                     Our engine now automatically optimizes your resume for **Applicant Tracking Systems (ATS)**. 
                   </p>
                   <ul className="space-y-2">
@@ -1364,7 +1364,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       "Keyword density optimization",
                       "Clean, searchable typography"
                     ].map((item) => (
-                      <li key={item} className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <li key={item} className="flex items-center gap-2 text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
                         <div className="w-1 h-1 rounded-full bg-green-500" />
                         {item}
                       </li>
@@ -1373,11 +1373,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 </div>
               </section>
 
-              {error && (
+                {error && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-bold uppercase tracking-wider text-center space-y-3"
+                  className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider text-center space-y-3"
                 >
                   <p>{error}</p>
                 </motion.div>
@@ -1389,36 +1389,36 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
           <div className={cn(
             "transition-all duration-700 ease-in-out w-full",
             isPreviewFull 
-              ? "fixed inset-0 z-[200] bg-[#F8F9FA] p-4 md:p-8 overflow-y-auto" 
+              ? "fixed inset-0 z-[200] bg-[var(--bg-primary)] p-4 md:p-8 overflow-y-auto" 
               : "lg:col-span-8 lg:sticky lg:top-32"
           )}>
             <div className={cn(
-              "bg-white rounded-[24px] md:rounded-[40px] border border-gray-200 shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
+              "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[40px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
               isPreviewFull ? "min-h-screen w-full max-w-5xl mx-auto" : "min-h-[500px] md:min-h-[850px]"
             )}>
-              <div className="h-14 md:h-16 border-b border-gray-100 px-4 md:px-10 flex items-center justify-between bg-gray-50/50">
+              <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)]">
                 <div className="flex items-center gap-3 md:gap-6">
                   <div className="flex items-center gap-2 md:gap-3">
                     <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Preview</span>
+                    <span className="text-[10px] md:text-xs font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Preview</span>
                   </div>
                   
                   {atsScore !== null && (
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 md:gap-3 pl-3 md:pl-6 border-l border-gray-200"
+                      className="flex items-center gap-2 md:gap-3 pl-3 md:pl-6 border-l border-[var(--border-color)]"
                     >
                       <div className={cn(
                         "px-2 md:px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2",
-                        atsScore >= 80 ? "bg-green-100 text-green-700" : 
-                        atsScore >= 50 ? "bg-yellow-100 text-yellow-700" : 
-                        "bg-red-100 text-red-700"
+                        atsScore >= 80 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : 
+                        atsScore >= 50 ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400" : 
+                        "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                       )}>
                         ATS: {atsScore}%
                       </div>
                       {atsFeedback && (
-                        <span className="hidden sm:inline text-[10px] font-bold text-gray-400 truncate max-w-[100px] md:max-w-[200px]" title={atsFeedback}>
+                        <span className="hidden sm:inline text-[10px] font-bold text-[var(--text-tertiary)] truncate max-w-[100px] md:max-w-[200px]" title={atsFeedback}>
                           {atsFeedback}
                         </span>
                       )}
@@ -1445,7 +1445,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     <button 
                       onClick={handleShare}
                       title="Generate a public link for your resume"
-                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
                     >
                       <Globe className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Share Link</span>
@@ -1455,7 +1455,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     <button 
                       onClick={() => setIsPreviewFull(!isPreviewFull)}
                       title={isPreviewFull ? "Exit fullscreen" : "Full View"}
-                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-white border border-gray-200 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm"
+                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
                     >
                       {isPreviewFull ? (
                         <>
@@ -1471,9 +1471,9 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                     </button>
                   )}
                   <div className="hidden sm:flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-red-400 transition-colors" />
-                    <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-yellow-400 transition-colors" />
-                    <div className="w-3 h-3 rounded-full bg-gray-200 group-hover:bg-green-400 transition-colors" />
+                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-red-400 transition-colors" />
+                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-yellow-400 transition-colors" />
+                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-green-400 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -1489,18 +1489,18 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center text-center space-y-6 bg-white z-10"
+                      className="absolute inset-0 flex flex-col items-center justify-center text-center space-y-6 bg-[var(--bg-primary)] z-10"
                     >
                       <div className="relative">
-                        <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+                        <div className="w-20 h-20 border-4 border-indigo-100 dark:border-indigo-900/30 border-t-indigo-600 rounded-full animate-spin" />
                         <RefreshCw className="absolute inset-0 m-auto w-8 h-8 text-indigo-600 animate-pulse" />
                       </div>
-                      <div className="space-y-4 w-full max-w-sm">
+                      <div className="space-y-4 w-full max-w-sm px-6">
                         <div>
-                          <p className="font-black text-2xl tracking-tight">{generationStatus || 'Morphing Content...'}</p>
-                          <p className="text-sm text-gray-400 font-medium mt-1">Applying visual DNA to your professional data</p>
+                          <p className="font-black text-2xl tracking-tight text-[var(--text-primary)]">{generationStatus || 'Morphing Content...'}</p>
+                          <p className="text-sm text-[var(--text-secondary)] font-medium mt-1">Applying visual DNA to your professional data</p>
                         </div>
-                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden px-0">
+                        <div className="h-1.5 w-full bg-[var(--bg-secondary)] rounded-full overflow-hidden px-0 border border-[var(--border-color)]">
                           <motion.div 
                             initial={{ width: "0%" }}
                             animate={{ width: "100%" }}
@@ -1508,7 +1508,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                             className="h-full bg-indigo-600 rounded-full"
                           />
                         </div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Est. time: 15-20 seconds</p>
+                        <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Est. time: 15-20 seconds</p>
                       </div>
                     </motion.div>
                   ) : generatedHtml ? (
@@ -1591,14 +1591,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       key="empty"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="h-full flex flex-col items-center justify-center text-center p-12 min-h-[784px]"
+                      className="h-full flex flex-col items-center justify-center text-center p-12 min-h-[784px] bg-[var(--bg-primary)]"
                     >
-                      <div className="w-40 h-40 bg-gray-50 rounded-[40px] flex items-center justify-center mb-8 rotate-3">
-                        <Layout className="w-20 h-20 text-gray-200" />
+                      <div className="w-40 h-40 bg-[var(--bg-secondary)] rounded-[40px] flex items-center justify-center mb-8 rotate-3 border border-[var(--border-color)]">
+                        <Layout className="w-20 h-20 text-[var(--text-tertiary)] opacity-20" />
                       </div>
                       <div className="max-w-sm">
-                        <h3 className="font-black text-2xl tracking-tight text-gray-300">Awaiting Morph</h3>
-                        <p className="text-sm text-gray-400 font-medium mt-3 leading-relaxed">
+                        <h3 className="font-black text-2xl tracking-tight text-[var(--text-tertiary)] opacity-30">Awaiting Morph</h3>
+                        <p className="text-sm text-[var(--text-tertiary)] font-medium mt-3 leading-relaxed opacity-50">
                           Complete the steps on the left to see your content transformed into a professional masterpiece.
                         </p>
                       </div>
@@ -1626,16 +1626,16 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-[var(--bg-primary)] rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[var(--border-color)]"
             >
               <div className="p-8 sm:p-12 flex flex-col h-full overflow-y-auto">
                 <div className="flex items-center gap-5 mb-10">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100 shrink-0">
+                   <div className="w-16 h-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100 dark:shadow-none shrink-0">
                     <Zap className="w-8 h-8 fill-white" />
                   </div>
                   <div>
-                    <h3 className="font-black text-3xl tracking-tight">Optimization Plan</h3>
-                    <p className="text-base text-gray-500 font-medium">Proposed changes for 100% ATS score</p>
+                    <h3 className="font-black text-3xl tracking-tight text-[var(--text-primary)]">Optimization Plan</h3>
+                    <p className="text-base text-[var(--text-secondary)] font-medium">Proposed changes for 100% ATS score</p>
                   </div>
                 </div>
 
@@ -1646,12 +1646,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.1 }}
-                      className="flex items-start gap-5 p-6 bg-gray-50 rounded-3xl border border-gray-100"
+                      className="flex items-start gap-5 p-6 bg-[var(--bg-secondary)] rounded-3xl border border-[var(--border-color)]"
                     >
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
                         {i + 1}
                       </div>
-                      <p className="text-base font-bold text-gray-700 leading-relaxed">
+                      <p className="text-base font-bold text-[var(--text-primary)] leading-relaxed">
                         {step}
                       </p>
                     </motion.div>
@@ -1661,13 +1661,13 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 <div className="flex gap-5 mt-auto">
                   <button 
                     onClick={() => setShowPlanModal(false)}
-                    className="flex-1 py-5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-3xl font-black text-sm uppercase tracking-widest transition-all"
+                    className="flex-1 py-5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-3xl font-black text-sm uppercase tracking-widest transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={confirmMaximizeAts}
-                    className="flex-[2] py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3"
+                    className="flex-[2] py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-3"
                   >
                     <CheckCircle className="w-5 h-5" />
                     Confirm & Apply
@@ -1685,12 +1685,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
             initial={{ y: 100 }}
             animate={{ y: 0 }}
             exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-[150] md:hidden p-4 bg-white/80 backdrop-blur-lg border-t border-gray-100 shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-[150] md:hidden p-4 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-t border-[var(--border-color)] shadow-2xl"
           >
             <div className="flex gap-3">
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+                className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl"
               >
                 <Download className="w-5 h-5" />
                 Export Resume
@@ -1704,43 +1704,43 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full left-4 right-4 mb-4 bg-white rounded-[32px] shadow-2xl border border-gray-100 p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
+                  className="absolute bottom-full left-4 right-4 mb-4 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
                 >
                   <div className="grid grid-cols-1 gap-2">
                     <button 
                       onClick={() => { handleDownloadHTML(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
                         <FileCode className="w-5 h-5 text-orange-600" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-700">HTML</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Web format</span>
+                        <span className="font-bold text-[var(--text-primary)]">HTML</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Web format</span>
                       </div>
                     </button>
                     <button 
                       onClick={() => { handleDownloadWord(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                         <FileType className="w-5 h-5 text-blue-600" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-700">Word</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Editable .doc</span>
+                        <span className="font-bold text-[var(--text-primary)]">Word</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Editable .doc</span>
                       </div>
                     </button>
                     <button 
                       onClick={() => { handlePrintPDF(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-indigo-50 rounded-2xl flex items-center gap-4 transition-colors"
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                         <Printer className="w-5 h-5 text-purple-600" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-700">PDF</span>
-                        <span className="text-[10px] text-gray-400 uppercase tracking-widest">Print ready</span>
+                        <span className="font-bold text-[var(--text-primary)]">PDF</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Print ready</span>
                       </div>
                     </button>
                   </div>
@@ -1766,15 +1766,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100"
+              className="relative w-full max-w-lg bg-[var(--bg-primary)] rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)]"
             >
               <div className="p-8 md:p-10 text-center">
-                <div className="w-20 h-20 bg-indigo-50 rounded-[28px] flex items-center justify-center mx-auto mb-8">
+                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mx-auto mb-8">
                   <Star className="w-10 h-10 text-indigo-600 fill-indigo-600" />
                 </div>
                 
-                <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Unlock 1 More Morph!</h2>
-                <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+                <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Unlock 1 More Morph!</h2>
+                <p className="text-[var(--text-secondary)] font-medium mb-8 leading-relaxed">
                   You've used your free morph. Share your feedback to unlock one more resume morph for free!
                 </p>
 
@@ -1788,7 +1788,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                       <Star 
                         className={cn(
                           "w-10 h-10 transition-colors",
-                          rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-200"
+                          rating >= star ? "text-yellow-400 fill-yellow-400" : "text-[var(--border-color)]"
                         )} 
                       />
                     </button>
@@ -1799,14 +1799,14 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Tell us what you think... (optional)"
-                  className="w-full h-32 px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-indigo-600 focus:bg-white rounded-[24px] text-sm font-medium transition-all outline-none resize-none mb-8"
+                  className="w-full h-32 px-6 py-4 bg-[var(--bg-secondary)] border-2 border-transparent focus:border-indigo-600 focus:bg-[var(--bg-primary)] rounded-[24px] text-sm font-medium transition-all outline-none resize-none mb-8 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
                 />
 
                 <div className="flex flex-col gap-3">
                   <button
                     onClick={handleFeedbackSubmit}
                     disabled={rating === 0 || isSubmittingFeedback}
-                    className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3"
+                    className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3"
                   >
                     {isSubmittingFeedback ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -1816,7 +1816,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   </button>
                   <button
                     onClick={() => setShowFeedbackModal(false)}
-                    className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
+                    className="w-full py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
                   >
                     Maybe Later
                   </button>
@@ -1846,15 +1846,15 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl p-10 border border-gray-100 space-y-8"
+              className="relative w-full max-w-lg bg-[var(--bg-primary)] rounded-[40px] shadow-2xl p-10 border border-[var(--border-color)] space-y-8"
             >
               <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-100">
+                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-100 dark:shadow-none">
                   <Download className="w-10 h-10 text-indigo-600" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-gray-900 tracking-tight">Save Resume?</h3>
-                  <p className="text-gray-500 font-medium">
+                  <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">Save Resume?</h3>
+                  <p className="text-[var(--text-secondary)] font-medium">
                     {userData.plan === 'premium' 
                       ? "You can save up to 2 morphed resumes in your history. Would you like to save this one?"
                       : "Free users can save 1 morphed resume. Would you like to save this one?"}
@@ -1864,20 +1864,20 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
               {userData.resumeHistory?.length >= (userData.plan === 'premium' ? 2 : 1) ? (
                 <div className="space-y-4">
-                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest text-center">Select a resume to replace</p>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest text-center">Select a resume to replace</p>
                   <div className="grid gap-3">
                     {userData.resumeHistory.map((resume: any) => (
                       <button
                         key={resume.id}
                         onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name, resume.id)}
                         disabled={isSaving}
-                        className="flex items-center justify-between p-4 bg-gray-50 hover:bg-indigo-50 rounded-2xl border border-gray-100 hover:border-indigo-200 transition-all group"
+                        className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl border border-[var(--border-color)] hover:border-indigo-200 transition-all group"
                       >
                         <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
-                          <span className="text-sm font-bold text-gray-700">{resume.name}</span>
+                          <FileText className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-600" />
+                          <span className="text-sm font-bold text-[var(--text-primary)]">{resume.name}</span>
                         </div>
-                        <RefreshCw className="w-4 h-4 text-gray-300 group-hover:text-indigo-400" />
+                        <RefreshCw className="w-4 h-4 text-[var(--border-color)] group-hover:text-indigo-400" />
                       </button>
                     ))}
                   </div>
@@ -1887,7 +1887,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   <button
                     onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name)}
                     disabled={isSaving}
-                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
                   >
                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                     Yes, Save it
@@ -1901,7 +1901,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   setPendingResume(null);
                 }}
                 disabled={isSaving}
-                className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
+                className="w-full py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
               >
                 No, Don't Save
               </button>
@@ -1919,20 +1919,20 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsImportingLinkedIn(false)}
-              className="absolute inset-0 bg-gray-900/40 backdrop-blur-md"
+              className="absolute inset-0 bg-[var(--bg-primary)]/40 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-xl bg-white rounded-[48px] shadow-2xl overflow-hidden p-10 space-y-8"
+              className="relative w-full max-w-xl bg-[var(--bg-primary)] rounded-[48px] shadow-2xl overflow-hidden p-10 space-y-8 border border-[var(--border-color)]"
             >
               <div className="space-y-4">
                 <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-blue-100">
                   <Linkedin className="w-8 h-8" />
                 </div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">LinkedIn Import</h2>
-                <p className="text-sm font-medium text-gray-400">Paste your profile data or PDF text to convert it into a baseline resume.</p>
+                <h2 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">LinkedIn Import</h2>
+                <p className="text-sm font-medium text-[var(--text-tertiary)]">Paste your profile data or PDF text to convert it into a baseline resume.</p>
               </div>
 
               <div className="space-y-6">
@@ -1940,13 +1940,13 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   value={linkedinText}
                   onChange={(e) => setLinkedinText(e.target.value)}
                   placeholder="Paste your 'About', 'Experience', and 'Skills' from LinkedIn profile..."
-                  className="w-full h-60 p-6 bg-gray-50 border-gray-100 rounded-[32px] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-white outline-none resize-none transition-all"
+                  className="w-full h-60 p-6 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[32px] text-[var(--text-primary)] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-[var(--bg-primary)] outline-none resize-none transition-all placeholder:text-[var(--text-tertiary)]"
                 />
                 
                 <div className="flex gap-4">
                   <button
                     onClick={() => setIsImportingLinkedIn(false)}
-                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors"
+                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                   >
                     Cancel
                   </button>
@@ -1999,9 +1999,9 @@ function Dropzone({ onDrop, isProcessing, file, label, color, disabled, id }: {
       className={cn(
         "relative group cursor-pointer transition-all duration-500",
         "border-2 border-dashed rounded-[32px] p-10 text-center",
-        isDragActive ? "border-indigo-500 bg-indigo-50/50 scale-[1.02]" : "border-gray-100 bg-gray-50/50 hover:border-indigo-200 hover:bg-white hover:shadow-xl hover:shadow-indigo-100/20",
+        isDragActive ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 scale-[1.02]" : "border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-indigo-200 hover:bg-[var(--bg-primary)] hover:shadow-xl hover:shadow-indigo-100/20",
         (isProcessing || disabled) && "opacity-50 cursor-not-allowed",
-        file && "border-indigo-200 bg-indigo-50/20",
+        file && "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-900/10",
         disabled && "grayscale grayscale-0 hover:grayscale-0"
       )}
     >
@@ -2010,8 +2010,8 @@ function Dropzone({ onDrop, isProcessing, file, label, color, disabled, id }: {
       <div className="flex flex-col items-center gap-5">
         <div className={cn(
           "w-16 h-16 rounded-[20px] flex items-center justify-center transition-all duration-500 shadow-lg",
-          file ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-white text-gray-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-indigo-200",
-          disabled && "bg-gray-100 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-400"
+          file ? "bg-indigo-600 text-white shadow-indigo-200" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)] group-hover:bg-indigo-600 group-hover:text-white group-hover:shadow-indigo-200",
+          disabled && "bg-[var(--bg-secondary)] text-[var(--text-tertiary)] group-hover:bg-[var(--bg-secondary)] group-hover:text-[var(--text-tertiary)]"
         )}>
           {isProcessing ? (
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -2025,10 +2025,10 @@ function Dropzone({ onDrop, isProcessing, file, label, color, disabled, id }: {
         </div>
         
         <div className="space-y-1">
-          <p className="text-sm font-black tracking-tight">
+          <p className="text-sm font-black tracking-tight text-[var(--text-primary)]">
             {isProcessing ? "Analyzing DNA..." : disabled ? "Limit Reached" : file ? file.name : label}
           </p>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+          <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
             {disabled ? "Upgrade to continue" : file ? `${(file.size / 1024).toFixed(1)} KB` : "PDF, DOCX, TXT or Image"}
           </p>
         </div>

@@ -42,10 +42,10 @@ interface PremiumRequest {
 }
 
 const PLANS = [
-  { id: 'free', name: 'Free', limit: 2, price: 0, color: 'text-gray-600', bg: 'bg-gray-100' },
-  { id: 'premium', name: 'Premium', limit: 7, price: 39, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { id: 'gold', name: 'Gold', limit: 12, price: 79, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-  { id: 'unlimited', name: 'Unlimited', limit: -1, price: 499, color: 'text-purple-600', bg: 'bg-purple-100' }
+  { id: 'free', name: 'Free', limit: 2, price: 0, color: 'text-[var(--text-secondary)]', bg: 'bg-[var(--bg-secondary)]' },
+  { id: 'premium', name: 'Premium', limit: 7, price: 39, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+  { id: 'gold', name: 'Gold', limit: 12, price: 79, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+  { id: 'unlimited', name: 'Unlimited', limit: -1, price: 499, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' }
 ];
 
 export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
@@ -310,34 +310,34 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-6xl bg-white rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col h-[85vh] md:h-[90vh]"
+            className="relative w-full max-w-6xl bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col h-[85vh] md:h-[90vh]"
           >
             {/* Header */}
-            <div className="p-4 md:p-8 border-b border-gray-50 flex flex-col gap-4 bg-gray-50/50">
+            <div className="p-4 md:p-8 border-b border-[var(--border-color)] flex flex-col gap-4 bg-[var(--bg-secondary)]/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 md:gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none">
                     <Shield className="text-white w-5 h-5 md:w-6 md:h-6" />
                   </div>
                   <div>
-                    <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Admin Dashboard</h2>
-                    <p className="hidden md:block text-xs text-gray-400 font-bold uppercase tracking-widest">Manage user plans & permissions</p>
+                    <h2 className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">Admin Dashboard</h2>
+                    <p className="hidden md:block text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Manage user plans & permissions</p>
                   </div>
                 </div>
                 <button 
                   onClick={onClose}
-                  className="p-2 md:p-3 hover:bg-white rounded-xl transition-colors shadow-sm"
+                  className="p-2 md:p-3 hover:bg-[var(--bg-primary)] rounded-xl transition-colors shadow-sm text-[var(--text-primary)]"
                 >
-                  <X className="w-5 h-5 md:w-6 md:h-6 text-gray-400" />
+                  <X className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 bg-white p-1 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-2 bg-[var(--bg-primary)] p-1 rounded-2xl shadow-sm border border-[var(--border-color)] overflow-x-auto no-scrollbar">
                 <button
                   onClick={() => setActiveTab('admin')}
                   className={cn(
                     "flex-shrink-0 px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all",
-                    activeTab === 'admin' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-gray-400 hover:text-gray-600"
+                    activeTab === 'admin' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   )}
                 >
                   Admin
@@ -346,7 +346,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                   onClick={() => setActiveTab('users')}
                   className={cn(
                     "flex-shrink-0 px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all",
-                    activeTab === 'users' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-gray-400 hover:text-gray-600"
+                    activeTab === 'users' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   )}
                 >
                   Users
@@ -355,12 +355,12 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                   onClick={() => setActiveTab('requests')}
                   className={cn(
                     "flex-shrink-0 px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all relative",
-                    activeTab === 'requests' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-gray-400 hover:text-gray-600"
+                    activeTab === 'requests' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   )}
                 >
                   Requests
                   {requests.filter(r => r.status === 'Pending').length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] rounded-full flex items-center justify-center border-2 border-white">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] rounded-full flex items-center justify-center border-2 border-[var(--bg-primary)]">
                       {requests.filter(r => r.status === 'Pending').length}
                     </span>
                   )}
@@ -370,39 +370,39 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
             {/* Search Bar - Only for Users and Requests */}
             {activeTab !== 'admin' && (
-              <div className="p-4 md:p-8 border-b border-gray-50 bg-white">
+              <div className="p-4 md:p-8 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
                 <div className="relative max-w-2xl">
-                  <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-300" />
+                  <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[var(--text-tertiary)]" />
                   <input 
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder={activeTab === 'users' ? "Search users..." : "Search requests..."}
-                    className="w-full pl-11 md:pl-14 pr-4 md:pr-6 py-3 md:py-4 bg-gray-50 border border-gray-100 rounded-xl md:rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                    className="w-full pl-11 md:pl-14 pr-4 md:pr-6 py-3 md:py-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl md:rounded-2xl text-sm font-medium text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-[var(--text-tertiary)]"
                   />
                 </div>
               </div>
             )}
 
             {/* Content List */}
-            <div className="flex-grow overflow-y-auto p-4 md:p-8 bg-gray-50/30">
+            <div className="flex-grow overflow-y-auto p-4 md:p-8 bg-[var(--bg-secondary)]/30">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
                   <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-                  <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Data...</p>
+                  <p className="text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-xs">Loading Data...</p>
                 </div>
               ) : activeTab === 'admin' ? (
                 <div className="space-y-8">
                   {/* Admin Profile Card */}
-                  <div className="bg-white rounded-2xl md:rounded-[32px] p-6 md:p-8 border border-gray-100 shadow-sm">
+                  <div className="bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] p-6 md:p-8 border border-[var(--border-color)] shadow-sm">
                     <div className="flex flex-col md:flex-row items-center md:items-center gap-4 md:gap-6 text-center md:text-left">
-                      <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-100 rounded-2xl md:rounded-3xl flex items-center justify-center">
+                      <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-100 dark:bg-indigo-900/20 rounded-2xl md:rounded-3xl flex items-center justify-center">
                         <Shield className="w-8 h-8 md:w-10 md:h-10 text-indigo-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg md:text-xl font-black text-gray-900">Super Admin Profile</h3>
-                        <p className="text-sm text-gray-500 font-medium break-all">{auth.currentUser?.email}</p>
-                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider">
+                        <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Super Admin Profile</h3>
+                        <p className="text-sm text-[var(--text-secondary)] font-medium break-all">{auth.currentUser?.email}</p>
+                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider">
                           <Crown className="w-3 h-3" />
                           {users.find(u => u.email === auth.currentUser?.email)?.plan || 'Free'} Access
                         </div>
@@ -412,41 +412,41 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-50 rounded-xl md:rounded-2xl flex items-center justify-center">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Users className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                         </div>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Total Users</span>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Total Users</span>
                       </div>
-                      <div className="text-xl md:text-3xl font-black text-gray-900">{stats.totalUsers}</div>
+                      <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.totalUsers}</div>
                     </div>
-                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-50 rounded-xl md:rounded-2xl flex items-center justify-center">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Zap className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
                         </div>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Total Morphs</span>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Total Morphs</span>
                       </div>
-                      <div className="text-xl md:text-3xl font-black text-gray-900">{stats.totalMorphs}</div>
+                      <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.totalMorphs}</div>
                     </div>
-                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-50 rounded-xl md:rounded-2xl flex items-center justify-center">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Clock className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
                         </div>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Pending Requests</span>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Pending Requests</span>
                       </div>
-                      <div className="text-xl md:text-3xl font-black text-gray-900">{stats.pendingRequests}</div>
+                      <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.pendingRequests}</div>
                     </div>
-                    <div className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-green-50 rounded-xl md:rounded-2xl flex items-center justify-center">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-green-50 dark:bg-green-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Crown className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                         </div>
-                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-400">Premium Users</span>
+                        <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Premium Users</span>
                       </div>
-                      <div className="text-xl md:text-3xl font-black text-gray-900">{stats.activePremium}</div>
+                      <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.activePremium}</div>
                     </div>
                   </div>
                 </div>
@@ -462,8 +462,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                         layout
                         key={user.id}
                         className={cn(
-                          "p-4 md:p-6 bg-white rounded-2xl md:rounded-[32px] border transition-all duration-300",
-                          pending ? "border-indigo-200 shadow-xl shadow-indigo-50/50 ring-1 ring-indigo-100" : "border-gray-100 shadow-sm hover:shadow-md"
+                          "p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] border transition-all duration-300",
+                          pending ? "border-indigo-200 dark:border-indigo-800 shadow-xl shadow-indigo-50/50 dark:shadow-none ring-1 ring-indigo-100 dark:ring-indigo-900/20" : "border-[var(--border-color)] shadow-sm hover:shadow-md"
                         )}
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
@@ -473,35 +473,35 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                               <img 
                                 src={user.photo} 
                                 alt={user.name} 
-                                className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-4 border-gray-50 shadow-sm object-cover"
+                                className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-4 border-[var(--bg-secondary)] shadow-sm object-cover"
                               />
                               {pending && (
-                                <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-indigo-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-indigo-600 rounded-full flex items-center justify-center border-2 border-[var(--bg-primary)] shadow-sm">
                                   <RotateCcw className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h4 className="font-black text-gray-900 text-sm md:text-base flex items-center gap-2 truncate">
+                              <h4 className="font-black text-[var(--text-primary)] text-sm md:text-base flex items-center gap-2 truncate">
                                 {user.name}
                                 {user.email === 'sankalpsmn@gmail.com' && (
                                   <Shield className="w-3 h-3 md:w-4 md:h-4 text-indigo-600 flex-shrink-0" />
                                 )}
                               </h4>
-                              <p className="text-[10px] md:text-[11px] text-gray-400 font-bold uppercase tracking-widest truncate">{user.email}</p>
+                              <p className="text-[10px] md:text-[11px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest truncate">{user.email}</p>
                               <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-                                <span className="text-[8px] md:text-[10px] bg-gray-100 text-gray-600 px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest">
+                                <span className="text-[8px] md:text-[10px] bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest">
                                   {user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)}/{user.planLimit === -1 ? '∞' : (user.planLimit || 2)}
                                 </span>
                                 <span className={cn(
                                   "text-[8px] md:text-[10px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1",
-                                  user.planLimit === -1 ? "bg-purple-50 text-purple-600" : "bg-amber-50 text-amber-600"
+                                  user.planLimit === -1 ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600" : "bg-amber-50 dark:bg-amber-900/20 text-amber-600"
                                 )}>
                                   <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 fill-current" />
                                   {user.plan || 'Free'}
                                 </span>
                                 {user.premiumExpiryDate && (
-                                  <span className="text-[8px] md:text-[10px] bg-red-50 text-red-600 px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1">
+                                  <span className="text-[8px] md:text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1">
                                     <Clock className="w-2.5 h-2.5 md:w-3 md:h-3" />
                                     {user.premiumExpiryDate.toDate().toLocaleDateString()}
                                   </span>
@@ -510,14 +510,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                               
                               {/* New: Usage Breakdown */}
                               <div className="flex flex-wrap items-center gap-2 mt-3">
-                                <div className="px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-gray-400">
+                                <div className="px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg text-[8px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">
                                   Free: {user.freeMorphsUsed || 0}
                                 </div>
-                                <div className="px-2 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-indigo-400">
+                                <div className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[8px] font-black uppercase tracking-widest text-indigo-400">
                                   Premium: {user.premiumMorphsUsed || 0}
                                 </div>
                                 {user.lastResetAt && (
-                                  <div className="px-2 py-1 bg-green-50 border border-green-100 rounded-lg text-[8px] font-black uppercase tracking-widest text-green-600">
+                                  <div className="px-2 py-1 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg text-[8px] font-black uppercase tracking-widest text-green-600">
                                     Last Reset: {user.lastResetAt.toDate ? user.lastResetAt.toDate().toLocaleDateString() : new Date(user.lastResetAt).toLocaleDateString()}
                                   </div>
                                 )}
@@ -528,7 +528,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           {/* Plan Selection */}
                           <div className="flex flex-col gap-3 md:gap-4 flex-grow max-w-xl">
                             <div className="flex items-center justify-between mb-0.5">
-                              <p className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Assign New Plan</p>
+                              <p className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-[0.2em]">Assign New Plan</p>
                               <div className="flex items-center gap-3 md:gap-4">
                                 <button
                                   onClick={() => handleResetUsage(user.id)}
@@ -562,14 +562,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                     className={cn(
                                       "px-2 md:px-3 py-2 md:py-3 rounded-xl md:rounded-2xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex flex-col items-center gap-0.5 md:gap-1 border-2",
                                       isSelected
-                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100 scale-[1.02]"
-                                        : "bg-white border-gray-50 text-gray-400 hover:border-indigo-100 hover:text-indigo-600"
+                                        ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20 scale-[1.02]"
+                                        : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-tertiary)] hover:border-[var(--border-hover)] hover:text-indigo-600"
                                     )}
                                   >
                                     <span>{plan.name}</span>
                                     <span className={cn(
                                       "text-[7px] md:text-[8px] opacity-60",
-                                      isSelected ? "text-white" : "text-gray-400"
+                                      isSelected ? "text-white" : "text-[var(--text-tertiary)]"
                                     )}>
                                       ₹{plan.price}
                                     </span>
@@ -589,7 +589,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   exit={{ opacity: 0, scale: 0.9 }}
                                   onClick={() => handleSaveChanges(user.id)}
                                   disabled={updating === user.id}
-                                  className="w-full py-3 md:py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
+                                  className="w-full py-3 md:py-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-2"
                                 >
                                   {updating === user.id ? (
                                     <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
@@ -601,7 +601,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   )}
                                 </motion.button>
                               ) : (
-                                <div className="text-[9px] md:text-[10px] text-gray-300 font-black uppercase tracking-widest flex items-center gap-2 px-4 py-3 md:py-4 border-2 border-dashed border-gray-100 rounded-xl md:rounded-2xl w-full justify-center">
+                                <div className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest flex items-center gap-2 px-4 py-3 md:py-4 border-2 border-dashed border-[var(--border-color)] rounded-xl md:rounded-2xl w-full justify-center">
                                   <Check className="w-3 h-3 md:w-4 md:h-4" />
                                   Active
                                 </div>
@@ -618,15 +618,15 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                   {filteredRequests.map((request) => (
                     <div 
                       key={request.id}
-                      className="p-4 md:p-6 bg-white rounded-2xl md:rounded-[32px] border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6"
+                      className="p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6"
                     >
                       <div className="flex items-center gap-3 md:gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0">
                           <Zap className="w-5 h-5 md:w-6 md:h-6 text-indigo-600" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-black text-gray-900 text-sm md:text-base truncate">{request.name}</h4>
-                          <p className="text-[9px] md:text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">{request.email}</p>
+                          <h4 className="font-black text-[var(--text-primary)] text-sm md:text-base truncate">{request.name}</h4>
+                          <p className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest truncate">{request.email}</p>
                           <p className="text-[9px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest mt-0.5 md:mt-1">
                             {request.selectedPlan} • ₹{request.price}
                           </p>
@@ -639,7 +639,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                             <button
                               onClick={() => handleApproveRequest(request)}
                               disabled={updating === request.id}
-                              className="flex-grow md:flex-grow-0 px-4 md:px-6 py-2.5 md:py-3 bg-green-600 text-white rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-100 flex items-center justify-center gap-2"
+                              className="flex-grow md:flex-grow-0 px-4 md:px-6 py-2.5 md:py-3 bg-green-600 text-white rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-100 dark:shadow-none flex items-center justify-center gap-2"
                             >
                               {updating === request.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                               Approve
@@ -647,7 +647,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                             <button
                               onClick={() => handleRejectRequest(request.id)}
                               disabled={updating === request.id}
-                              className="flex-grow md:flex-grow-0 px-4 md:px-6 py-2.5 md:py-3 bg-red-50 text-red-600 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+                              className="flex-grow md:flex-grow-0 px-4 md:px-6 py-2.5 md:py-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all flex items-center justify-center gap-2"
                             >
                               <X className="w-3 h-3" />
                               Reject
@@ -664,7 +664,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                         ) : (
                           <span className={cn(
                             "px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest",
-                            request.status === 'Approved' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                            request.status === 'Approved' ? "bg-green-50 dark:bg-green-900/20 text-green-600" : "bg-red-50 dark:bg-red-900/20 text-red-600"
                           )}>
                             {request.status}
                           </span>
@@ -673,8 +673,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     </div>
                   ))}
                   {filteredRequests.length === 0 && (
-                    <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-gray-100">
-                      <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No requests found.</p>
+                    <div className="text-center py-20 bg-[var(--bg-primary)] rounded-[40px] border border-dashed border-[var(--border-color)]">
+                      <p className="text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-xs">No requests found.</p>
                     </div>
                   )}
                 </div>
@@ -682,22 +682,22 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
             </div>
 
             {/* Footer */}
-            <div className="p-4 md:p-8 bg-white border-t border-gray-50 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border-color)] flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
                 <div className="flex flex-col">
-                  <span className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                  <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">
                     {activeTab === 'users' ? 'Total Users' : 'Total Requests'}
                   </span>
-                  <span className="text-lg md:text-xl font-black text-gray-900">
+                  <span className="text-lg md:text-xl font-black text-[var(--text-primary)]">
                     {activeTab === 'users' ? users.length : requests.length}
                   </span>
                 </div>
-                <div className="w-px h-8 bg-gray-100" />
+                <div className="w-px h-8 bg-[var(--border-color)]" />
                 <div className="flex flex-col">
-                  <span className="text-[8px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest">Pending</span>
+                  <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Pending</span>
                   <span className={cn(
                     "text-lg md:text-xl font-black",
-                    requests.filter(r => r.status === 'Pending').length > 0 ? "text-red-500" : "text-gray-300"
+                    requests.filter(r => r.status === 'Pending').length > 0 ? "text-red-500" : "text-[var(--text-tertiary)]"
                   )}>
                     {requests.filter(r => r.status === 'Pending').length}
                   </span>
@@ -705,7 +705,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               </div>
               <button 
                 onClick={onClose}
-                className="w-full md:w-auto px-6 md:px-10 py-3 md:py-4 bg-gray-900 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-gray-200"
+                className="w-full md:w-auto px-6 md:px-10 py-3 md:py-4 bg-gray-900 dark:bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black dark:hover:bg-indigo-700 transition-all shadow-xl shadow-gray-200 dark:shadow-none"
               >
                 Exit Admin Panel
               </button>

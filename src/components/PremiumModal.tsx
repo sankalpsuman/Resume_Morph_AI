@@ -100,24 +100,24 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]"
+            className="relative w-full max-w-2xl bg-[var(--bg-primary)] rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-[90vh]"
           >
             {/* Header */}
-            <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-br from-indigo-50 to-white">
+            <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-indigo-50/50 dark:from-indigo-900/10 to-[var(--bg-primary)]">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none">
                   <Zap className="text-white w-6 h-6 fill-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Upgrade to Premium</h2>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Unlock the full power of AI</p>
+                  <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Upgrade to Premium</h2>
+                  <p className="text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Unlock the full power of AI</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-3 hover:bg-white rounded-xl transition-colors shadow-sm"
+                className="p-3 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors shadow-sm"
               >
-                <X className="w-6 h-6 text-gray-400" />
+                <X className="w-6 h-6 text-[var(--text-tertiary)]" />
               </button>
             </div>
 
@@ -132,8 +132,8 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         className={cn(
                           "relative p-6 rounded-[32px] border-2 transition-all duration-300 text-left flex flex-col h-full",
                           selectedPlan === plan.id 
-                            ? "border-indigo-600 bg-indigo-50/30 shadow-xl shadow-indigo-100/50" 
-                            : "border-gray-100 hover:border-indigo-200 hover:bg-gray-50/50"
+                            ? "border-indigo-600 bg-indigo-50/30 dark:bg-indigo-900/20 shadow-xl shadow-indigo-100/50 dark:shadow-none" 
+                            : "border-[var(--border-color)] hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-[var(--bg-secondary)]/50"
                         )}
                       >
                         {plan.popular && (
@@ -144,11 +144,11 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 shadow-lg", plan.color)}>
                           <plan.icon className="w-5 h-5 text-white" />
                         </div>
-                        <h3 className="font-black text-gray-900 mb-1">{plan.name}</h3>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4">{plan.description}</p>
+                        <h3 className="font-black text-[var(--text-primary)] mb-1">{plan.name}</h3>
+                        <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-4">{plan.description}</p>
                         <div className="mt-auto">
-                          <p className="text-2xl font-black text-gray-900">₹{plan.price}</p>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          <p className="text-2xl font-black text-[var(--text-primary)]">₹{plan.price}</p>
+                          <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
                             {plan.morphs > 0 && `${plan.morphs} Morphs`}
                             {plan.morphs > 0 && plan.portfolios > 0 && ' + '}
                             {plan.portfolios > 0 && `${plan.portfolios} Portfolios`}
@@ -163,8 +163,8 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                     ))}
                   </div>
 
-                  <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100">
-                    <h4 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2">
+                  <div className="p-6 bg-[var(--bg-secondary)] rounded-[32px] border border-[var(--border-color)]">
+                    <h4 className="text-sm font-black text-[var(--text-primary)] mb-4 flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
                       What's included:
                     </h4>
@@ -177,7 +177,7 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         'Expert Support',
                         'Future Feature Access'
                       ].map((feature) => (
-                        <li key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                        <li key={feature} className="flex items-center gap-2 text-xs font-bold text-[var(--text-secondary)]">
                           <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
                           {feature}
                         </li>
@@ -188,7 +188,7 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                   <button
                     disabled={!selectedPlan || isSubmitting}
                     onClick={handleRequest}
-                    className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                    className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                   >
                     {isSubmitting ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -202,12 +202,12 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                 </div>
               ) : (
                 <div className="text-center py-12 space-y-8">
-                  <div className="w-20 h-20 bg-green-100 rounded-[32px] flex items-center justify-center mx-auto shadow-xl shadow-green-50">
-                    <Check className="w-10 h-10 text-green-600" />
+                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-[32px] flex items-center justify-center mx-auto shadow-xl shadow-green-50 dark:shadow-none">
+                    <Check className="w-10 h-10 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Request Submitted!</h3>
-                    <p className="text-gray-500 font-medium max-w-xs mx-auto">
+                    <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tight mb-2">Request Submitted!</h3>
+                    <p className="text-[var(--text-tertiary)] font-medium max-w-xs mx-auto">
                       Your request is pending. Please contact us on WhatsApp to complete your payment and activate your plan.
                     </p>
                   </div>
@@ -215,14 +215,14 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                   <div className="space-y-4">
                     <button
                       onClick={handleWhatsApp}
-                      className="w-full py-5 bg-[#25D366] text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-green-100 hover:bg-[#128C7E] transition-all flex items-center justify-center gap-3"
+                      className="w-full py-5 bg-[#25D366] text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-green-100 dark:shadow-none hover:bg-[#128C7E] transition-all flex items-center justify-center gap-3"
                     >
                       <MessageCircle className="w-6 h-6 fill-white" />
                       Contact on WhatsApp
                     </button>
                     <button
                       onClick={onClose}
-                      className="w-full py-4 text-gray-400 font-bold text-xs uppercase tracking-widest hover:text-gray-600 transition-colors"
+                      className="w-full py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
                     >
                       Close Window
                     </button>

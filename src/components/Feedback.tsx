@@ -154,7 +154,7 @@ export default function Feedback() {
   };
 
   return (
-    <div className="bg-white text-[#1A1A1A] font-sans selection:bg-indigo-100 py-12 md:py-20 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-hidden relative">
+    <div className="bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans selection:bg-indigo-100 py-12 md:py-20 rounded-[32px] md:rounded-[40px] shadow-sm border border-[var(--border-color)] overflow-hidden relative transition-colors duration-300">
       <div className="max-w-4xl mx-auto px-6 md:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -163,34 +163,34 @@ export default function Feedback() {
           className="space-y-12"
         >
           <div className="text-center space-y-4 md:space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 rounded-full text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-indigo-600 dark:text-indigo-400 text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">
               <MessageSquare className="w-3 h-3" />
               Community Feedback
             </div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-gray-900 leading-tight md:leading-none">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-[var(--text-primary)] leading-tight md:leading-none">
               User <span className="text-indigo-600">Feedback.</span>
             </h1>
-            <p className="text-base md:text-lg text-gray-500 font-medium max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-lg text-[var(--text-secondary)] font-medium max-w-2xl mx-auto leading-relaxed">
               We value your thoughts. Share your experience with Resume Morph and help us grow.
             </p>
           </div>
 
           {/* Submission Form */}
-          <section className="bg-gray-50 rounded-[32px] md:rounded-[40px] p-8 md:p-12 border border-gray-100 shadow-sm">
+          <section className="bg-[var(--bg-secondary)] rounded-[32px] md:rounded-[40px] p-8 md:p-12 border border-[var(--border-color)] shadow-sm">
             {!user ? (
               <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto">
-                  <LogIn className="w-8 h-8 text-indigo-600" />
+                <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/40 rounded-2xl flex items-center justify-center mx-auto">
+                  <LogIn className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-xl font-black tracking-tight">Sign in to share feedback</h3>
-                  <p className="text-gray-500 font-medium">We use Google login to ensure authentic feedback.</p>
+                  <h3 className="text-xl font-black tracking-tight text-[var(--text-primary)]">Sign in to share feedback</h3>
+                  <p className="text-[var(--text-secondary)] font-medium">We use Google or GitHub login to ensure authentic feedback.</p>
                 </div>
                 <div className="flex flex-col md:flex-row items-center gap-4">
                   <button 
                     onClick={() => handleLogin('google')}
                     disabled={!!isLoggingIn}
-                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
+                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-[var(--bg-primary)] border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
                   >
                     {isLoggingIn === 'google' ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -202,7 +202,7 @@ export default function Feedback() {
                   <button 
                     onClick={() => handleLogin('github')}
                     disabled={!!isLoggingIn}
-                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl disabled:opacity-50"
+                    className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 bg-gray-900 border border-gray-800 hover:bg-black text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl disabled:opacity-50"
                   >
                     {isLoggingIn === 'github' ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -217,16 +217,16 @@ export default function Feedback() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <img src={userData?.photo || user.photoURL} alt={userData?.name || user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100" />
+                    <img src={userData?.photo || user.photoURL} alt={userData?.name || user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100 dark:border-indigo-900/40" />
                     <div>
-                      <p className="text-sm font-black text-gray-900">{userData?.name || user.displayName}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Logged in</p>
+                      <p className="text-sm font-black text-[var(--text-primary)]">{userData?.name || user.displayName}</p>
+                      <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Logged in</p>
                     </div>
                   </div>
                   <button 
                     type="button"
                     onClick={handleLogout}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-2 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                     title="Logout"
                   >
                     <LogOut className="w-5 h-5" />
@@ -235,28 +235,28 @@ export default function Feedback() {
 
                 <div className="grid grid-cols-1 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Your Name</label>
+                    <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-4">Your Name</label>
                     <div className="relative">
-                      <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
+                      <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
                       <input 
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Enter your name..."
                         required
-                        className="w-full pl-14 pr-6 py-4 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                        className="w-full pl-14 pr-6 py-4 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl text-sm font-medium text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">Your Message</label>
+                    <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-4">Your Message</label>
                     <textarea 
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Tell us what you think..."
                       required
-                      className="w-full p-6 bg-white border border-gray-200 rounded-[24px] text-sm font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all h-32 resize-none"
+                      className="w-full p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[24px] text-sm font-medium text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all h-32 resize-none"
                     />
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function Feedback() {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 disabled:opacity-50"
+                  className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                   Submit Feedback
@@ -276,8 +276,8 @@ export default function Feedback() {
           {/* Feedback List */}
           <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-black tracking-tight">Recent Feedback</h2>
-              <div className="flex items-center gap-2 text-gray-400">
+              <h2 className="text-2xl font-black tracking-tight text-[var(--text-primary)]">Recent Feedback</h2>
+              <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 <span className="text-sm font-bold">{feedbacks.length} Reviews</span>
               </div>
@@ -292,16 +292,16 @@ export default function Feedback() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-6 md:p-8 bg-white border border-gray-100 rounded-[24px] md:rounded-[32px] shadow-sm hover:shadow-md transition-all space-y-6"
+                    className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[24px] md:rounded-[32px] shadow-sm hover:shadow-md transition-all space-y-6"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-xl">
+                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xl">
                           {item.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="font-black text-gray-900">{item.name}</h4>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          <h4 className="font-black text-[var(--text-primary)]">{item.name}</h4>
+                          <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
                             {item.createdAt?.toDate().toLocaleDateString()}
                           </p>
                         </div>
@@ -309,38 +309,38 @@ export default function Feedback() {
                       {(isAdmin || (user && user.uid === item.uid)) && (
                         <button 
                           onClick={() => handleDelete(item.id, item.uid)}
-                          className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                          className="p-2 text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
 
-                    <p className="text-gray-600 font-medium leading-relaxed">
+                    <p className="text-[var(--text-secondary)] font-medium leading-relaxed">
                       {item.message}
                     </p>
 
                     {item.reply && (
-                      <div className="pl-6 border-l-4 border-indigo-100 space-y-3">
+                      <div className="pl-6 border-l-4 border-indigo-100 dark:border-indigo-900/40 space-y-3">
                         <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
                           <Reply className="w-3 h-3" />
                           Admin Response
                         </div>
-                        <p className="text-sm text-gray-500 font-medium italic">
+                        <p className="text-sm text-[var(--text-tertiary)] font-medium italic">
                           "{item.reply}"
                         </p>
                       </div>
                     )}
 
                     {isAdmin && !item.reply && (
-                      <div className="pt-4 border-t border-gray-50">
+                      <div className="pt-4 border-t border-[var(--border-color)]">
                         {replyingTo === item.id ? (
                           <div className="space-y-4">
                             <textarea 
                               value={replyText}
                               onChange={(e) => setReplyText(e.target.value)}
                               placeholder="Type your reply..."
-                              className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 h-24 resize-none"
+                              className="w-full p-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-sm font-medium text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 h-24 resize-none"
                             />
                             <div className="flex gap-3">
                               <button 
@@ -352,7 +352,7 @@ export default function Feedback() {
                               </button>
                               <button 
                                 onClick={() => setReplyingTo(null)}
-                                className="px-6 py-3 bg-gray-100 text-gray-400 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-all"
+                                className="px-6 py-3 bg-[var(--bg-secondary)] text-[var(--text-tertiary)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[var(--bg-primary)] transition-all"
                               >
                                 Cancel
                               </button>
@@ -374,8 +374,8 @@ export default function Feedback() {
               </AnimatePresence>
 
               {feedbacks.length === 0 && (
-                <div className="text-center py-12 bg-gray-50 rounded-[32px] border border-dashed border-gray-200">
-                  <p className="text-gray-400 font-medium">No feedback yet. Be the first to share!</p>
+                <div className="text-center py-12 bg-[var(--bg-secondary)] rounded-[32px] border border-dashed border-[var(--border-color)]">
+                  <p className="text-[var(--text-tertiary)] font-medium">No feedback yet. Be the first to share!</p>
                 </div>
               )}
             </div>
@@ -398,25 +398,25 @@ export default function Feedback() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-[32px] p-8 shadow-2xl space-y-6"
+              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-[32px] p-8 shadow-2xl space-y-6"
             >
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mx-auto">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
               <div className="text-center space-y-2">
-                <h3 className="text-xl font-black tracking-tight text-gray-900">Delete Feedback?</h3>
-                <p className="text-gray-500 font-medium">This action cannot be undone. Are you sure you want to remove this feedback?</p>
+                <h3 className="text-xl font-black tracking-tight text-[var(--text-primary)]">Delete Feedback?</h3>
+                <p className="text-[var(--text-secondary)] font-medium">This action cannot be undone. Are you sure you want to remove this feedback?</p>
               </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setDeletingItem(null)}
-                  className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all"
+                  className="flex-1 py-4 bg-[var(--bg-secondary)] text-[var(--text-tertiary)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--bg-primary)] transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-100"
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-100 dark:shadow-none"
                 >
                   Delete
                 </button>

@@ -215,17 +215,17 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
   ];
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-12">
+    <div className="max-w-6xl mx-auto p-4 md:p-12 transition-colors duration-300">
       <div className="flex flex-col lg:flex-row gap-6 md:gap-8 lg:min-h-[700px]">
         {/* Left Panel: Upload & Info */}
         <div className="lg:w-1/3 space-y-6">
-          <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm space-y-6">
+          <div className="bg-[var(--bg-primary)] p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm space-y-6">
             <div className="space-y-2">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 dark:shadow-none">
                 <Sparkles className="w-6 h-6 text-white fill-white" />
               </div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">AI Resume Coach</h2>
-              <p className="text-gray-500 font-medium text-sm leading-relaxed">
+              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">AI Resume Coach</h2>
+              <p className="text-[var(--text-secondary)] font-medium text-sm leading-relaxed">
                 Upload your resume and get instant feedback, corrections, and career guidance powered by Gemini 3.1 Pro.
               </p>
             </div>
@@ -234,8 +234,8 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
               {...getRootProps()}
               className={cn(
                 "p-6 md:p-8 border-2 border-dashed rounded-[24px] md:rounded-[32px] transition-all cursor-pointer flex flex-col items-center justify-center gap-4 text-center",
-                isDragActive ? "border-indigo-500 bg-indigo-50/50" : "border-gray-100 hover:border-indigo-300 hover:bg-gray-50/50",
-                resumeText && "border-green-500 bg-green-50/30"
+                isDragActive ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10" : "border-[var(--border-color)] hover:border-indigo-300 hover:bg-[var(--bg-secondary)]/50",
+                resumeText && "border-green-500 bg-green-50/30 dark:bg-green-900/10"
               )}
             >
               <input {...getInputProps()} />
@@ -244,7 +244,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                   <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
                   <div className="space-y-2">
                     <p className="text-xs font-black text-indigo-600 uppercase tracking-widest">{loadingStatus || 'Reading Resume...'}</p>
-                    <div className="w-24 h-1 bg-gray-100 rounded-full overflow-hidden mx-auto">
+                    <div className="w-24 h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden mx-auto">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
@@ -256,33 +256,33 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                 </div>
               ) : resumeText ? (
                 <div className="space-y-2">
-                  <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mx-auto shadow-lg shadow-green-100">
+                  <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mx-auto shadow-lg shadow-green-500/20 dark:shadow-none">
                     <CheckCircle2 className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-sm font-black text-gray-900">{fileName}</p>
+                  <p className="text-sm font-black text-[var(--text-primary)]">{fileName}</p>
                   <p className="text-[10px] text-green-600 font-black uppercase tracking-widest">Analysis Ready</p>
                 </div>
               ) : (
                 <>
-                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors">
+                  <div className="w-12 h-12 bg-[var(--bg-secondary)] rounded-xl flex items-center justify-center text-[var(--text-tertiary)] group-hover:text-indigo-500 transition-colors">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-gray-900">Drop your resume</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">PDF, DOCX, or TXT</p>
+                    <p className="text-sm font-black text-[var(--text-primary)]">Drop your resume</p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">PDF, DOCX, or TXT</p>
                   </div>
                 </>
               )}
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Quick Actions</h4>
+              <h4 className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Quick Actions</h4>
               <div className="flex flex-wrap gap-2">
                 {RECOMMENDATIONS.map((rec) => (
                   <button
                     key={rec}
                     onClick={() => handleSend(rec)}
-                    className="px-3 py-2 bg-gray-50 text-gray-600 text-xs font-black rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-gray-100"
+                    className="px-3 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-xs font-black rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all border border-[var(--border-color)]"
                   >
                     {rec}
                   </button>
@@ -291,25 +291,25 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
             </div>
           </div>
 
-          <div className="p-6 bg-indigo-50 rounded-[32px] border border-indigo-100 flex items-start gap-4">
-            <div className="px-2 py-1 bg-white rounded-lg shadow-sm">
+          <div className="p-6 bg-indigo-50 dark:bg-indigo-900/10 rounded-[32px] border border-indigo-100 dark:border-indigo-900/30 flex items-start gap-4">
+            <div className="px-2 py-1 bg-[var(--bg-primary)] rounded-lg shadow-sm">
               <Info className="w-4 h-4 text-indigo-600" />
             </div>
-            <p className="text-xs text-indigo-700 font-medium leading-relaxed">
+            <p className="text-xs text-indigo-700 dark:text-indigo-300 font-medium leading-relaxed">
               Your data is processed securely and is only used to provide analysis. We don't share your content with third parties.
             </p>
           </div>
         </div>
 
         {/* Right Panel: Chat Interface */}
-        <div className="flex-grow bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm flex flex-col overflow-hidden h-[500px] md:h-[700px] lg:h-auto lg:max-h-[800px]">
+        <div className="flex-grow bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm flex flex-col overflow-hidden h-[500px] md:h-[700px] lg:h-auto lg:max-h-[800px]">
           {/* Chat Header */}
-          <div className="p-4 md:p-6 border-b border-gray-50 flex items-center justify-between">
+          <div className="p-4 md:p-6 border-b border-[var(--border-color)] flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-4 h-4 text-white fill-white" />
               </div>
-              <h3 className="text-base md:text-lg font-black text-gray-900 tracking-tight">Strategy Chat</h3>
+              <h3 className="text-base md:text-lg font-black text-[var(--text-primary)] tracking-tight">Strategy Chat</h3>
             </div>
             <button 
               onClick={() => {
@@ -317,7 +317,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                 setResumeText(null);
                 setFileName(null);
               }}
-              className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-red-500 transition-colors"
+              className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest hover:text-red-500 transition-colors"
             >
               Clear
             </button>
@@ -340,18 +340,18 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                   "px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] text-sm md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none",
                   msg.role === 'user' 
                     ? "bg-indigo-600 text-white rounded-tr-none prose-invert" 
-                    : "bg-gray-50 text-gray-800 rounded-tl-none border border-gray-100"
+                    : "bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none border border-[var(--border-color)] prose-neutral dark:prose-invert dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-300"
                 )}>
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
-                <span className="text-[9px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2 px-1">
+                <span className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mt-2 px-1">
                   {msg.role === 'user' ? 'You' : 'Morph Assistant'}
                 </span>
               </div>
             ))}
             {isTyping && (
               <div className="flex flex-col max-w-[90%] mr-auto items-start">
-                <div className="bg-gray-50 px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] rounded-tl-none border border-gray-100 flex items-center gap-2">
+                <div className="bg-[var(--bg-secondary)] px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] rounded-tl-none border border-[var(--border-color)] flex items-center gap-2">
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
@@ -359,7 +359,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                   </div>
                   <div className="flex flex-col gap-0.5 md:gap-1">
                     <span className="text-[10px] md:text-xs font-black text-indigo-400 uppercase tracking-widest">{loadingStatus || 'Analyzing...'}</span>
-                    <div className="w-16 md:w-20 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-16 md:w-20 h-0.5 bg-[var(--border-color)] rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
@@ -374,7 +374,7 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
           </div>
 
           {/* Input */}
-          <div className="p-4 md:p-6 border-t border-gray-50 bg-gray-50/30">
+          <div className="p-4 md:p-6 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/30">
             <div className="relative">
               <input
                 type="text"
@@ -383,12 +383,12 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder={resumeText ? "Ask anything..." : "Upload resume first..."}
-                className="w-full pl-5 pr-14 py-4 md:pl-6 md:pr-16 md:py-5 bg-white rounded-[20px] md:rounded-[24px] border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none text-sm md:text-base font-medium transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full pl-5 pr-14 py-4 md:pl-6 md:pr-16 md:py-5 bg-[var(--bg-primary)] rounded-[20px] md:rounded-[24px] border border-[var(--border-color)] focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/5 outline-none text-sm md:text-base font-medium text-[var(--text-primary)] transition-all disabled:bg-[var(--bg-secondary)] disabled:cursor-not-allowed"
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isTyping || !resumeText}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 md:p-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 md:p-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-500/20 dark:shadow-none hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
                 <Send className="w-5 h-5" />
               </button>

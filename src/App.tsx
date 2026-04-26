@@ -401,7 +401,7 @@ export default function App() {
 
       {/* Global Top Header */}
       {!isPortfolioFullscreen && (
-        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--bg-secondary)]/95 backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm">
+        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm">
           <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
             {/* Logo Section */}
             <div className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
@@ -425,7 +425,7 @@ export default function App() {
                       "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs font-black transition-all duration-300 whitespace-nowrap",
                       activeTab === tab.id 
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                        : "text-gray-400 hover:text-indigo-600 hover:bg-indigo-50"
+                        : "text-[var(--text-secondary)] hover:text-indigo-600 hover:bg-indigo-50"
                     )}
                   >
                     <tab.icon className="w-3.5 h-3.5" />
@@ -465,7 +465,7 @@ export default function App() {
                     "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest",
                     ['resources', 'about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
                       ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
-                      : "text-gray-400 hover:bg-gray-100 hover:text-indigo-600"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
                   )}
                 >
                   <LifeBuoy className="w-4 h-4" />
@@ -479,24 +479,24 @@ export default function App() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       onMouseLeave={() => setIsResourcesOpen(false)}
-                      className="absolute top-full right-0 mt-3 w-64 bg-white border border-gray-100 rounded-[28px] shadow-2xl p-2 z-[130] ring-1 ring-black/5"
+                      className="absolute top-full right-0 mt-3 w-64 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[28px] shadow-2xl p-2 z-[130] ring-1 ring-black/5"
                     >
                       <div className="p-3 mb-1">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Knowledge Base</p>
+                        <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Knowledge Base</p>
                       </div>
                       <div className="space-y-1">
                         {resourceTabs.map((item) => (
                           <button
                             key={item.id}
                             onClick={() => handleTabChange(item.id as Tab)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-indigo-50 transition-all group"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[var(--bg-secondary)] transition-all group"
                           >
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110", item.bg)}>
                               <item.icon className={cn("w-4 h-4", item.color)} />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-black text-gray-900 leading-tight group-hover:text-indigo-600">{item.label}</p>
-                              <p className="text-[9px] font-bold text-gray-400 truncate uppercase mt-0.5 tracking-tighter">{item.desc}</p>
+                              <p className="text-xs font-black text-[var(--text-primary)] leading-tight group-hover:text-indigo-600">{item.label}</p>
+                              <p className="text-[9px] font-bold text-[var(--text-tertiary)] truncate uppercase mt-0.5 tracking-tighter">{item.desc}</p>
                             </div>
                           </button>
                         ))}
@@ -525,14 +525,14 @@ export default function App() {
               </div>
 
               {/* Account / User Section */}
-              <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-gray-100">
+              <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-[var(--border-color)]">
                 {userData && (
                   <>
                     <div className="relative group">
                       <button 
                         id="tab-account"
                         onClick={() => handleTabChange('account')}
-                        className="relative p-0.5 rounded-xl bg-white shadow-lg border border-gray-100 transition-transform active:scale-95 overflow-hidden"
+                        className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden"
                       >
                         <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <img 
@@ -583,11 +583,11 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-100 z-[150] md:hidden overflow-y-auto"
+              className="fixed top-0 right-0 bottom-0 w-80 bg-[var(--bg-primary)] border-l border-[var(--border-color)] z-[150] md:hidden overflow-y-auto"
             >
               <div className="p-6 space-y-6">
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Main Navigation</p>
+                  <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-4">Main Navigation</p>
                   <div className="space-y-1">
                     {mainTabs.map((item) => (
                       <button
@@ -597,7 +597,7 @@ export default function App() {
                           "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                           activeTab === item.id 
                             ? "bg-indigo-600 text-white" 
-                            : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                            : "text-[var(--text-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600"
                         )}
                       >
                         <item.icon className="w-5 h-5" />
@@ -607,10 +607,10 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="h-px bg-gray-100" />
+                <div className="h-px bg-[var(--border-color)]" />
 
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Support & Resources</p>
+                  <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-4">Support & Resources</p>
                   <div className="space-y-1">
                     {resourceTabs.map((item) => (
                       <button
@@ -619,8 +619,8 @@ export default function App() {
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                           activeTab === item.id 
-                            ? "bg-indigo-50 text-indigo-600" 
-                            : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
+                            ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600" 
+                            : "text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
                         )}
                       >
                         <item.icon className="w-5 h-5" />
@@ -633,8 +633,8 @@ export default function App() {
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                         activeTab === 'resources' 
-                          ? "bg-indigo-50 text-indigo-600" 
-                          : "text-gray-500 hover:bg-gray-50 hover:text-indigo-600"
+                          ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600" 
+                          : "text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
                       )}
                     >
                       <LifeBuoy className="w-5 h-6" />
@@ -645,7 +645,7 @@ export default function App() {
                 
                 <button 
                   onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-indigo-100 mt-4"
+                  className="w-full flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none mt-4"
                 >
                   <Zap className="w-5 h-5 fill-white" />
                   Upgrade to Premium
@@ -730,10 +730,10 @@ export default function App() {
               onClick={() => handleTabChange(item.id as Tab)}
               className={cn(
                 "flex flex-col items-center gap-1 transition-all",
-                activeTab === item.id ? "text-indigo-600" : "text-gray-400"
+                activeTab === item.id ? "text-indigo-600" : "text-[var(--text-tertiary)]"
               )}
             >
-              <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50")} />
+              <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50 dark:fill-indigo-900/20")} />
               <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
             </button>
           </div>
@@ -756,14 +756,14 @@ export default function App() {
             exit={{ opacity: 0, y: 50 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-md"
           >
-            <div className="bg-gray-900 text-white rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4 border border-white/10">
+            <div className="bg-[var(--bg-primary)] text-[var(--text-primary)] rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4 border border-[var(--border-color)]">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-red-50 dark:bg-red-900/10 rounded-lg flex items-center justify-center">
                   <Trash2 className="w-4 h-4 text-red-400" />
                 </div>
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest">Resume Deleted</p>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Permanently in 5s</p>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Permanently in 5s</p>
                 </div>
               </div>
               <button
@@ -788,24 +788,24 @@ export default function App() {
       <AppChatbot />
 
       {/* Global Footer */}
-      <footer className="py-12 border-t border-gray-100 bg-white">
+      <footer className="py-12 border-t border-[var(--border-color)] bg-[var(--bg-primary)]">
         <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
               <RefreshCw className="text-white w-4 h-4" />
             </div>
-            <span className="font-black text-lg tracking-tight">Resume Morph</span>
+            <span className="font-black text-lg tracking-tight text-[var(--text-primary)]">Resume Morph</span>
           </div>
-          <p className="text-sm text-gray-400 font-medium text-center md:text-left">
+          <p className="text-sm text-[var(--text-tertiary)] font-medium text-center md:text-left">
             © 2026 Resume Morph. Built with passion by Sankalp Suman.
           </p>
           <div className="flex flex-col md:flex-row items-center gap-6">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 px-3 py-1 border border-gray-100 rounded-full">v1.0.1</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] px-3 py-1 border border-[var(--border-color)] rounded-full">v1.0.1</span>
             <div className="flex items-center gap-6">
-              <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Feedback</button>
-              <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</button>
-              <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">About</button>
-              <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Contact</button>
+              <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Feedback</button>
+              <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Privacy</button>
+              <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">About</button>
+              <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Contact</button>
             </div>
           </div>
         </div>

@@ -304,20 +304,20 @@ export default function SmartEditor() {
 
   if (step === 'import') {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-white border border-gray-100 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-sm">
         <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-3 px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 shadow-sm border border-indigo-100"
+            className="inline-flex items-center gap-3 px-6 py-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 shadow-sm border border-indigo-500/20"
           >
-            <Sparkles className="w-4 h-4 fill-indigo-600" />
+            <Sparkles className="w-4 h-4 fill-indigo-600 dark:fill-indigo-400" />
             Premium Studio Mode
           </motion.div>
-          <h1 className="text-5xl md:text-7xl font-black text-gray-900 mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black text-[var(--text-primary)] mb-6 tracking-tight">
             Resume <span className="text-indigo-600">Studio</span>
           </h1>
-          <p className="text-gray-500 text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+          <p className="text-[var(--text-secondary)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
             The ultimate professional editor. Import any resume, clone any design, and customize every pixel with AI-powered precision.
           </p>
         </div>
@@ -330,8 +330,8 @@ export default function SmartEditor() {
             className="space-y-6"
           >
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100">1</div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Your Content</h2>
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">1</div>
+              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Your Content</h2>
             </div>
             <Dropzone onDrop={onDropResume} loading={loading} label="Upload your current resume" icon={<FileText className="w-10 h-10" />} />
           </motion.div>
@@ -343,21 +343,21 @@ export default function SmartEditor() {
             className="space-y-6"
           >
             <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-100">2</div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Reference Design</h2>
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">2</div>
+              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Reference Design</h2>
             </div>
             <Dropzone onDrop={onDropReference} loading={loading} label="Upload a design reference (Optional)" icon={<Layout className="w-10 h-10" />} />
             {referenceFile && (
-              <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3">
+              <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-2xl flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-xs font-bold text-green-700">Visual Pattern Analyzed Successfully</span>
+                <span className="text-xs font-bold text-green-700 dark:text-green-400">Visual Pattern Analyzed Successfully</span>
               </div>
             )}
           </motion.div>
         </div>
 
         {error && (
-          <div className="mt-12 p-6 bg-red-50 border border-red-100 rounded-[24px] max-w-2xl mx-auto flex items-center gap-4 text-red-600">
+          <div className="mt-12 p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 rounded-[24px] max-w-2xl mx-auto flex items-center gap-4 text-red-600 dark:text-red-400">
             <AlertCircle className="w-6 h-6 shrink-0" />
             <p className="text-sm font-black">{error}</p>
           </div>
@@ -367,22 +367,22 @@ export default function SmartEditor() {
   }
 
   return (
-    <div className="h-[calc(100vh-160px)] bg-gray-50 flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-160px)] bg-[var(--bg-secondary)] flex flex-col overflow-hidden">
       {/* Local Context Header */}
-      <div className="h-16 bg-white/50 backdrop-blur-md border-b border-gray-100 flex items-center justify-between px-8 md:px-12 shrink-0 z-30">
+      <div className="h-16 bg-[var(--bg-primary)]/50 backdrop-blur-md border-b border-[var(--border-color)] flex items-center justify-between px-8 md:px-12 shrink-0 z-30">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setStep('import')}
             title="Go back to the import screen to upload a different resume"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-500 hover:text-indigo-600 group"
+            className="flex items-center gap-2 px-4 py-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-secondary)] hover:text-indigo-600 group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-xs font-black uppercase tracking-widest leading-none">Studio</span>
           </button>
-          <div className="h-6 w-px bg-gray-100" />
+          <div className="h-6 w-px bg-[var(--border-color)]" />
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Live Editor</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Live Editor</span>
           </div>
         </div>
 
@@ -391,7 +391,7 @@ export default function SmartEditor() {
             onClick={refreshPreview}
             disabled={isRefreshing}
             title="Synchronize your changes with the live design"
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 text-gray-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[var(--bg-primary)] transition-all border border-[var(--border-color)]"
           >
             <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             Sync
@@ -400,7 +400,7 @@ export default function SmartEditor() {
             onClick={downloadPdf}
             disabled={loading}
             title="Download your refined resume as a high-fidelity PDF"
-            className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 group"
+            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 dark:shadow-none group"
           >
             <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
             Export PDF
@@ -411,16 +411,16 @@ export default function SmartEditor() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Sidebar: Controls */}
-        <aside id="smart-editor-controls" className="w-full lg:w-[450px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
+        <aside id="smart-editor-controls" className="w-full lg:w-[450px] bg-[var(--bg-primary)] border-r border-[var(--border-color)] flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-gray-50 shrink-0">
+          <div className="flex border-b border-[var(--border-color)] shrink-0">
             {(['content', 'design', 'sections', 'analyze'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
                   "flex-1 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
-                  activeTab === tab ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
+                  activeTab === tab ? "text-indigo-600" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                 )}
               >
                 {tab}
@@ -487,48 +487,48 @@ export default function SmartEditor() {
         </aside>
 
         {/* Right Area: Preview Canvas */}
-        <main className="flex-1 bg-gray-100/50 p-12 overflow-y-auto relative flex flex-col items-center">
+        <main className="flex-1 bg-[var(--bg-secondary)] p-12 overflow-y-auto relative flex flex-col items-center">
           {isRefreshing && (
             <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40">
               <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-6 py-2 bg-white rounded-full shadow-xl border border-gray-100 flex items-center gap-3"
+                className="px-6 py-2 bg-[var(--bg-primary)] rounded-full shadow-xl border border-[var(--border-color)] flex items-center gap-3"
               >
                 <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-900">Synchronizing Design...</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">Synchronizing Design...</span>
               </motion.div>
             </div>
           )}
 
           <div className="w-full max-w-[850px] space-y-8 animate-in fade-in duration-1000">
              {/* Toolbar Overlay */}
-             <div className="flex items-center justify-center gap-3 px-6 py-3 bg-white/80 backdrop-blur-md rounded-2xl shadow-xl shadow-gray-200/50 border border-white/20 mb-8 sticky top-0 z-30">
-               <button className="p-2.5 rounded-xl hover:bg-gray-50 transition-all text-gray-900 flex items-center gap-2 group">
+             <div className="flex items-center justify-center gap-3 px-6 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-md rounded-2xl shadow-xl shadow-black/5 border border-[var(--border-color)] mb-8 sticky top-0 z-30">
+               <button className="p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-primary)] flex items-center gap-2 group">
                  <MousePointerClick className="w-4 h-4 text-indigo-600" />
                  <span className="text-[10px] font-black uppercase tracking-widest">Select Mode</span>
                </button>
-               <div className="w-px h-6 bg-gray-200" />
-               <button className="p-2.5 rounded-xl hover:bg-gray-50 transition-all text-gray-400 hover:text-gray-900 flex items-center gap-2 group">
+               <div className="w-px h-6 bg-[var(--border-color)]" />
+               <button className="p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center gap-2 group">
                  <Move className="w-4 h-4 group-hover:scale-110" />
                  <span className="text-[10px] font-black uppercase tracking-widest">Layout</span>
                </button>
-               <div className="w-px h-6 bg-gray-200" />
+               <div className="w-px h-6 bg-[var(--border-color)]" />
                <div className="flex items-center gap-1.5">
                  <button 
                    onClick={refreshPreview}
                    disabled={isRefreshing}
                    className={cn(
-                     "p-2 hover:bg-gray-50 rounded-xl transition-all text-gray-400 hover:text-indigo-600",
+                     "p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-all text-[var(--text-tertiary)] hover:text-indigo-600",
                      isRefreshing && "animate-spin text-indigo-600"
                    )}
                    title="Force AI Sync"
                  >
                    <RefreshCw className="w-4 h-4" />
                  </button>
-                 <button className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-gray-900"><AlertCircle className="w-4 h-4" /></button>
-                 <button className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-gray-900"><Languages className="w-4 h-4" /></button>
-                 <button className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-gray-900"><Save className="w-4 h-4" /></button>
+                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><AlertCircle className="w-4 h-4" /></button>
+                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><Languages className="w-4 h-4" /></button>
+                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><Save className="w-4 h-4" /></button>
                </div>
              </div>
 
@@ -645,8 +645,8 @@ export default function SmartEditor() {
 const IdentitySection = memo(({ data, update }: any) => (
   <section className="space-y-8">
     <div className="space-y-2">
-      <h2 className="text-xl font-black text-gray-900 tracking-tight">Identity & Contact</h2>
-      <p className="text-sm font-medium text-gray-400">Essential contact information and professional headline.</p>
+      <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Identity & Contact</h2>
+      <p className="text-sm font-medium text-[var(--text-tertiary)]">Essential contact information and professional headline.</p>
     </div>
     <div className="grid grid-cols-2 gap-5">
       <Input label="Full Name" value={data?.name} onChange={(v: string) => update('name', v)} icon={<Edit3 />} />
@@ -664,11 +664,11 @@ const SummarySection = memo(({ value, onChange }: any) => (
   <section className="space-y-6">
     <div className="flex items-center justify-between">
       <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-900 tracking-tight">Profile Summary</h2>
-        <p className="text-sm font-medium text-gray-400">Your professional pitch and unique value proposition.</p>
+        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Profile Summary</h2>
+        <p className="text-sm font-medium text-[var(--text-tertiary)]">Your professional pitch and unique value proposition.</p>
       </div>
       <button 
-        className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all flex items-center gap-2 group shadow-sm border border-indigo-100"
+        className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 group shadow-sm border border-indigo-500/20"
         title="Polish with AI"
       >
         <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
@@ -678,7 +678,7 @@ const SummarySection = memo(({ value, onChange }: any) => (
     <textarea 
       value={value || ''} 
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-gray-50 border-gray-100 rounded-3xl p-6 text-sm font-medium min-h-[180px] focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-100 transition-all outline-none resize-none leading-relaxed text-gray-700"
+      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-3xl p-6 text-sm font-medium min-h-[180px] focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] focus:border-indigo-100 transition-all outline-none resize-none leading-relaxed text-[var(--text-secondary)]"
       placeholder="Write a brief, high-impact summary of your career..."
     />
   </section>
@@ -710,31 +710,31 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
     <section className="space-y-8">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">Work Experience</h2>
-          <p className="text-sm font-medium text-gray-400">Chronological list of your professional roles.</p>
+          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Work Experience</h2>
+          <p className="text-sm font-medium text-[var(--text-tertiary)]">Chronological list of your professional roles.</p>
         </div>
         <button 
           onClick={add}
-          className="p-3 bg-gray-900 text-white rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-gray-200"
+          className="p-3 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-black/5"
         >
           <Plus className="w-5 h-5" />
         </button>
       </div>
       <div className="grid gap-6">
         {data?.map((exp: any, i: number) => (
-          <div key={i} className="p-8 bg-white border border-gray-100 rounded-[32px] space-y-6 group relative hover:shadow-xl hover:shadow-gray-100 transition-all">
+          <div key={i} className="p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-xl hover:shadow-black/5 transition-all">
             <div className="flex justify-between items-start gap-4">
                <div className="flex-1 grid grid-cols-2 gap-4">
                  <Input label="Company" value={exp.company} onChange={(v: any) => update(i, 'company', v)} small />
                  <Input label="Dates" value={exp.dates} onChange={(v: any) => update(i, 'dates', v)} small />
                </div>
-               <button className="text-gray-300 hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100">
+               <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100">
                  <Trash2 className="w-5 h-5" />
                </button>
             </div>
             <Input label="Role / Title" value={exp.role} onChange={(v: any) => update(i, 'role', v)} small />
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest ml-1">Key Achievements</label>
+              <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-1">Key Achievements</label>
               <div className="space-y-3">
                 {exp.bullets.map((bullet: string, lineIdx: number) => (
                   <div key={lineIdx} className="relative group/line">
@@ -746,12 +746,12 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
                         update(i, 'bullets', newBullets);
                       }}
                       rows={2}
-                      className="w-full bg-gray-50 border-gray-100 rounded-2xl p-5 pr-12 text-xs font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white focus:border-indigo-100 transition-all resize-none leading-relaxed outline-none"
+                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-5 pr-12 text-xs font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] focus:border-indigo-100 transition-all resize-none leading-relaxed outline-none text-[var(--text-primary)]"
                     />
                     <button 
                       onClick={() => optimizeLine(i, lineIdx)}
                       disabled={isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx}
-                      className="absolute right-4 top-4 p-2 bg-indigo-600 shadow-lg shadow-indigo-100 border border-indigo-500 rounded-xl text-white hover:scale-110 transition-all opacity-0 group-hover/line:opacity-100 disabled:opacity-50 z-30"
+                      className="absolute right-4 top-4 p-2 bg-indigo-600 shadow-lg shadow-indigo-500/20 dark:shadow-none border border-indigo-500/30 rounded-xl text-white hover:scale-110 transition-all opacity-0 group-hover/line:opacity-100 disabled:opacity-50 z-30"
                       title="AI Optimize Achievement: Use the X-Y-Z formula to boost impact"
                     >
                       {isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx ? (
@@ -764,7 +764,7 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
                 ))}
                 <button 
                   onClick={() => update(i, 'bullets', [...exp.bullets, ''])}
-                  className="w-full py-3 border-2 border-dashed border-gray-50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-300 hover:border-indigo-100 hover:text-indigo-600 transition-all"
+                  className="w-full py-3 border-2 border-dashed border-[var(--border-color)] rounded-2xl text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] hover:border-indigo-100 hover:text-indigo-600 transition-all"
                 >
                   + Add achievement
                 </button>
@@ -785,8 +785,8 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
     exit={{ opacity: 0, x: 10 }}
     className="space-y-12"
   >
-    <section className="space-y-6">
-      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+    <section className="space-y-6 text-[var(--text-primary)]">
+      <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest flex items-center gap-2">
         <Type className="w-4 h-4" /> Typography
       </h3>
       <div className="grid grid-cols-1 gap-2">
@@ -797,8 +797,8 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
             className={cn(
               "flex items-center justify-between px-6 py-4 rounded-2xl border transition-all",
               styles.fontFamily === font.name 
-                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                : "bg-white border-gray-100 text-gray-900 hover:border-indigo-200"
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20 dark:shadow-none" 
+                : "bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-primary)] hover:border-indigo-600"
             )}
           >
             <span className="text-sm font-bold" style={{ fontFamily: font.value }}>{font.name}</span>
@@ -809,7 +809,7 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
     </section>
 
     <section className="space-y-6">
-      <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+      <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest flex items-center gap-2">
         <Palette className="w-4 h-4" /> Accent Palette
       </h3>
       <div className="grid grid-cols-6 gap-3">
@@ -819,7 +819,7 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
             onClick={() => setStyles((prev: any) => ({...prev, primaryColor: color.value}))}
             className={cn(
               "w-full aspect-square rounded-xl transition-all border-4 flex items-center justify-center",
-              styles.primaryColor === color.value ? "border-white scale-110 shadow-lg" : "border-transparent"
+              styles.primaryColor === color.value ? "border-[var(--bg-primary)] scale-110 shadow-lg" : "border-transparent"
             )}
             style={{ backgroundColor: color.value }}
           >
@@ -829,17 +829,17 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
       </div>
     </section>
 
-    <section className="space-y-8">
+    <section className="space-y-8 text-[var(--text-primary)]">
       <div className="space-y-4">
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Global Font Size</h3>
-        <div className="flex p-1 bg-gray-50 rounded-2xl">
+        <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest">Global Font Size</h3>
+        <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl">
           {['xs', 'small', 'normal', 'large'].map((size) => (
             <button
               key={size}
               onClick={() => setStyles((prev: any) => ({...prev, fontSize: size}))}
               className={cn(
                 "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                styles.fontSize === size ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                styles.fontSize === size ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
               )}
             >
               {size}
@@ -849,15 +849,15 @@ const DesignSection = memo(({ styles, setStyles }: any) => (
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Section Density</h3>
-        <div className="flex p-1 bg-gray-50 rounded-2xl">
+        <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest">Section Density</h3>
+        <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl">
           {['compact', 'normal', 'comfortable'].map((gap) => (
             <button
               key={gap}
               onClick={() => setStyles((prev: any) => ({...prev, spacing: gap}))}
               className={cn(
                 "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                styles.spacing === gap ? "bg-white text-indigo-600 shadow-sm" : "text-gray-400 hover:text-gray-600"
+                styles.spacing === gap ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
               )}
             >
               {gap}
@@ -912,10 +912,10 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
       exit={{ opacity: 0, x: 10 }}
       className="space-y-12"
     >
-      <div className="space-y-2">
-        <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Analysis & Scoring</h2>
-        <p className="text-sm font-medium text-gray-400">Optimize your resume for applicant tracking systems.</p>
-      </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">AI Analysis & Scoring</h2>
+              <p className="text-sm font-medium text-[var(--text-secondary)]">Optimize your resume for applicant tracking systems.</p>
+            </div>
 
       {/* ATS Score */}
       <div className="space-y-6">
@@ -970,53 +970,51 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
       </div>
 
       {/* JD Matching */}
-      <div className="space-y-6">
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Job Description Matcher</h3>
-        <div className="space-y-4">
-          <textarea
-            value={targetJd}
-            onChange={(e) => setTargetJd(e.target.value)}
-            placeholder="Paste the job description here..."
-            className="w-full h-40 p-5 bg-gray-50 border border-gray-100 rounded-3xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-white transition-all outline-none resize-none"
-          />
-          <button 
-            onClick={runJdMatch}
-            disabled={isMatching || !targetJd}
-            title="Analyze how well your resume matches this specific job description"
-            className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100"
-          >
-            {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-            Match Keyword Density
-          </button>
-        </div>
+            <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest px-1">Job Description Matcher</h3>
+            <div className="space-y-4">
+              <textarea
+                value={targetJd}
+                onChange={(e) => setTargetJd(e.target.value)}
+                placeholder="Paste the job description here..."
+                className="w-full h-40 p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-3xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] transition-all outline-none resize-none text-[var(--text-primary)]"
+              />
+              <button 
+                onClick={runJdMatch}
+                disabled={isMatching || !targetJd}
+                title="Analyze how well your resume matches this specific job description"
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 dark:shadow-none"
+              >
+                {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+                Match Keyword Density
+              </button>
+            </div>
 
-        {jdMatch && (
-          <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm space-y-6">
-             <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Relevance Score</p>
-                  <p className="text-2xl font-black text-indigo-600 tracking-tight">{jdMatch.score}%</p>
-                </div>
-                <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${jdMatch.score}%` }} className="h-full bg-indigo-600" />
-                </div>
-             </div>
-             
-             {jdMatch.missing.length > 0 && (
-               <div className="space-y-3">
-                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Missing Keywords</p>
-                 <div className="flex flex-wrap gap-2">
-                   {jdMatch.missing.map((word: string) => (
-                     <span key={word} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                       {word}
-                     </span>
-                   ))}
+            {jdMatch && (
+              <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-6">
+                 <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Relevance Score</p>
+                      <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">{jdMatch.score}%</p>
+                    </div>
+                    <div className="w-16 h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+                      <motion.div initial={{ width: 0 }} animate={{ width: `${jdMatch.score}%` }} className="h-full bg-indigo-600" />
+                    </div>
                  </div>
-               </div>
-             )}
-          </div>
-        )}
-      </div>
+                 
+                 {jdMatch.missing.length > 0 && (
+                   <div className="space-y-3">
+                     <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Missing Keywords</p>
+                     <div className="flex flex-wrap gap-2">
+                       {jdMatch.missing.map((word: string) => (
+                         <span key={word} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                           {word}
+                         </span>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+              </div>
+            )}
     </motion.div>
   );
 });
@@ -1036,43 +1034,43 @@ const SectionsVisibility = memo(({ config, setConfig }: any) => {
       exit={{ opacity: 0, x: 10 }}
       className="space-y-12"
     >
-      <div className="space-y-2">
-        <h2 className="text-xl font-black text-gray-900 tracking-tight">Layout & Structure</h2>
-        <p className="text-sm font-medium text-gray-400 leading-relaxed">
-          Toggle section visibility and drag to re-order your resume structure.
-        </p>
-      </div>
-      
-      <div className="space-y-3">
-        {config.map((section: any) => (
-          <div 
-            key={section.id}
-            className={cn(
-              "flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm transition-all group",
-              section.visible ? "border-gray-100 opacity-100" : "border-gray-50 opacity-50 bg-gray-50/50"
-            )}
-          >
-            <div className="flex items-center gap-4">
-              <GripVertical className="w-5 h-5 text-gray-200 group-hover:text-indigo-300 transition-colors cursor-move" />
-              <span className="text-sm font-black text-gray-900 tracking-tight">{section.name}</span>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Layout & Structure</h2>
+              <p className="text-sm font-medium text-[var(--text-tertiary)] leading-relaxed">
+                Toggle section visibility and drag to re-order your resume structure.
+              </p>
             </div>
-            <button 
-              onClick={() => toggleVisibility(section.id)}
-              className={cn(
-                "w-12 h-6 rounded-full transition-all relative flex items-center px-1",
-                section.visible ? "bg-indigo-600" : "bg-gray-200"
-              )}
-            >
-              <div className={cn(
-                "w-4 h-4 bg-white rounded-full shadow-sm transition-all transform",
-                section.visible ? "translate-x-6" : "translate-x-0"
-              )} />
-            </button>
-          </div>
-        ))}
-      </div>
+            
+            <div className="space-y-3">
+              {config.map((section: any) => (
+                <div 
+                  key={section.id}
+                  className={cn(
+                    "flex items-center justify-between p-4 bg-[var(--bg-primary)] border rounded-2xl shadow-sm transition-all group",
+                    section.visible ? "border-[var(--border-color)] opacity-100" : "border-[var(--border-color)] opacity-50 bg-[var(--bg-secondary)]"
+                  )}
+                >
+                  <div className="flex items-center gap-4 text-[var(--text-primary)]">
+                    <GripVertical className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-300 transition-colors cursor-move" />
+                    <span className="text-sm font-black tracking-tight">{section.name}</span>
+                  </div>
+                  <button 
+                    onClick={() => toggleVisibility(section.id)}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-all relative flex items-center px-1",
+                      section.visible ? "bg-indigo-600" : "bg-[var(--bg-secondary)]"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 bg-white rounded-full shadow-sm transition-all transform",
+                      section.visible ? "translate-x-6" : "translate-x-0"
+                    )} />
+                  </button>
+                </div>
+              ))}
+            </div>
 
-      <button className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-3 transition-all">
+      <button className="w-full py-4 border-2 border-dashed border-[var(--border-color)] rounded-2xl text-[var(--text-tertiary)] hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-3 transition-all">
         <Plus className="w-5 h-5" />
         <span className="text-sm font-black uppercase tracking-widest">Add Custom Section</span>
       </button>
@@ -1098,19 +1096,19 @@ function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) =>
       className={cn(
         "relative group cursor-pointer transition-all duration-500 h-[280px]",
         "border-2 border-dashed rounded-[32px] p-8 text-center flex flex-col items-center justify-center gap-6",
-        isDragActive ? "border-indigo-600 bg-indigo-50/50 scale-[1.02]" : "border-gray-200 hover:border-indigo-400 hover:bg-gray-50/50",
+        isDragActive ? "border-indigo-600 bg-indigo-50/50 scale-[1.02]" : "border-[var(--border-color)] hover:border-indigo-400 hover:bg-[var(--bg-secondary)]",
       )}
     >
       <input {...getInputProps()} />
       <div className={cn(
         "w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500",
-        isDragActive ? "bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-200" : "bg-indigo-50 text-indigo-600 group-hover:scale-110"
+        isDragActive ? "bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-200" : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 group-hover:scale-110"
       )}>
         {loading ? <Loader2 className="w-10 h-10 animate-spin" /> : icon}
       </div>
       <div className="space-y-1">
-        <p className="text-xl font-black text-gray-900 tracking-tight">{label}</p>
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Drag & drop or click to browse</p>
+        <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">{label}</p>
+        <p className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest">Drag & drop or click to browse</p>
       </div>
     </div>
   );
@@ -1125,9 +1123,9 @@ function Input({ label, value, onChange, small = false, icon = null }: any) {
 
   return (
     <div className="space-y-1.5 flex-1">
-      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
+      <label className="block text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-1">{label}</label>
       <div className="relative group">
-        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-indigo-600 transition-colors">{React.cloneElement(icon, { size: 14 })}</div>}
+        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] group-focus-within:text-indigo-600 transition-colors">{React.cloneElement(icon, { size: 14 })}</div>}
         <input 
           type="text" 
           value={localValue} 
@@ -1136,7 +1134,7 @@ function Input({ label, value, onChange, small = false, icon = null }: any) {
             onChange(e.target.value);
           }}
           className={cn(
-            "w-full bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 transition-all",
+            "w-full bg-[var(--bg-secondary)] border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 text-[var(--text-primary)] transition-all",
             small ? "py-3 pl-4 pr-4" : "py-4 pr-6",
             icon && "pl-11"
           )}

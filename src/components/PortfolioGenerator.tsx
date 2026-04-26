@@ -560,11 +560,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   };
 
   return (
-    <div className="relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-white border border-gray-100 shadow-sm relative">
+    <div className="relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-sm relative">
       {/* Atmospheric Background Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-200/20 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-violet-200/20 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-200/20 dark:bg-indigo-900/10 blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-violet-200/20 dark:bg-violet-900/10 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
         <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-fuchsia-100/10 blur-[100px]" />
       </div>
 
@@ -582,23 +582,23 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
+<div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
         
         {/* Hero Header */}
         <header className="max-w-4xl mb-12 lg:mb-28 mt-8 md:mt-0">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-indigo-100/50 text-indigo-600 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] mb-6 md:mb-8 shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-indigo-600 dark:text-indigo-400 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] mb-6 md:mb-8 shadow-sm"
           >
             <Sparkles className="w-3 md:w-3.5 h-3 md:h-3.5" />
             AI Portfolio Builder
           </motion.div>
-          <h1 className="text-4xl sm:text-5xl lg:text-8xl font-display font-bold tracking-tight text-neutral-900 mb-6 md:mb-8 leading-[1.1] md:leading-[0.95]">
+          <h1 className="text-4xl sm:text-5xl lg:text-8xl font-display font-bold tracking-tight text-[var(--text-primary)] mb-6 md:mb-8 leading-[1.1] md:leading-[0.95]">
             Your career, <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600">beautifully presented.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-indigo-400 dark:via-violet-400 dark:to-fuchsia-400">beautifully presented.</span>
           </h1>
-          <p className="text-lg lg:text-2xl text-neutral-500 font-medium leading-relaxed max-w-2xl px-1 md:px-0">
+          <p className="text-lg lg:text-2xl text-[var(--text-secondary)] font-medium leading-relaxed max-w-2xl px-1 md:px-0">
             Transform your resume into a professional portfolio website in seconds. No code, just your story.
           </p>
         </header>
@@ -613,31 +613,28 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               {/* Bento Grid: Main Inputs */}
               <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 {/* Resume Upload - Large Cell */}
-                <div className="md:col-span-2 group bg-white rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100 hover:border-indigo-200 transition-all duration-500 relative overflow-hidden">
+                <div className="md:col-span-2 group bg-[var(--bg-primary)] rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-sm border border-[var(--border-color)] hover:border-indigo-500/50 dark:hover:border-indigo-400/50 transition-all duration-500 relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
-                    <FileText className="w-24 md:w-32 h-24 md:h-32 rotate-12" />
+                    <FileText className="w-24 md:w-32 h-24 md:h-32 rotate-12 text-[var(--text-primary)]" />
                   </div>
                   
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-8 md:mb-10">
                       <div>
-                        <span className="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 01</span>
-                        <h2 className="text-2xl md:text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
+                        <span className="text-[9px] md:text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em] mb-2 block font-display">Step 01</span>
+                        <h2 className="text-2xl md:text-3xl font-display font-bold text-[var(--text-primary)] flex items-center gap-3">
                           Upload Resume
                         </h2>
                       </div>
-                      <div className="px-2.5 py-1 rounded-full bg-neutral-100 text-[9px] md:text-[10px] font-bold text-neutral-400 uppercase tracking-widest shrink-0">Required</div>
+                      <div className="px-2.5 py-1 rounded-full bg-[var(--bg-secondary)] text-[9px] md:text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest shrink-0">Required</div>
                     </div>
                     
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className={cn(
-                        "relative border-2 border-dashed rounded-[1.5rem] md:rounded-[2rem] p-8 md:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
-                        resumeFile 
-                          ? "border-green-200 bg-green-50/20" 
-                          : "border-neutral-100 bg-neutral-50/30 hover:border-indigo-300 hover:bg-indigo-50/50"
-                      )}
-                    >
+                    <div className={cn(
+                      "relative border-2 border-dashed rounded-[1.5rem] md:rounded-[2rem] p-8 md:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
+                      resumeFile 
+                        ? "border-green-500/30 bg-green-500/5" 
+                        : "border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-indigo-500/30 hover:bg-indigo-500/5"
+                    )}>
                       <input 
                         type="file" 
                         ref={fileInputRef} 
@@ -654,12 +651,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             animate={{ opacity: 1, scale: 1 }}
                             className="flex flex-col items-center"
                           >
-                            <div className="w-16 md:w-20 h-16 md:h-20 bg-green-100 rounded-3xl flex items-center justify-center mb-5 md:mb-6 shadow-sm">
-                              <CheckCircle className="w-8 md:w-10 h-8 md:h-10 text-green-600" />
+                            <div className="w-16 md:w-20 h-16 md:h-20 bg-green-100 dark:bg-green-900/30 rounded-3xl flex items-center justify-center mb-5 md:mb-6 shadow-sm">
+                              <CheckCircle className="w-8 md:w-10 h-8 md:h-10 text-green-600 dark:text-green-400" />
                             </div>
-                            <p className="text-neutral-900 font-display font-bold text-xl md:text-2xl mb-1.5 md:mb-2 truncate max-w-full px-4">{resumeFile.name}</p>
-                            <p className="text-neutral-500 text-xs md:text-sm font-medium mb-6 md:mb-8">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            <button className="px-6 md:px-8 py-2.5 md:py-3 bg-white border border-green-200 text-green-600 rounded-xl md:rounded-2xl text-[13px] md:text-sm font-bold hover:bg-green-50 transition-all shadow-sm active:scale-95">
+                            <p className="text-[var(--text-primary)] font-display font-bold text-xl md:text-2xl mb-1.5 md:mb-2 truncate max-w-full px-4">{resumeFile.name}</p>
+                            <p className="text-[var(--text-secondary)] text-xs md:text-sm font-medium mb-6 md:mb-8">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <button className="px-6 md:px-8 py-2.5 md:py-3 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl md:rounded-2xl text-[13px] md:text-sm font-bold hover:bg-[var(--bg-secondary)] transition-all shadow-sm active:scale-95">
                               Change File
                             </button>
                           </motion.div>
@@ -670,11 +667,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             animate={{ opacity: 1 }}
                             className="flex flex-col items-center"
                           >
-                            <div className="w-16 md:w-20 h-16 md:h-20 bg-white rounded-2xl md:rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-center mb-6 md:mb-8 group-hover/drop:scale-110 group-hover/drop:rotate-3 transition-transform duration-500">
-                              <Upload className="w-8 md:w-10 h-8 md:h-10 text-neutral-400" />
+                            <div className="w-16 md:w-20 h-16 md:h-20 bg-[var(--bg-primary)] rounded-2xl md:rounded-3xl shadow-sm border border-[var(--border-color)] flex items-center justify-center mb-6 md:mb-8 group-hover/drop:scale-110 group-hover/drop:rotate-3 transition-transform duration-500">
+                              <Upload className="w-8 md:w-10 h-8 md:h-10 text-[var(--text-tertiary)]" />
                             </div>
-                            <p className="text-neutral-900 font-display font-bold text-xl md:text-2xl mb-2.5 md:mb-3">Drop your resume here</p>
-                            <p className="text-neutral-500 max-w-xs mx-auto font-medium leading-relaxed text-sm">
+                            <p className="text-[var(--text-primary)] font-display font-bold text-xl md:text-2xl mb-2.5 md:mb-3">Drop your resume here</p>
+                            <p className="text-[var(--text-secondary)] max-w-xs mx-auto font-medium leading-relaxed text-sm">
                               Support for PDF, DOCX, and DOC. <br className="hidden xs:block" />
                               Max file size 5MB.
                             </p>
@@ -686,20 +683,20 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                 </div>
 
                 {/* Social Connections - Bento Cell */}
-                <div className="md:col-span-2 bg-white rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100">
+                <div className="md:col-span-2 bg-[var(--bg-primary)] rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-sm border border-[var(--border-color)]">
                   <div className="flex items-center justify-between mb-8 md:mb-10">
                     <div>
-                      <span className="text-[9px] md:text-[10px] font-bold text-violet-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 02</span>
-                      <h2 className="text-2xl md:text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
+                      <span className="text-[9px] md:text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-[0.2em] mb-2 block font-display">Step 02</span>
+                      <h2 className="text-2xl md:text-3xl font-display font-bold text-[var(--text-primary)] flex items-center gap-3">
                         Connect Socials
                       </h2>
                     </div>
-                    <div className="px-2.5 py-1 rounded-full bg-neutral-100 text-[9px] md:text-[10px] font-bold text-neutral-400 uppercase tracking-widest shrink-0">Optional</div>
+                    <div className="px-2.5 py-1 rounded-full bg-[var(--bg-secondary)] text-[9px] md:text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest shrink-0">Optional</div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                     <div className="space-y-3 md:space-y-4">
-                      <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                      <label className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
                         <Github className="w-3 md:w-3.5 h-3 md:h-3.5" /> GitHub Username
                       </label>
                       <div className="relative group/input">
@@ -708,12 +705,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           value={githubUsername}
                           onChange={(e) => setGithubUsername(e.target.value)}
                           placeholder="e.g. janesmith"
-                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300 text-sm md:text-base"
+                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-color)] focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-[var(--text-primary)] font-medium placeholder:text-[var(--text-tertiary)] text-sm md:text-base"
                         />
                       </div>
                     </div>
                     <div className="space-y-3 md:space-y-4">
-                      <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                      <label className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
                         <Linkedin className="w-3 md:w-3.5 h-3 md:h-3.5" /> LinkedIn URL
                       </label>
                       <div className="relative group/input">
@@ -722,7 +719,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           value={linkedinUrl}
                           onChange={(e) => setLinkedinUrl(e.target.value)}
                           placeholder="linkedin.com/in/janesmith"
-                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300 text-sm md:text-base"
+                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border-color)] focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-[var(--text-primary)] font-medium placeholder:text-[var(--text-tertiary)] text-sm md:text-base"
                         />
                       </div>
                     </div>
@@ -733,12 +730,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               {/* Action Sidebar - Bento Style */}
               <div className="lg:col-span-4 space-y-6 md:space-y-8">
                 <div className="sticky top-28 space-y-6 md:space-y-8">
-                  <div className="bg-neutral-900 rounded-3xl md:rounded-5xl p-8 md:p-10 text-white shadow-2xl shadow-indigo-200/20 relative overflow-hidden group">
+                  <div className="bg-neutral-900 dark:bg-neutral-800/50 rounded-3xl md:rounded-5xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group border border-white/10">
                     <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-48 md:w-64 h-48 md:h-64 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-700" />
                     
                     <div className="relative z-10">
                       <span className="text-[9px] md:text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 block font-display">Ready to launch?</span>
-                      <h3 className="text-3xl md:text-4xl font-display font-bold mb-4 md:mb-6 leading-tight">Build your <br />future.</h3>
+                      <h3 className="text-3xl md:text-4xl font-display font-bold mb-4 md:mb-6 leading-tight text-white">Build your <br />future.</h3>
                       <p className="text-neutral-400 mb-8 md:mb-12 leading-relaxed font-medium text-sm">
                         Our AI will analyze your background and build a custom portfolio in seconds.
                       </p>
@@ -770,20 +767,19 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                       )}
                     </div>
                   </div>
-
                   {/* Deployment Settings - Refined */}
-                  <div className="bg-white rounded-3xl md:rounded-5xl p-6 md:p-8 border border-neutral-100 shadow-sm">
+                  <div className="bg-[var(--bg-primary)] rounded-3xl md:rounded-5xl p-6 md:p-8 border border-[var(--border-color)] shadow-sm">
                     <button 
                       onClick={() => setShowDeploymentSettings(!showDeploymentSettings)}
                       className="w-full flex items-center justify-between group"
                     >
-                      <h4 className="font-display font-bold text-neutral-900 text-base md:text-lg flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors">
-                          <Settings className="w-4 md:w-5 h-4 md:h-5 text-indigo-600" />
+                      <h4 className="font-display font-bold text-[var(--text-primary)] text-base md:text-lg flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
+                          <Settings className="w-4 md:w-5 h-4 md:h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         Deployment Config
                       </h4>
-                      <ChevronRight className={cn("w-4 md:w-5 h-4 md:h-5 text-neutral-400 transition-transform", showDeploymentSettings && "rotate-90")} />
+                      <ChevronRight className={cn("w-4 md:w-5 h-4 md:h-5 text-[var(--text-tertiary)] transition-transform", showDeploymentSettings && "rotate-90")} />
                     </button>
                     
                     <AnimatePresence>
@@ -796,8 +792,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                         >
                           <div className="pt-6 md:pt-8 space-y-4 md:space-y-6">
                             <div className="space-y-2 md:space-y-3">
-                              <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
-
+                              <label className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
                                 <Key className="w-3 h-3" /> Vercel API Token
                               </label>
                               <input 
@@ -805,11 +800,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                                 value={deploymentKeys.vercelToken}
                                 onChange={(e) => setDeploymentKeys(prev => ({ ...prev, vercelToken: e.target.value }))}
                                 placeholder="sk_..."
-                                className="w-full px-5 py-3.5 rounded-xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-sm font-medium"
+                                className="w-full px-5 py-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-[var(--text-primary)] text-sm font-medium placeholder:text-[var(--text-tertiary)]"
                               />
                             </div>
                             <div className="space-y-3">
-                              <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                              <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
                                 <Rocket className="w-3 h-3" /> Project Name
                               </label>
                               <input 
@@ -817,7 +812,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                                 value={deploymentKeys.projectName}
                                 onChange={(e) => setDeploymentKeys(prev => ({ ...prev, projectName: e.target.value }))}
                                 placeholder="my-awesome-portfolio"
-                                className="w-full px-5 py-3.5 rounded-xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-sm font-medium"
+                                className="w-full px-5 py-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-[var(--text-primary)] text-sm font-medium placeholder:text-[var(--text-tertiary)]"
                               />
                             </div>
                           </div>
@@ -826,8 +821,8 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     </AnimatePresence>
                   </div>
 
-                  <div className="bg-white rounded-5xl p-8 border border-neutral-100 shadow-sm">
-                    <h4 className="font-display font-bold text-neutral-900 mb-8 text-lg">What's included:</h4>
+                  <div className="bg-[var(--bg-primary)] rounded-5xl p-8 border border-[var(--border-color)] shadow-sm">
+                    <h4 className="font-display font-bold text-[var(--text-primary)] mb-8 text-lg">What's included:</h4>
                     <ul className="space-y-6">
                       {[
                         { text: 'AI-powered content enhancement', icon: Wand2 },
@@ -836,15 +831,16 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                         { text: 'Mobile-responsive design', icon: Smartphone },
                         { text: 'One-click deployment', icon: Rocket }
                       ].map((item, i) => (
-                        <li key={i} className="flex items-start gap-4 text-neutral-600">
-                          <div className="p-2 bg-neutral-50 rounded-xl mt-0.5">
-                            <item.icon className="w-4 h-4 text-neutral-400" />
+                        <li key={i} className="flex items-start gap-4 text-[var(--text-secondary)]">
+                          <div className="p-2 bg-[var(--bg-secondary)] rounded-xl mt-0.5">
+                            <item.icon className="w-4 h-4 text-[var(--text-tertiary)]" />
                           </div>
                           <span className="text-sm font-medium leading-relaxed">{item.text}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
+
                 </div>
               </div>
             </motion.div>
@@ -857,8 +853,8 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               className="max-w-5xl mx-auto mb-32"
             >
               <div className="text-center mb-16">
-                <h2 className="text-4xl font-display font-bold text-neutral-900 mb-4">How it's built</h2>
-                <p className="text-neutral-500 font-medium">A peek under the hood of this AI-powered engine.</p>
+                <h2 className="text-4xl font-display font-bold text-[var(--text-primary)] mb-4">How it's built</h2>
+                <p className="text-[var(--text-secondary)] font-medium">A peek under the hood of this AI-powered engine.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -867,27 +863,27 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     title: "Gemini 2.0 Flash",
                     description: "The core intelligence that parses your resume and generates high-quality, professional content tailored to your career.",
                     icon: Sparkles,
-                    color: "bg-indigo-50 text-indigo-600"
+                    color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
                   },
                   {
                     title: "React & Tailwind",
                     description: "A high-performance frontend stack ensuring your portfolio is lightning fast, responsive, and easy to customize.",
                     icon: Code,
-                    color: "bg-violet-50 text-violet-600"
+                    color: "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
                   },
                   {
                     title: "Dynamic Templates",
                     description: "Hand-crafted design systems that adapt to your content, ensuring a unique look for every professional.",
                     icon: Layout,
-                    color: "bg-emerald-50 text-emerald-600"
+                    color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                   }
                 ].map((feature, i) => (
-                  <div key={i} className="bg-white p-10 rounded-[2.5rem] border border-neutral-100 shadow-sm hover:shadow-xl transition-all duration-500 group">
+                  <div key={i} className="bg-[var(--bg-primary)] p-10 rounded-[2.5rem] border border-[var(--border-color)] shadow-sm hover:shadow-xl transition-all duration-500 group">
                     <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform", feature.color)}>
                       <feature.icon className="w-7 h-7" />
                     </div>
-                    <h3 className="text-xl font-bold text-neutral-900 mb-4">{feature.title}</h3>
-                    <p className="text-neutral-500 text-sm leading-relaxed font-medium">{feature.description}</p>
+                    <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4">{feature.title}</h3>
+                    <p className="text-[var(--text-secondary)] text-sm leading-relaxed font-medium">{feature.description}</p>
                   </div>
                 ))}
               </div>
@@ -900,13 +896,13 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           <div className="max-w-4xl mx-auto py-24 lg:py-32 text-center relative z-10">
             <div className="relative inline-block mb-20">
               <div className="absolute inset-0 bg-indigo-500/20 blur-[120px] rounded-full animate-pulse" />
-              <div className="relative w-40 h-40 bg-white rounded-5xl shadow-2xl border border-neutral-100 flex items-center justify-center">
+              <div className="relative w-40 h-40 bg-[var(--bg-primary)] rounded-5xl shadow-2xl border border-[var(--border-color)] flex items-center justify-center">
                 <Loader2 className="w-16 h-16 text-indigo-600 animate-spin" />
               </div>
             </div>
             
-            <h2 className="text-5xl lg:text-6xl font-display font-bold text-neutral-900 mb-6 tracking-tight">Building your <br />professional story</h2>
-            <p className="text-neutral-500 text-xl mb-16 font-medium">Our AI is analyzing your background and crafting a unique experience...</p>
+            <h2 className="text-5xl lg:text-6xl font-display font-bold text-[var(--text-primary)] mb-6 tracking-tight">Building your <br />professional story</h2>
+            <p className="text-[var(--text-secondary)] text-xl mb-16 font-medium">Our AI is analyzing your background and crafting a unique experience...</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto text-left">
               {steps.map((step, idx) => (
@@ -918,24 +914,24 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   className={cn(
                     "flex items-center justify-between p-8 rounded-4xl border transition-all duration-700",
                     step.status === 'completed' 
-                      ? "bg-green-50/50 border-green-100" 
+                      ? "bg-green-50/50 dark:bg-green-900/10 border-green-100 dark:border-green-900/20" 
                       : step.status === 'loading'
-                        ? "bg-white border-indigo-100 shadow-xl shadow-indigo-500/5 ring-4 ring-indigo-500/5"
-                        : "bg-white/50 border-neutral-100 opacity-40"
+                        ? "bg-[var(--bg-primary)] border-indigo-100 dark:border-indigo-900 shadow-xl shadow-indigo-500/5 ring-4 ring-indigo-500/5"
+                        : "bg-[var(--bg-primary)]/50 border-[var(--border-color)] opacity-40 text-[var(--text-tertiary)]"
                   )}
                 >
                   <div className="flex items-center gap-5">
                     <div className={cn(
                       "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500",
-                      step.status === 'completed' ? "bg-green-500 text-white shadow-lg shadow-green-200" : "bg-neutral-100 text-neutral-400"
+                      step.status === 'completed' ? "bg-green-500 text-white shadow-lg shadow-green-200" : "bg-[var(--bg-secondary)] text-[var(--text-tertiary)]"
                     )}>
                       {step.status === 'completed' ? <CheckCircle className="w-6 h-6" /> : <Layers className="w-6 h-6" />}
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.2em] mb-1 block">Step 0{idx + 1}</span>
+                      <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1 block">Step 0{idx + 1}</span>
                       <span className={cn(
                         "font-display font-bold text-lg",
-                        step.status === 'completed' ? "text-green-700" : "text-neutral-700"
+                        step.status === 'completed' ? "text-green-700 dark:text-green-400" : "text-[var(--text-primary)]"
                       )}>
                         {step.label}
                       </span>
@@ -961,16 +957,16 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               "sticky top-6 z-[210] transition-all duration-500 px-6",
               (isFullscreen || isEditing) ? "hidden" : ""
             )}>
-              <div className="max-w-fit mx-auto bg-white/80 backdrop-blur-xl border border-neutral-200/50 p-2 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex items-center gap-2">
+              <div className="max-w-fit mx-auto bg-[var(--bg-primary)]/80 backdrop-blur-xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none flex items-center gap-2">
                 <button 
                   onClick={() => setPortfolio(null)}
-                  className="p-3 hover:bg-red-50 rounded-2xl transition-all text-neutral-400 hover:text-red-600 group"
+                  className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all text-[var(--text-tertiary)] hover:text-red-600 group"
                   title="Discard and Start Over"
                 >
                   <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </button>
                 
-                <div className="h-8 w-px bg-neutral-200/50 mx-1" />
+                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
                 
                 <button 
                   onClick={() => setIsEditing(!isEditing)}
@@ -978,14 +974,14 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     "flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all shadow-sm text-sm",
                     isEditing 
                       ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200" 
-                      : "bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                      : "bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
                   )}
                 >
                   {isEditing ? <CheckCircle className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
                   {isEditing ? 'Finish Editing' : 'Edit Portfolio'}
                 </button>
 
-                <div className="h-8 w-px bg-neutral-200/50 mx-1" />
+                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
 
                 <button 
                   onClick={() => {
@@ -993,7 +989,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     setIsFullscreen(nextVal);
                     onFullscreenChange?.(nextVal);
                   }}
-                  className="p-3 hover:bg-neutral-100 rounded-2xl transition-all text-neutral-500"
+                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all text-[var(--text-tertiary)]"
                   title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                 >
                   {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
@@ -1003,7 +999,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
 
             {/* Fullscreen Controls */}
             {isFullscreen && (
-              <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 bg-white/90 backdrop-blur-2xl border border-neutral-200/50 p-2 rounded-[2rem] shadow-2xl">
+              <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 bg-[var(--bg-primary)]/90 backdrop-blur-2xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-2xl">
                 <button 
                   onClick={() => setIsFullscreen(false)}
                   className="p-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
@@ -1011,27 +1007,27 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                 >
                   <Minimize2 className="w-5 h-5" />
                 </button>
-                <div className="h-8 w-px bg-neutral-200/50" />
-                <div className="flex bg-neutral-100 p-1 rounded-xl">
+                <div className="h-8 w-px bg-[var(--border-color)]" />
+                <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl">
                   {(['desktop', 'tablet', 'mobile'] as const).map((device) => (
                     <button
                       key={device}
                       onClick={() => setPreviewDevice(device)}
                       className={cn(
                         "p-2 rounded-lg transition-all",
-                        previewDevice === device ? "bg-white text-indigo-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                        previewDevice === device ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                       )}
                     >
                       {device === 'desktop' ? <Monitor className="w-4 h-4" /> : device === 'tablet' ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
                     </button>
                   ))}
                 </div>
-                <div className="h-8 w-px bg-neutral-200/50" />
+                <div className="h-8 w-px bg-[var(--border-color)]" />
                 <button 
                   onClick={() => setIsEditing(!isEditing)}
                   className={cn(
                     "p-3 rounded-2xl transition-all",
-                    isEditing ? "bg-indigo-100 text-indigo-600" : "hover:bg-neutral-100 text-neutral-500"
+                    isEditing ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-[var(--bg-secondary)] text-[var(--text-tertiary)]"
                   )}
                   title={isEditing ? "Close Editor" : "Open Editor"}
                 >
@@ -1047,7 +1043,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               "flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all shadow-xl",
               isEditing 
                 ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                : "bg-white text-neutral-900 hover:bg-neutral-50"
+                : "bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--bg-secondary)]"
             )}
           >
             {isEditing ? <CheckCircle className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
@@ -1094,7 +1090,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="bg-white rounded-[2.5rem] p-10 border border-neutral-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10"
+                  className="bg-[var(--bg-primary)] rounded-[2.5rem] p-10 border border-[var(--border-color)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10"
                 >
                   {[
                     { label: 'Total Views', value: '1,284', change: '+12%', color: 'indigo' },
@@ -1103,17 +1099,17 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     { label: 'Avg. Session', value: '2m 14s', change: '-2%', color: 'amber' },
                   ].map((stat, i) => (
                     <div key={i} className="space-y-2">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400">{stat.label}</p>
+                      <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{stat.label}</p>
                       <div className="flex items-baseline gap-3">
-                        <span className="text-4xl font-bold text-neutral-900 tracking-tight">{stat.value}</span>
+                        <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{stat.value}</span>
                         <div className={cn(
                           "px-2 py-1 rounded-lg text-xs font-black",
-                          stat.change.startsWith('+') ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                          stat.change.startsWith('+') ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
                         )}>
                           {stat.change}
                         </div>
                       </div>
-                      <div className="w-full h-1.5 bg-neutral-50 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
                         <motion.div 
                           initial={{ width: 0 }}
                           animate={{ width: '70%' }}
@@ -1140,7 +1136,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               )}>
                 <div className={cn(
                   "relative group/preview transition-all duration-500 min-h-screen flex flex-col items-center",
-                  isFullscreen ? "fixed inset-0 z-[999] bg-neutral-50 p-6 pt-24 overflow-auto" : "p-6 md:p-12 lg:p-20"
+                  isFullscreen ? "fixed inset-0 z-[999] bg-[var(--bg-secondary)] p-6 pt-24 overflow-auto" : "p-6 md:p-12 lg:p-20"
                 )}>
                   <div className={cn(
                     "w-full transition-all duration-500 origin-top flex flex-col items-center",
@@ -1149,19 +1145,19 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   )}>
                     <div className="absolute -inset-4 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10 blur-2xl rounded-5xl opacity-0 group-hover/preview:opacity-100 transition-opacity duration-1000" />
                     <div className={cn(
-                      "relative bg-white rounded-4xl shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-neutral-100 overflow-hidden ring-1 ring-black/[0.05] w-full",
+                      "relative bg-white dark:bg-neutral-900 rounded-4xl shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-[var(--border-color)] overflow-hidden ring-1 ring-black/[0.05] w-full",
                       previewDevice === 'mobile' ? "aspect-[9/19.5] max-h-[800px]" : 
                       previewDevice === 'tablet' ? "aspect-[3/4] max-h-[900px]" : "min-h-[80vh]"
                     )}>
                       {/* Browser Header */}
-                      <div id="portfolio-preview-header" className="bg-neutral-50/50 border-b border-neutral-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md">
+                      <div id="portfolio-preview-header" className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-6 py-4 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md">
                         <div className="flex gap-2">
                           <div className="w-3 h-3 rounded-full bg-red-400/20 border border-red-400/40" />
                           <div className="w-3 h-3 rounded-full bg-amber-400/20 border border-amber-400/40" />
                           <div className="w-3 h-3 rounded-full bg-green-400/20 border border-green-400/40" />
                         </div>
-                        <div className="bg-white/80 border border-neutral-200/50 px-4 py-1 rounded-lg text-[10px] font-medium text-neutral-400 flex items-center gap-2 min-w-[200px] justify-center">
-                          <Globe className="w-3 h-3" />
+                        <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] px-4 py-1 rounded-lg text-[10px] font-medium text-[var(--text-tertiary)] flex items-center gap-2 min-w-[200px] justify-center shadow-sm">
+                          <Globe className="w-3 h-3 text-indigo-500" />
                           {portfolio.hero.name.toLowerCase().replace(/\s+/g, '-')}.portfolio.site
                         </div>
                         <div className="flex items-center gap-2">
@@ -1169,7 +1165,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             onClick={() => setAutoFit(!autoFit)}
                             className={cn(
                               "p-1.5 rounded-lg transition-all",
-                              autoFit ? "bg-indigo-100 text-indigo-600" : "text-neutral-400 hover:bg-neutral-100"
+                              autoFit ? "bg-indigo-600 text-white" : "text-[var(--text-tertiary)] hover:bg-[var(--bg-primary)]"
                             )}
                             title="Auto-fit content"
                           >
@@ -1212,29 +1208,29 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     animate={{ x: 0 }}
                     exit={{ x: 400 }}
                     className={cn(
-                      "fixed top-24 right-6 bottom-6 w-80 md:w-96 bg-white rounded-[2.5rem] shadow-2xl border border-neutral-100 flex flex-col overflow-hidden z-[1001]",
+                      "fixed top-24 right-6 bottom-6 w-80 md:w-96 bg-[var(--bg-primary)] rounded-[2.5rem] shadow-2xl border border-[var(--border-color)] flex flex-col overflow-hidden z-[1001]",
                       isFullscreen && "top-24"
                     )}
                   >
                     {/* Panel Header */}
-                    <div className="p-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+                    <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-secondary)]/50">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-600 rounded-xl">
                           <Edit3 className="w-4 h-4 text-white" />
                         </div>
-                        <h3 className="font-bold text-neutral-900">Portfolio Editor</h3>
+                        <h3 className="font-bold text-[var(--text-primary)]">Portfolio Editor</h3>
                       </div>
                       <div className="flex items-center gap-2">
                         <button 
                           onClick={() => setPortfolio(null)}
-                          className="p-2 hover:bg-red-50 rounded-xl transition-colors text-neutral-400 hover:text-red-600"
+                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-red-600"
                           title="Discard Portfolio"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
                         <button 
                           onClick={() => setIsEditing(false)}
-                          className="p-2 hover:bg-neutral-200 rounded-xl transition-colors text-neutral-400"
+                          className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)]"
                         >
                           <X className="w-5 h-5" />
                         </button>
@@ -1242,14 +1238,14 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex border-b border-neutral-100">
+                    <div className="flex border-b border-[var(--border-color)]">
                       {(['design', 'content', 'export'] as const).map((tab) => (
                         <button
                           key={tab}
                           onClick={() => setActiveTab(tab)}
                           className={cn(
                             "flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all",
-                            activeTab === tab ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30" : "text-neutral-400 hover:text-neutral-600"
+                            activeTab === tab ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                           )}
                         >
                           {tab}
@@ -1263,7 +1259,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                         <>
                           {/* Template Selection */}
                           <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Template</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Template</label>
                             <div className="grid grid-cols-2 gap-2">
                               {(['minimal', 'developer', 'professional', 'modern'] as const).map((t) => (
                                 <button
@@ -1271,7 +1267,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                                   onClick={() => setTemplate(t)}
                                   className={cn(
                                     "px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
-                                    template === t ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200" : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300"
+                                    template === t ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200" : "bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-indigo-200"
                                   )}
                                 >
                                   {t}
@@ -1282,7 +1278,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
 
                           {/* Font Family */}
                           <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Typography</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Typography</label>
                             <div className="space-y-2">
                               {(['Inter', 'Playfair', 'Mono'] as const).map((f) => (
                                 <button
@@ -1290,7 +1286,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                                   onClick={() => setGlobalFontFamily(f)}
                                   className={cn(
                                     "w-full px-4 py-3 rounded-xl text-sm font-bold transition-all border flex items-center justify-between",
-                                    globalFontFamily === f ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-neutral-100 text-neutral-600 hover:border-neutral-200"
+                                    globalFontFamily === f ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 text-indigo-600 dark:text-indigo-400" : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-indigo-200"
                                   )}
                                 >
                                   <span style={{ fontFamily: f === 'Inter' ? 'Inter' : f === 'Playfair' ? 'Playfair Display' : 'JetBrains Mono' }}>
@@ -1305,13 +1301,13 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           {/* Font Size */}
                           <div className="space-y-4">
                             <div className="flex justify-between items-center">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Scale</label>
-                              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{globalFontSize}%</span>
+                              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Scale</label>
+                              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md">{globalFontSize}%</span>
                             </div>
                             <div className="flex items-center gap-4">
                               <button 
                                 onClick={() => setGlobalFontSize(Math.max(70, globalFontSize - 5))}
-                                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                                className="p-2 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-lg transition-colors text-[var(--text-primary)]"
                               >
                                 <Minus className="w-4 h-4" />
                               </button>
@@ -1325,7 +1321,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                               />
                               <button 
                                 onClick={() => setGlobalFontSize(Math.min(150, globalFontSize + 5))}
-                                className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
+                                className="p-2 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-lg transition-colors text-[var(--text-primary)]"
                               >
                                 <Plus className="w-4 h-4" />
                               </button>
@@ -1334,15 +1330,15 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
 
                           {/* Device Preview */}
                           <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Preview Device</label>
-                            <div className="flex bg-neutral-100 p-1 rounded-xl">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Preview Device</label>
+                            <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl">
                               {(['desktop', 'tablet', 'mobile'] as const).map((device) => (
                                 <button
                                   key={device}
                                   onClick={() => setPreviewDevice(device)}
                                   className={cn(
                                     "flex-1 flex items-center justify-center py-2 rounded-lg transition-all",
-                                    previewDevice === device ? "bg-white text-indigo-600 shadow-sm" : "text-neutral-400 hover:text-neutral-600"
+                                    previewDevice === device ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                                   )}
                                 >
                                   {device === 'desktop' ? <Monitor className="w-4 h-4" /> : device === 'tablet' ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
@@ -1356,10 +1352,10 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                       {activeTab === 'content' && (
                         <div className="space-y-6">
                           {selectedElement ? (
-                            <div className="space-y-4 p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100">
+                            <div className="space-y-4 p-5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100 dark:border-indigo-900/20">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Editing: {selectedElement.label}</span>
-                                <button onClick={() => setSelectedElement(null)} className="text-neutral-400 hover:text-neutral-600">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Editing: {selectedElement.label}</span>
+                                <button onClick={() => setSelectedElement(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]">
                                   <X className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -1375,34 +1371,34 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                                     current[keys[keys.length - 1]] = val;
                                     setPortfolio(newPortfolio);
                                   }}
-                                  className="w-full bg-white border border-indigo-100 rounded-2xl p-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none min-h-[120px] resize-none"
+                                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-2xl p-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none min-h-[120px] resize-none"
                                   placeholder="Enter content..."
                                 />
                               </div>
                             </div>
                           ) : (
-                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                              <div className="flex items-center gap-2 text-amber-700 mb-2">
+                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
                                 <Sparkles className="w-4 h-4" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">AI Tip</span>
                               </div>
-                              <p className="text-xs text-amber-800 leading-relaxed font-medium">Click on any text in the preview to edit it directly. Your changes are saved in real-time.</p>
+                              <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed font-medium">Click on any text in the preview to edit it directly. Your changes are saved in real-time.</p>
                             </div>
                           )}
                           
                           <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Recruiter View</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Recruiter View</label>
                             <button
                               onClick={() => setIsRecruiterView(!isRecruiterView)}
                               className={cn(
                                 "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
-                                isRecruiterView ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-neutral-100 text-neutral-600"
+                                isRecruiterView ? "bg-indigo-600 border-indigo-600 text-white" : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)]"
                               )}
                             >
                               <span className="text-sm font-bold">Show Insights</span>
                               <div className={cn(
                                 "w-10 h-5 rounded-full relative transition-colors",
-                                isRecruiterView ? "bg-white/20" : "bg-neutral-200"
+                                isRecruiterView ? "bg-white/20" : "bg-[var(--bg-secondary)]"
                               )}>
                                 <div className={cn(
                                   "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
@@ -1420,29 +1416,29 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             onClick={handleDownloadPDF}
                             className={cn(
                               "w-full flex items-center gap-3 p-4 rounded-2xl transition-all text-left",
-                              isPrinting ? "bg-indigo-600 text-white" : "bg-indigo-50 hover:bg-indigo-100 text-indigo-600"
+                              isPrinting ? "bg-indigo-600 text-white" : "bg-indigo-50 dark:bg-indigo-900/10 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
                             )}
                             disabled={isPrinting}
                           >
-                            <div className="p-2 bg-white rounded-xl">
+                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
                               {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-neutral-900">Download PDF</p>
-                              <p className="text-[10px] text-neutral-400">Professional resume format</p>
+                              <p className="text-sm font-bold text-[var(--text-primary)]">Download PDF</p>
+                              <p className="text-[10px] text-[var(--text-tertiary)]">Professional resume format</p>
                             </div>
                           </button>
 
                           <button 
                             onClick={() => setShowSourceCode(true)}
-                            className="w-full flex items-center gap-3 p-4 bg-neutral-50 hover:bg-neutral-100 rounded-2xl transition-all text-left"
+                            className="w-full flex items-center gap-3 p-4 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-2xl transition-all text-left border border-[var(--border-color)]"
                           >
-                            <div className="p-2 bg-white rounded-xl">
-                              <Code className="w-4 h-4 text-neutral-600" />
+                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
+                              <Code className="w-4 h-4 text-[var(--text-secondary)]" />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-neutral-900">Source Code</p>
-                              <p className="text-[10px] text-neutral-400">Get JSON configuration</p>
+                              <p className="text-sm font-bold text-[var(--text-primary)]">Source Code</p>
+                              <p className="text-[10px] text-[var(--text-tertiary)]">Get JSON configuration</p>
                             </div>
                           </button>
 
@@ -1461,14 +1457,14 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                               URL.revokeObjectURL(url);
                               setShowExportOptions(false);
                             }}
-                            className="w-full flex items-center gap-3 p-4 bg-emerald-50 hover:bg-emerald-100 rounded-2xl transition-all text-left"
+                            className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 rounded-2xl transition-all text-left border border-emerald-100 dark:border-emerald-900/20"
                           >
-                            <div className="p-2 bg-white rounded-xl">
-                              <Download className="w-4 h-4 text-emerald-600" />
+                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
+                              <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-neutral-900">Export HTML</p>
-                              <p className="text-[10px] text-neutral-400">Download standalone file</p>
+                              <p className="text-sm font-bold text-[var(--text-primary)]">Export HTML</p>
+                              <p className="text-[10px] text-[var(--text-tertiary)]">Download standalone file</p>
                             </div>
                           </button>
                         </div>
@@ -1476,7 +1472,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     </div>
 
                     {/* Panel Footer */}
-                    <div className="p-6 border-t border-neutral-100 bg-neutral-50/50">
+                    <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/50">
                       <button 
                         onClick={() => setIsEditing(false)}
                         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
@@ -1497,16 +1493,16 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[110] flex items-center justify-center bg-white/80 backdrop-blur-xl"
+                  className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--bg-primary)]/80 backdrop-blur-xl"
                 >
-                  <div className="w-full max-w-md p-12 bg-white rounded-[3rem] shadow-2xl shadow-indigo-500/10 border border-neutral-100">
+                  <div className="w-full max-w-md p-12 bg-[var(--bg-primary)] rounded-[3rem] shadow-2xl shadow-indigo-500/10 border border-[var(--border-color)]">
                     <div className="flex items-center gap-4 mb-12">
                       <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
                         <Printer className="w-6 h-6 text-white animate-pulse" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold tracking-tight">Generating PDF</h3>
-                        <p className="text-sm text-neutral-500 font-medium tracking-tight">Please stay on this page</p>
+                        <h3 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Generating PDF</h3>
+                        <p className="text-sm text-[var(--text-tertiary)] font-medium tracking-tight">Please stay on this page</p>
                       </div>
                     </div>
 
@@ -1516,7 +1512,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           <div className="flex items-center gap-4">
                             <div className={cn(
                               "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-500",
-                              step.status === 'complete' ? "bg-green-500" : step.status === 'loading' ? "bg-indigo-600" : "bg-neutral-100"
+                              step.status === 'complete' ? "bg-green-500" : step.status === 'loading' ? "bg-indigo-600" : "bg-[var(--bg-secondary)]"
                             )}>
                               {step.status === 'complete' ? (
                                 <Check className="w-3 h-3 text-white" />
@@ -1526,7 +1522,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             </div>
                             <span className={cn(
                               "text-sm font-bold tracking-tight transition-colors duration-500",
-                              step.status === 'complete' ? "text-neutral-900" : step.status === 'loading' ? "text-indigo-600" : "text-neutral-300"
+                              step.status === 'complete' ? "text-[var(--text-primary)]" : step.status === 'loading' ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-tertiary)]"
                             )}>
                               {step.label}
                             </span>
@@ -1535,7 +1531,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: "100%" }}
-                              className="h-1 bg-indigo-100 rounded-full overflow-hidden w-24"
+                              className="h-1 bg-indigo-100 dark:bg-indigo-900/20 rounded-full overflow-hidden w-24"
                             >
                               <motion.div
                                 animate={{ x: ["-100%", "100%"] }}
@@ -1601,8 +1597,9 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                       </button>
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(JSON.stringify(portfolio, null, 2));
-                          // Could add a toast here
+                          if (portfolio) {
+                            navigator.clipboard.writeText(JSON.stringify(portfolio, null, 2));
+                          }
                         }}
                         className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20"
                       >
@@ -1657,7 +1654,7 @@ function PortfolioPreview({
       <div 
         className={cn(
           "relative group/edit w-full transition-all cursor-text",
-          isSelected ? "ring-2 ring-indigo-500 ring-offset-4 rounded-lg" : "hover:bg-indigo-50/50 rounded-lg"
+          isSelected ? "ring-2 ring-indigo-500 ring-offset-4 rounded-lg" : "hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 rounded-lg"
         )}
         onClick={(e) => {
           e.stopPropagation();

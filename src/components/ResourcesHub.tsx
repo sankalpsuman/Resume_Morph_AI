@@ -32,27 +32,27 @@ function ResourceCard({ title, desc, icon: Icon, onClick, color, bg, badge }: Re
       whileHover={{ y: -5, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="group relative p-8 bg-white border border-gray-100 rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100 transition-all text-left overflow-hidden"
+      className="group relative p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[40px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100 dark:hover:shadow-none transition-all text-left overflow-hidden"
     >
-      <div className={cn("absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 opacity-50", bg)} />
+      <div className={cn("absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 opacity-50 dark:opacity-20", bg)} />
       
-      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-lg relative z-10", bg)}>
-        <Icon className={cn("w-7 h-7", color)} />
+      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 shadow-lg relative z-10", bg, "dark:bg-indigo-900/40")}>
+        <Icon className={cn("w-7 h-7", color, "dark:text-indigo-400")} />
       </div>
 
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-xl font-black text-gray-900 tracking-tight">{title}</h3>
+          <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight">{title}</h3>
           {badge && (
             <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest rounded-md">
               {badge}
             </span>
           )}
         </div>
-        <p className="text-gray-500 font-medium leading-relaxed mb-6 group-hover:text-gray-600 transition-colors">
+        <p className="text-[var(--text-secondary)] font-medium leading-relaxed mb-6 group-hover:text-[var(--text-primary)] transition-colors">
           {desc}
         </p>
-        <div className={cn("inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors", color)}>
+        <div className={cn("inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-colors", color, "dark:text-indigo-400")}>
           Explore Resource <Target className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
@@ -109,13 +109,13 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24 font-sans selection:bg-indigo-100">
+    <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24 font-sans selection:bg-indigo-100 dark:bg-[var(--bg-primary)]">
       {/* Hero Section */}
       <div className="text-center mb-24">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10 border border-indigo-100 shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10 border border-indigo-100 dark:border-indigo-800 shadow-sm"
         >
           <LifeBuoy className="w-4 h-4" />
           Intelligence Hub
@@ -123,7 +123,7 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl md:text-8xl font-black text-gray-900 tracking-tighter mb-8 leading-[0.85]"
+          className="text-5xl md:text-8xl font-black text-[var(--text-primary)] tracking-tighter mb-8 leading-[0.85]"
         >
           How can we help you <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">Succeed?</span>
@@ -132,7 +132,7 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto font-medium mb-12 leading-relaxed"
+          className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto font-medium mb-12 leading-relaxed"
         >
           Everything you need to master Resume Morph and accelerate your career growth, consolidated in one intuitive workspace.
         </motion.p>
@@ -186,11 +186,11 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
 
       {/* Newsletter / Contact Section */}
       <div className="mt-24 text-center">
-        <div className="p-1 gap-1 inline-flex bg-gray-50 rounded-2xl mb-8">
-          <button className="px-6 py-3 bg-white text-indigo-600 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm">Standard Support</button>
-          <button className="px-6 py-3 text-gray-400 rounded-xl text-xs font-black uppercase tracking-widest hover:text-gray-600">API Documentation</button>
+        <div className="p-1 gap-1 inline-flex bg-[var(--bg-secondary)] rounded-2xl mb-8">
+          <button className="px-6 py-3 bg-[var(--bg-primary)] text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm">Standard Support</button>
+          <button className="px-6 py-3 text-[var(--text-tertiary)] rounded-xl text-xs font-black uppercase tracking-widest hover:text-[var(--text-primary)]">API Documentation</button>
         </div>
-        <p className="text-sm text-gray-400 font-medium">
+        <p className="text-sm text-[var(--text-tertiary)] font-medium">
           Resume Morph v2.4.0 — Unified Resource Network
         </p>
       </div>

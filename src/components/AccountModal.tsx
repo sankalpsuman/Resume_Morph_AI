@@ -57,10 +57,10 @@ export default function AccountModal({
   if (!user || !userData) return null;
 
   const getLevel = (count: number) => {
-    if (count >= 100) return { name: 'Grandmaster', color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', icon: Trophy };
-    if (count >= 50) return { name: 'Expert', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200', icon: Star };
-    if (count >= 10) return { name: 'Pro', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: Zap };
-    return { name: 'Novice', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', icon: User };
+    if (count >= 100) return { name: 'Grandmaster', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-900/30', icon: Trophy };
+    if (count >= 50) return { name: 'Expert', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20', border: 'border-indigo-200 dark:border-indigo-900/30', icon: Star };
+    if (count >= 10) return { name: 'Pro', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-900/30', icon: Zap };
+    return { name: 'Novice', color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/20', border: 'border-gray-200 dark:border-gray-900/30', icon: User };
   };
 
   const usedMorphs = userData.usedMorphs !== undefined ? userData.usedMorphs : (userData.morphCount || 0);
@@ -131,28 +131,28 @@ export default function AccountModal({
   const content = (
     <>
       <div className={cn(
-        "relative w-full bg-white flex flex-col",
+        "relative w-full bg-[var(--bg-primary)] flex flex-col",
         isTabMode 
-          ? "w-full pb-32 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
-          : "max-w-3xl rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-gray-100 max-h-[85vh]"
+          ? "w-full pb-32 rounded-[32px] md:rounded-[40px] shadow-sm border border-[var(--border-color)] overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
+          : "max-w-3xl rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-[var(--border-color)] max-h-[85vh]"
       )}>
         {/* Header - Only show in modal mode */}
         {!isTabMode && (
-          <div className="p-6 md:p-8 border-b border-gray-50 flex items-center justify-between bg-gradient-to-br from-gray-50 to-white">
+          <div className="p-6 md:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)]">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-100">
+              <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none">
                 <User className="text-white w-7 h-7" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-gray-900 tracking-tight">Account Profile</h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Manage your identity & history</p>
+                <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Account Profile</h2>
+                <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-[0.2em]">Manage your identity & history</p>
               </div>
             </div>
             <button 
               onClick={onClose}
-              className="p-3 hover:bg-gray-100 rounded-2xl transition-all active:scale-90"
+              className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all active:scale-90"
             >
-              <X className="w-6 h-6 text-gray-400" />
+              <X className="w-6 h-6 text-[var(--text-tertiary)]" />
             </button>
           </div>
         )}
@@ -165,14 +165,14 @@ export default function AccountModal({
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8">
             {/* Left: Avatar & Basic Info */}
             <div className="lg:col-span-3 space-y-6">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-6 md:p-8 bg-white rounded-[32px] md:rounded-[40px] border border-gray-100 shadow-sm relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 blur-3xl opacity-50 transition-all group-hover:bg-indigo-100" />
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-6 md:p-8 bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-full -mr-16 -mt-16 blur-3xl opacity-50 transition-all group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30" />
                 
                   <div className="relative shrink-0">
                   <img 
                     src={userData.photo || user.photoURL} 
                     alt={userData.name || user.displayName} 
-                    className="w-24 h-24 md:w-32 md:h-32 rounded-[24px] md:rounded-[32px] border-4 border-white shadow-2xl object-cover relative z-10"
+                    className="w-24 h-24 md:w-32 md:h-32 rounded-[24px] md:rounded-[32px] border-4 border-[var(--bg-primary)] shadow-2xl object-cover relative z-10"
                   />
                   <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg z-20">
                     {userLevel.name}
@@ -181,16 +181,16 @@ export default function AccountModal({
 
                 <div className="flex-grow text-center md:text-left space-y-4 relative z-10 w-full md:w-auto">
                   <div>
-                    <h3 className="text-xl md:text-2xl font-black text-gray-900 flex items-center justify-center md:justify-start gap-2">
+                    <h3 className="text-xl md:text-2xl font-black text-[var(--text-primary)] flex items-center justify-center md:justify-start gap-2">
                       {userData.name || user.displayName}
                       {user.email === 'sankalpsmn@gmail.com' && <Shield className="w-5 h-5 text-indigo-600" />}
                     </h3>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-2">
-                      <div className="flex items-center gap-2 text-gray-400">
+                      <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                         <Mail className="w-4 h-4" />
                         <span className="text-xs font-bold truncate max-w-[200px]">{user.email}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-400">
+                      <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                         <Clock className="w-4 h-4" />
                         <span className="text-xs font-bold">Joined {joinedDate}</span>
                       </div>
@@ -198,13 +198,13 @@ export default function AccountModal({
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
-                    <div className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                    <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
                       {userData.plan || 'Free'} Plan
                     </div>
                     {user.email === 'sankalpsmn@gmail.com' && (
                       <button
                         onClick={onOpenAdmin}
-                        className="px-4 py-2 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-gray-100 hover:bg-black transition-all flex items-center gap-2"
+                        className="px-4 py-2 bg-gray-900 dark:bg-neutral-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-black dark:hover:bg-neutral-700 transition-all flex items-center gap-2"
                       >
                         <Shield className="w-3.5 h-3.5" />
                         Admin
@@ -213,7 +213,7 @@ export default function AccountModal({
                     {user.email !== 'sankalpsmn@gmail.com' && (!userData.plan || userData.plan === 'free') && (
                       <button
                         onClick={onUpgrade}
-                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:shadow-indigo-200 transition-all flex items-center gap-2"
+                        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 dark:shadow-none hover:shadow-indigo-500/40 transition-all flex items-center gap-2"
                       >
                         <Zap className="w-3.5 h-3.5 fill-white" />
                         Upgrade
@@ -226,22 +226,22 @@ export default function AccountModal({
 
             {/* Right: Stats Cards */}
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 h-fit">
-              <div className="p-6 bg-gradient-to-br from-indigo-50 to-white rounded-[32px] border border-indigo-100/50 flex items-center gap-4 md:gap-5 shadow-sm">
-                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 shrink-0">
+              <div className="p-6 bg-gradient-to-br from-indigo-50 to-[var(--bg-primary)] dark:from-indigo-900/10 dark:to-[var(--bg-primary)] rounded-[32px] border border-indigo-100/50 dark:border-indigo-900/30 flex items-center gap-4 md:gap-5 shadow-sm">
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none shrink-0">
                   <Activity className="w-6 h-6 md:w-7 md:h-7 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl md:text-3xl font-black text-indigo-600 leading-none">{usedMorphs}</p>
+                  <p className="text-2xl md:text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none">{usedMorphs}</p>
                   <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Total Morphs</p>
                 </div>
               </div>
               
-              <div className="p-6 bg-white border border-gray-100 rounded-[32px] shadow-sm space-y-4">
+              <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Usage Progress</p>
-                  <p className="text-xs font-black text-indigo-600">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}</p>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Usage Progress</p>
+                  <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}</p>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-50 shadow-inner">
+                <div className="w-full h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${progress}%` }}
@@ -250,17 +250,17 @@ export default function AccountModal({
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                    <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest mb-1">Free Credits</p>
-                    <p className="text-sm font-black text-gray-700">{userData.freeMorphsUsed || 0}</p>
+                  <div className="p-3 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)]">
+                    <p className="text-[8px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mb-1">Free Credits</p>
+                    <p className="text-sm font-black text-[var(--text-secondary)]">{userData.freeMorphsUsed || 0}</p>
                   </div>
-                  <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                  <div className="p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
                     <p className="text-[8px] text-indigo-400 font-black uppercase tracking-widest mb-1">Premium Credits</p>
-                    <p className="text-sm font-black text-indigo-600">{userData.premiumMorphsUsed || 0}</p>
+                    <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{userData.premiumMorphsUsed || 0}</p>
                   </div>
                 </div>
 
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                <p className="text-[9px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-center">
                   {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || 2) - usedMorphs)} morphs remaining`}
                 </p>
                 {userData.lastResetAt && (
@@ -269,9 +269,9 @@ export default function AccountModal({
                   </p>
                 )}
                 {userData.revokeReason && (
-                  <div className="mt-2 p-3 bg-red-50 border border-red-100 rounded-2xl">
+                  <div className="mt-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-2xl">
                     <p className="text-[8px] text-red-400 font-black uppercase tracking-widest mb-1">Revocation Notice</p>
-                    <p className="text-[10px] font-bold text-red-600 leading-tight">{userData.revokeReason}</p>
+                    <p className="text-[10px] font-bold text-red-600 dark:text-red-400 leading-tight">{userData.revokeReason}</p>
                   </div>
                 )}
               </div>
@@ -282,12 +282,12 @@ export default function AccountModal({
           <div className="space-y-8">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100">
-                  <Clock className="w-5 h-5 text-gray-400" />
+                <div className="w-10 h-10 bg-[var(--bg-secondary)] rounded-xl flex items-center justify-center border border-[var(--border-color)]">
+                  <Clock className="w-5 h-5 text-[var(--text-tertiary)]" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Recent Activity</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Your latest resume transformations</p>
+                  <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Recent Activity</h3>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Your latest resume transformations</p>
                 </div>
               </div>
             </div>
@@ -297,20 +297,20 @@ export default function AccountModal({
                 {recentResumes.map((resume: any) => (
                   <div 
                     key={resume.id}
-                    className="group flex flex-col md:flex-row items-center justify-between p-6 bg-white hover:bg-gray-50/50 rounded-[32px] border border-gray-100 hover:border-indigo-100 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-100/20"
+                    className="group flex flex-col md:flex-row items-center justify-between p-6 bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]/50 rounded-[32px] border border-[var(--border-color)] hover:border-indigo-500/30 transition-all duration-500 hover:shadow-xl hover:shadow-indigo-500/5 dark:hover:shadow-none"
                   >
                     <div className="flex items-center gap-5 w-full md:w-auto mb-4 md:mb-0">
-                      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-white group-hover:shadow-md transition-all">
+                      <div className="w-14 h-14 bg-[var(--bg-secondary)] rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-[var(--bg-primary)] group-hover:shadow-md transition-all">
                         <FileText className="w-7 h-7 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="font-black text-gray-900 text-base">{resume.name}</p>
+                        <p className="font-black text-[var(--text-primary)] text-base">{resume.name}</p>
                         <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
                             {new Date(resume.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
-                          <div className="w-1 h-1 bg-gray-200 rounded-full" />
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          <div className="w-1 h-1 bg-[var(--border-color)] rounded-full" />
+                          <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
                             {new Date(resume.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -319,28 +319,28 @@ export default function AccountModal({
                     <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar py-1">
                       <button 
                         onClick={() => handleCompare(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-600 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 shadow-sm hover:bg-indigo-100 transition-all active:scale-95"
+                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 dark:border-indigo-900/20 shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/20 transition-all active:scale-95"
                       >
                         <Diff className="w-4 h-4" />
                         Differences
                       </button>
                       <button 
                         onClick={() => handlePreview(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-white text-gray-600 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:text-indigo-600 transition-all active:scale-95"
+                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-[var(--bg-primary)] text-[var(--text-secondary)] font-black text-[10px] uppercase tracking-widest rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-indigo-200 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95"
                       >
                         <Eye className="w-4 h-4" />
                         Preview
                       </button>
                       <button 
                         onClick={() => handleDownload(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all active:scale-95"
+                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-500/20 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
                       >
                         <Download className="w-4 h-4" />
                         Download
                       </button>
                       <button 
                         onClick={() => setDeleteConfirm(resume.id)}
-                        className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all active:scale-90"
+                        className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all active:scale-90"
                         title="Delete Resume"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -350,12 +350,12 @@ export default function AccountModal({
                 ))}
               </div>
             ) : (
-              <div className="p-16 text-center bg-gray-50/30 rounded-[48px] border-2 border-dashed border-gray-100">
-                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                  <FileText className="w-10 h-10 text-gray-200" />
+              <div className="p-16 text-center bg-[var(--bg-secondary)]/30 rounded-[48px] border-2 border-dashed border-[var(--border-color)]">
+                <div className="w-20 h-20 bg-[var(--bg-primary)] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <FileText className="w-10 h-10 text-[var(--border-color)]" />
                 </div>
-                <h4 className="text-lg font-black text-gray-900 mb-2">No History Found</h4>
-                <p className="text-gray-400 font-bold text-sm max-w-xs mx-auto">Start your first resume transformation to see your history here.</p>
+                <h4 className="text-lg font-black text-[var(--text-primary)] mb-2">No History Found</h4>
+                <p className="text-[var(--text-tertiary)] font-bold text-sm max-w-xs mx-auto">Start your first resume transformation to see your history here.</p>
               </div>
             )}
           </div>
@@ -364,15 +364,15 @@ export default function AccountModal({
           <div className="space-y-8">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
-                  <MessageSquare className="w-5 h-5 text-indigo-600" />
+                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/20">
+                  <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Your Feedback</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">History of your shared thoughts</p>
+                  <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Your Feedback</h3>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">History of your shared thoughts</p>
                 </div>
               </div>
-              <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+              <div className="px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/20">
                 {userFeedback.length} Submissions
               </div>
             </div>
@@ -382,36 +382,36 @@ export default function AccountModal({
                 {userFeedback.map((feedback: any) => (
                   <div 
                     key={feedback.id}
-                    className="p-6 bg-white rounded-[32px] border border-gray-100 space-y-4 hover:border-indigo-100 transition-all shadow-sm"
+                    className="p-6 bg-[var(--bg-primary)] rounded-[32px] border border-[var(--border-color)] space-y-4 hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all shadow-sm"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      <div className="flex items-center gap-2 text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">
                         <Clock className="w-3 h-3" />
                         {feedback.createdAt?.toDate ? feedback.createdAt.toDate().toLocaleDateString() : 'Just now'}
                       </div>
                       {feedback.reply && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[8px] font-black uppercase tracking-widest">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full text-[8px] font-black uppercase tracking-widest">
                           <CheckCircle className="w-3 h-3" />
                           Responded
                         </div>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 font-medium leading-relaxed">"{feedback.message}"</p>
+                    <p className="text-sm text-[var(--text-secondary)] font-medium leading-relaxed">"{feedback.message}"</p>
                     {feedback.reply && (
-                      <div className="pl-4 border-l-2 border-indigo-100 pt-1">
-                        <div className="flex items-center gap-2 text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+                      <div className="pl-4 border-l-2 border-indigo-100 dark:border-indigo-900/30 pt-1">
+                        <div className="flex items-center gap-2 text-[8px] font-black text-indigo-400 dark:text-indigo-400 uppercase tracking-widest mb-1">
                           <Reply className="w-3 h-3" />
                           Team Reply
                         </div>
-                        <p className="text-xs text-gray-500 font-medium italic">"{feedback.reply}"</p>
+                        <p className="text-xs text-[var(--text-tertiary)] font-medium italic">"{feedback.reply}"</p>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center bg-gray-50/30 rounded-[40px] border-2 border-dashed border-gray-100">
-                <p className="text-gray-400 font-bold text-sm">No feedback submitted yet.</p>
+              <div className="p-12 text-center bg-[var(--bg-secondary)]/30 rounded-[40px] border-2 border-dashed border-[var(--border-color)]">
+                <p className="text-[var(--text-tertiary)] font-bold text-sm">No feedback submitted yet.</p>
               </div>
             )}
           </div>
@@ -419,21 +419,21 @@ export default function AccountModal({
 
         {/* Footer */}
         <div className={cn(
-          "p-8 bg-gray-50/50 border-t border-gray-50 flex flex-col sm:flex-row items-center justify-between gap-6",
+          "p-8 bg-[var(--bg-secondary)] border-t border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-6",
           isTabMode && "w-full rounded-b-[40px] mb-20"
         )}>
           <button 
             onClick={onLogout}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 rounded-2xl transition-all border border-transparent hover:border-red-100"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/30"
           >
             <LogOut className="w-4 h-4" />
             Sign Out Account
           </button>
           <div className="text-center sm:text-right">
-            <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
+            <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-[0.2em]">
               Resume Morph v1.0.4
             </p>
-            <p className="text-[9px] text-gray-300 font-bold uppercase tracking-widest mt-1">
+            <p className="text-[9px] text-[var(--border-color)] font-bold uppercase tracking-widest mt-1">
               Secure Cloud Infrastructure
             </p>
           </div>
@@ -455,12 +455,12 @@ export default function AccountModal({
               initial={{ opacity: 0, scale: 0.9, y: 40 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="relative w-full max-w-2xl bg-white rounded-[48px] shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[85vh]"
+              className="relative w-full max-w-2xl bg-[var(--bg-primary)] rounded-[48px] shadow-2xl border border-[var(--border-color)] overflow-hidden flex flex-col max-h-[85vh]"
             >
               {/* Header */}
-              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10">
+              <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)] sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 dark:shadow-none">
                     {isComparing ? (
                       <Loader2 className="w-6 h-6 text-white animate-spin" />
                     ) : (
@@ -468,24 +468,24 @@ export default function AccountModal({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none">
+                    <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tight leading-none">
                       {isComparing ? 'Analyzing Differences...' : 'Morph Analysis'}
                     </h3>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">
+                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-2">
                        Textual evolution and AI improvements
                     </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => { setDiffData(null); setComparingResume(null); }}
-                  className="p-3 hover:bg-gray-100 rounded-2xl transition-colors"
+                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-colors"
                 >
-                  <X className="w-6 h-6 text-gray-400" />
+                  <X className="w-6 h-6 text-[var(--text-tertiary)]" />
                 </button>
               </div>
 
               {/* Body */}
-              <div className="p-8 overflow-y-auto prose prose-indigo max-w-none">
+              <div className="p-8 overflow-y-auto prose dark:prose-invert max-w-none">
                 {isComparing ? (
                   <div className="py-20 text-center space-y-6">
                     <div className="flex justify-center gap-2">
@@ -493,8 +493,8 @@ export default function AccountModal({
                       <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                       <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                     </div>
-                    <p className="text-gray-500 font-black text-xs uppercase tracking-widest animate-pulse">Running Deep Difference Analysis...</p>
-                    <p className="text-gray-400 text-sm font-medium">Comparing original intent with generated narrative fidelity.</p>
+                    <p className="text-[var(--text-secondary)] font-black text-xs uppercase tracking-widest animate-pulse">Running Deep Difference Analysis...</p>
+                    <p className="text-[var(--text-tertiary)] text-sm font-medium">Comparing original intent with generated narrative fidelity.</p>
                   </div>
                 ) : (
                   <motion.div
@@ -502,16 +502,16 @@ export default function AccountModal({
                     animate={{ opacity: 1 }}
                     className="space-y-6"
                   >
-                    <div className="p-6 bg-indigo-50/50 rounded-[32px] border border-indigo-100 mb-8">
+                    <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-[32px] border border-indigo-100 dark:border-indigo-900/20 mb-8">
                        <div className="flex items-center gap-3 mb-2">
-                          <CheckCircle className="w-4 h-4 text-indigo-600" />
-                          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Target Integrity: 100%</span>
+                          <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Target Integrity: 100%</span>
                        </div>
-                       <p className="text-xs text-indigo-800 font-medium leading-relaxed">
+                       <p className="text-xs text-indigo-800 dark:text-indigo-200 font-medium leading-relaxed">
                          Our Morph Engine has processed the content from <b>{comparingResume?.name}</b> and optimized it for higher ATS impact while maintaining strict structural harmony.
                        </p>
                     </div>
-                    <div className="markdown-content prose prose-indigo max-w-none">
+                    <div className="markdown-content prose-neutral dark:prose-invert dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-400">
                       <ReactMarkdown>
                         {diffData || ''}
                       </ReactMarkdown>
@@ -522,10 +522,10 @@ export default function AccountModal({
 
               {/* Footer */}
               {!isComparing && (
-                <div className="p-8 border-t border-gray-50 bg-gray-50/50 flex justify-end">
+                <div className="p-8 border-t border-[var(--border-color)] bg-[var(--bg-secondary)] flex justify-end">
                   <button
                     onClick={() => { setDiffData(null); setComparingResume(null); }}
-                    className="px-10 py-4 bg-gray-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-gray-200"
+                    className="px-10 py-4 bg-neutral-900 dark:bg-neutral-800 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-500/20 dark:shadow-none"
                   >
                     Done Reviewing
                   </button>
@@ -551,20 +551,20 @@ export default function AccountModal({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-white rounded-[32px] p-8 shadow-2xl border border-gray-100 text-center"
+              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-[32px] p-8 shadow-2xl border border-[var(--border-color)] text-center"
             >
-              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-black text-gray-900 mb-2">Delete Resume?</h3>
-              <p className="text-sm text-gray-500 font-medium mb-8">
+              <h3 className="text-xl font-black text-[var(--text-primary)] mb-2">Delete Resume?</h3>
+              <p className="text-sm text-[var(--text-tertiary)] font-medium mb-8">
                 This action is permanent and cannot be undone. Your saved resume will be cleared from our database.
               </p>
               <div className="flex gap-3">
                 <button
                   disabled={isDeleting}
                   onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 py-4 bg-gray-50 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all disabled:opacity-50"
+                  className="flex-1 py-4 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--border-color)] transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -581,7 +581,7 @@ export default function AccountModal({
                       setDeleteConfirm(null);
                     }
                   }}
-                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-100 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-700 shadow-lg shadow-red-100 dark:shadow-none transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isDeleting ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
