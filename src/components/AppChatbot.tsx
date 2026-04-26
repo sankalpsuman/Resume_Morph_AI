@@ -62,43 +62,61 @@ export default function AppChatbot() {
     setIsTyping(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("AI key not found");
+      // Use the most robust way to get the API key
+      const apiKey = process.env.GEMINI_API_KEY || 
+                     process.env.API_KEY || 
+                     (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+                     (window as any).GEMINI_API_KEY;
+
+      if (!apiKey) throw new Error("API Key not found. Please ensure GEMINI_API_KEY is set.");
 
       const ai = new GoogleGenAI({ apiKey });
+      
+      // Filter out messages to ensure the sequence is valid and starts with user if possible
+      // or at least doesn't violate SDK expectations.
+      // We skip the initial greeting if it's just the model greeting.
+      const conversationHistory = newMessages.length > 1 && newMessages[0].role === 'model' 
+        ? newMessages.slice(1) 
+        : newMessages;
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: newMessages.map(m => ({
+        contents: conversationHistory.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.text }]
         })),
         config: {
-          systemInstruction: SYSTEM_PROMPT
+          systemInstruction: SYSTEM_PROMPT,
+          temperature: 0.7,
         }
       });
 
-      if (response.text) {
-        setMessages(prev => [...prev, { role: 'model', text: response.text }]);
+      if (response && response.text) {
+        setMessages(prev => [...prev, { role: 'model', text: response.text! }]);
       } else {
-        throw new Error("No response text");
+        throw new Error("I received an empty response from the AI. Please try again.");
       }
     } catch (error: any) {
       console.error("Chatbot Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: `I'm having a bit of trouble: ${error.message}. Please try again later!` }]);
+      let errorMessage = error.message || "Something went wrong";
+      if (errorMessage.includes("API key")) {
+        errorMessage = "AI service is currently unavailable (API key issue).";
+      }
+      setMessages(prev => [...prev, { role: 'model', text: `**Error:** ${errorMessage}. Please try again later!` }]);
     } finally {
       setIsTyping(false);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[200]">
+    <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[200]">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="absolute bottom-20 right-0 w-[350px] md:w-[400px] h-[500px] bg-white rounded-[32px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden outline-none ring-4 ring-indigo-50"
+            className="absolute bottom-16 md:bottom-20 right-0 w-[calc(100vw-2rem)] sm:w-[380px] md:w-[400px] h-[500px] max-h-[70vh] md:max-h-[600px] bg-white rounded-[32px] shadow-2xl border border-gray-100 flex flex-col overflow-hidden outline-none ring-4 ring-indigo-50/50"
           >
             {/* Header */}
             <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-between">

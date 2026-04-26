@@ -68,7 +68,11 @@ export default function ResumeAIAssistant() {
         setLoadingStatus('Employing AI Extraction...');
         console.log("Server extraction minimal, trying frontend AI fallback...");
         // Use more robust key detection
-        const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+        const apiKey = process.env.GEMINI_API_KEY || 
+                       process.env.API_KEY || 
+                       (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+                       (window as any).GEMINI_API_KEY;
+
         if (apiKey) {
           const ai = new GoogleGenAI({ apiKey });
           
@@ -97,7 +101,7 @@ export default function ResumeAIAssistant() {
             }
           });
           
-          if (extractionResponse.text) {
+          if (extractionResponse && extractionResponse.text) {
             extractedText = extractionResponse.text;
           }
         }
@@ -155,8 +159,12 @@ export default function ResumeAIAssistant() {
 
     try {
       // Use more robust key detection
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("AI configuration missing");
+      const apiKey = process.env.GEMINI_API_KEY || 
+                     process.env.API_KEY || 
+                     (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+                     (window as any).GEMINI_API_KEY;
+
+      if (!apiKey) throw new Error("AI Key not found. Please check your configuration.");
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
