@@ -411,7 +411,7 @@ export default function SmartEditor() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left Sidebar: Controls */}
-        <aside className="w-full lg:w-[450px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
+        <aside id="smart-editor-controls" className="w-full lg:w-[450px] bg-white border-r border-gray-100 flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-gray-50 shrink-0">
             {(['content', 'design', 'sections', 'analyze'] as const).map((tab) => (
@@ -539,6 +539,7 @@ export default function SmartEditor() {
              >
                 {generatedHtml ? (
                   <iframe 
+                    id="smart-editor-preview"
                     ref={iframeRef}
                     className="w-full h-[1100px] border-none"
                      srcDoc={`

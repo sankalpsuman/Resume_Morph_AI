@@ -582,25 +582,24 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="relative z-10 max-w-7xl mx-auto px-6">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
         
         {/* Hero Header */}
-        <header className="max-w-4xl mb-16 lg:mb-28">
+        <header className="max-w-4xl mb-12 lg:mb-28 mt-8 md:mt-0">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-indigo-100/50 text-indigo-600 text-[10px] font-bold uppercase tracking-[0.2em] mb-8 shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-indigo-100/50 text-indigo-600 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] mb-6 md:mb-8 shadow-sm"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            AI-Powered Portfolio Builder
+            <Sparkles className="w-3 md:w-3.5 h-3 md:h-3.5" />
+            AI Portfolio Builder
           </motion.div>
-          <h1 className="text-6xl lg:text-8xl font-display font-bold tracking-tight text-neutral-900 mb-8 leading-[0.95]">
-            Your career, <br />
+          <h1 className="text-4xl sm:text-5xl lg:text-8xl font-display font-bold tracking-tight text-neutral-900 mb-6 md:mb-8 leading-[1.1] md:leading-[0.95]">
+            Your career, <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600">beautifully presented.</span>
           </h1>
-          <p className="text-xl lg:text-2xl text-neutral-500 font-medium leading-relaxed max-w-2xl">
-            Transform your resume into a high-converting, professional portfolio website in seconds. No code, just your story.
+          <p className="text-lg lg:text-2xl text-neutral-500 font-medium leading-relaxed max-w-2xl px-1 md:px-0">
+            Transform your resume into a professional portfolio website in seconds. No code, just your story.
           </p>
         </header>
 
@@ -609,31 +608,31 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-24"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 mb-24"
             >
               {/* Bento Grid: Main Inputs */}
-              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 {/* Resume Upload - Large Cell */}
-                <div className="md:col-span-2 group bg-white rounded-5xl p-8 lg:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100 hover:border-indigo-200 transition-all duration-500 relative overflow-hidden">
+                <div className="md:col-span-2 group bg-white rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100 hover:border-indigo-200 transition-all duration-500 relative overflow-hidden">
                   <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity">
-                    <FileText className="w-32 h-32 rotate-12" />
+                    <FileText className="w-24 md:w-32 h-24 md:h-32 rotate-12" />
                   </div>
                   
                   <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center justify-between mb-8 md:mb-10">
                       <div>
-                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 01</span>
-                        <h2 className="text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
+                        <span className="text-[9px] md:text-[10px] font-bold text-indigo-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 01</span>
+                        <h2 className="text-2xl md:text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
                           Upload Resume
                         </h2>
                       </div>
-                      <div className="px-3 py-1 rounded-full bg-neutral-100 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Required</div>
+                      <div className="px-2.5 py-1 rounded-full bg-neutral-100 text-[9px] md:text-[10px] font-bold text-neutral-400 uppercase tracking-widest shrink-0">Required</div>
                     </div>
                     
                     <div 
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "relative border-2 border-dashed rounded-[2rem] p-12 lg:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
+                        "relative border-2 border-dashed rounded-[1.5rem] md:rounded-[2rem] p-8 md:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
                         resumeFile 
                           ? "border-green-200 bg-green-50/20" 
                           : "border-neutral-100 bg-neutral-50/30 hover:border-indigo-300 hover:bg-indigo-50/50"
@@ -655,12 +654,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             animate={{ opacity: 1, scale: 1 }}
                             className="flex flex-col items-center"
                           >
-                            <div className="w-20 h-20 bg-green-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
-                              <CheckCircle className="w-10 h-10 text-green-600" />
+                            <div className="w-16 md:w-20 h-16 md:h-20 bg-green-100 rounded-3xl flex items-center justify-center mb-5 md:mb-6 shadow-sm">
+                              <CheckCircle className="w-8 md:w-10 h-8 md:h-10 text-green-600" />
                             </div>
-                            <p className="text-neutral-900 font-display font-bold text-2xl mb-2">{resumeFile.name}</p>
-                            <p className="text-neutral-500 text-sm font-medium mb-8">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            <button className="px-8 py-3 bg-white border border-green-200 text-green-600 rounded-2xl text-sm font-bold hover:bg-green-50 transition-all shadow-sm active:scale-95">
+                            <p className="text-neutral-900 font-display font-bold text-xl md:text-2xl mb-1.5 md:mb-2 truncate max-w-full px-4">{resumeFile.name}</p>
+                            <p className="text-neutral-500 text-xs md:text-sm font-medium mb-6 md:mb-8">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <button className="px-6 md:px-8 py-2.5 md:py-3 bg-white border border-green-200 text-green-600 rounded-xl md:rounded-2xl text-[13px] md:text-sm font-bold hover:bg-green-50 transition-all shadow-sm active:scale-95">
                               Change File
                             </button>
                           </motion.div>
@@ -671,12 +670,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             animate={{ opacity: 1 }}
                             className="flex flex-col items-center"
                           >
-                            <div className="w-20 h-20 bg-white rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-center mb-8 group-hover/drop:scale-110 group-hover/drop:rotate-3 transition-transform duration-500">
-                              <Upload className="w-10 h-10 text-neutral-400" />
+                            <div className="w-16 md:w-20 h-16 md:h-20 bg-white rounded-2xl md:rounded-3xl shadow-sm border border-neutral-100 flex items-center justify-center mb-6 md:mb-8 group-hover/drop:scale-110 group-hover/drop:rotate-3 transition-transform duration-500">
+                              <Upload className="w-8 md:w-10 h-8 md:h-10 text-neutral-400" />
                             </div>
-                            <p className="text-neutral-900 font-display font-bold text-2xl mb-3">Drop your resume here</p>
-                            <p className="text-neutral-500 max-w-xs mx-auto font-medium leading-relaxed">
-                              Support for PDF, DOCX, and DOC. <br />
+                            <p className="text-neutral-900 font-display font-bold text-xl md:text-2xl mb-2.5 md:mb-3">Drop your resume here</p>
+                            <p className="text-neutral-500 max-w-xs mx-auto font-medium leading-relaxed text-sm">
+                              Support for PDF, DOCX, and DOC. <br className="hidden xs:block" />
                               Max file size 5MB.
                             </p>
                           </motion.div>
@@ -687,21 +686,21 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                 </div>
 
                 {/* Social Connections - Bento Cell */}
-                <div className="md:col-span-2 bg-white rounded-5xl p-8 lg:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100">
-                  <div className="flex items-center justify-between mb-10">
+                <div className="md:col-span-2 bg-white rounded-3xl md:rounded-5xl p-6 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.02)] border border-neutral-100">
+                  <div className="flex items-center justify-between mb-8 md:mb-10">
                     <div>
-                      <span className="text-[10px] font-bold text-violet-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 02</span>
-                      <h2 className="text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
+                      <span className="text-[9px] md:text-[10px] font-bold text-violet-600 uppercase tracking-[0.2em] mb-2 block font-display">Step 02</span>
+                      <h2 className="text-2xl md:text-3xl font-display font-bold text-neutral-900 flex items-center gap-3">
                         Connect Socials
                       </h2>
                     </div>
-                    <div className="px-3 py-1 rounded-full bg-neutral-100 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Optional</div>
+                    <div className="px-2.5 py-1 rounded-full bg-neutral-100 text-[9px] md:text-[10px] font-bold text-neutral-400 uppercase tracking-widest shrink-0">Optional</div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
-                        <Github className="w-3.5 h-3.5" /> GitHub Username
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                    <div className="space-y-3 md:space-y-4">
+                      <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                        <Github className="w-3 md:w-3.5 h-3 md:h-3.5" /> GitHub Username
                       </label>
                       <div className="relative group/input">
                         <input 
@@ -709,13 +708,13 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           value={githubUsername}
                           onChange={(e) => setGithubUsername(e.target.value)}
                           placeholder="e.g. janesmith"
-                          className="w-full px-6 py-4 rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300"
+                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300 text-sm md:text-base"
                         />
                       </div>
                     </div>
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
-                        <Linkedin className="w-3.5 h-3.5" /> LinkedIn URL
+                    <div className="space-y-3 md:space-y-4">
+                      <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                        <Linkedin className="w-3 md:w-3.5 h-3 md:h-3.5" /> LinkedIn URL
                       </label>
                       <div className="relative group/input">
                         <input 
@@ -723,7 +722,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           value={linkedinUrl}
                           onChange={(e) => setLinkedinUrl(e.target.value)}
                           placeholder="linkedin.com/in/janesmith"
-                          className="w-full px-6 py-4 rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300"
+                          className="w-full px-5 md:px-6 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-neutral-50 border border-neutral-100 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-neutral-900 font-medium placeholder:text-neutral-300 text-sm md:text-base"
                         />
                       </div>
                     </div>
@@ -732,29 +731,29 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               </div>
 
               {/* Action Sidebar - Bento Style */}
-              <div className="lg:col-span-4 space-y-8">
-                <div className="sticky top-12 space-y-8">
-                  <div className="bg-neutral-900 rounded-5xl p-10 text-white shadow-2xl shadow-indigo-200/20 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-700" />
+              <div className="lg:col-span-4 space-y-6 md:space-y-8">
+                <div className="sticky top-28 space-y-6 md:space-y-8">
+                  <div className="bg-neutral-900 rounded-3xl md:rounded-5xl p-8 md:p-10 text-white shadow-2xl shadow-indigo-200/20 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-48 md:w-64 h-48 md:h-64 bg-indigo-500/20 blur-[80px] rounded-full group-hover:bg-indigo-500/30 transition-colors duration-700" />
                     
                     <div className="relative z-10">
-                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 block font-display">Ready to launch?</span>
-                      <h3 className="text-4xl font-display font-bold mb-6 leading-tight">Build your <br />future.</h3>
-                      <p className="text-neutral-400 mb-12 leading-relaxed font-medium">
+                      <span className="text-[9px] md:text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 block font-display">Ready to launch?</span>
+                      <h3 className="text-3xl md:text-4xl font-display font-bold mb-4 md:mb-6 leading-tight">Build your <br />future.</h3>
+                      <p className="text-neutral-400 mb-8 md:mb-12 leading-relaxed font-medium text-sm">
                         Our AI will analyze your background and build a custom portfolio in seconds.
                       </p>
                       
                       <button 
                         onClick={handleGenerate}
                         disabled={isGenerating}
-                        className="w-full bg-white text-neutral-900 py-6 rounded-2xl font-bold text-lg hover:bg-neutral-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-black/20"
+                        className="w-full bg-white text-neutral-900 py-4.5 md:py-6 rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:bg-neutral-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 shadow-xl shadow-black/20"
                       >
                         {isGenerating ? (
-                          <Loader2 className="w-6 h-6 animate-spin" />
+                          <Loader2 className="w-5 md:w-6 h-5 md:h-6 animate-spin" />
                         ) : (
                           <>
                             Generate Portfolio
-                            <ArrowRight className="w-5 h-5" />
+                            <ArrowRight className="w-4 md:w-5 h-4 md:h-5" />
                           </>
                         )}
                       </button>
@@ -763,28 +762,28 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                         <motion.div 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mt-8 p-5 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-3"
+                          className="mt-6 md:mt-8 p-4 md:p-5 bg-red-500/10 border border-red-500/20 rounded-xl md:rounded-2xl flex gap-3"
                         >
-                          <X className="w-5 h-5 text-red-400 shrink-0" />
-                          <p className="text-red-200 text-sm leading-snug font-medium">{error}</p>
+                          <X className="w-4 md:w-5 h-4 md:h-5 text-red-400 shrink-0 mt-0.5" />
+                          <p className="text-red-200 text-xs md:text-sm leading-snug font-medium">{error}</p>
                         </motion.div>
                       )}
                     </div>
                   </div>
 
                   {/* Deployment Settings - Refined */}
-                  <div className="bg-white rounded-5xl p-8 border border-neutral-100 shadow-sm">
+                  <div className="bg-white rounded-3xl md:rounded-5xl p-6 md:p-8 border border-neutral-100 shadow-sm">
                     <button 
                       onClick={() => setShowDeploymentSettings(!showDeploymentSettings)}
                       className="w-full flex items-center justify-between group"
                     >
-                      <h4 className="font-display font-bold text-neutral-900 text-lg flex items-center gap-3">
+                      <h4 className="font-display font-bold text-neutral-900 text-base md:text-lg flex items-center gap-3">
                         <div className="p-2 bg-indigo-50 rounded-xl group-hover:bg-indigo-100 transition-colors">
-                          <Settings className="w-5 h-5 text-indigo-600" />
+                          <Settings className="w-4 md:w-5 h-4 md:h-5 text-indigo-600" />
                         </div>
                         Deployment Config
                       </h4>
-                      <ChevronRight className={cn("w-5 h-5 text-neutral-400 transition-transform", showDeploymentSettings && "rotate-90")} />
+                      <ChevronRight className={cn("w-4 md:w-5 h-4 md:h-5 text-neutral-400 transition-transform", showDeploymentSettings && "rotate-90")} />
                     </button>
                     
                     <AnimatePresence>
@@ -795,9 +794,10 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden"
                         >
-                          <div className="pt-8 space-y-6">
-                            <div className="space-y-3">
-                              <label className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+                          <div className="pt-6 md:pt-8 space-y-4 md:space-y-6">
+                            <div className="space-y-2 md:space-y-3">
+                              <label className="text-[9px] md:text-[10px] font-black text-neutral-400 uppercase tracking-[0.15em] flex items-center gap-2 ml-1">
+
                                 <Key className="w-3 h-3" /> Vercel API Token
                               </label>
                               <input 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface Step {
@@ -9,64 +9,72 @@ interface Step {
   content: string;
   icon: any;
   position: 'bottom' | 'top' | 'left' | 'right';
+  switchToTab?: string;
 }
 
 const TOUR_STEPS: Step[] = [
   {
     targetId: 'tab-builder',
-    title: 'Morph Engine',
-    content: 'The core AI engine. Clone any reference resume layout using your own professional data in seconds.',
+    title: 'Morph AI Engine',
+    content: 'Start here. Clone any resume layout by uploading a reference layout. Our AI analyzes the visual DNA.',
     icon: Layout,
-    position: 'bottom'
+    position: 'bottom',
+    switchToTab: 'builder'
   },
   {
-    targetId: 'tab-ai-assistant',
-    title: 'AI Coach',
-    content: 'Get instant feedback on your resume, ask questions, and receive professional improvement suggestions.',
+    targetId: 'builder-reference-upload',
+    title: 'Visual Cloning',
+    content: 'Drop a PDF or image of a resume you love. We\'ll reconstruct it using your own professional data.',
     icon: Sparkles,
-    position: 'bottom'
+    position: 'top',
+    switchToTab: 'builder'
   },
   {
     targetId: 'tab-smart-editor',
     title: 'Smart Editor',
-    content: 'A powerful markdown editor with AI-assisted rewriting and design controls for final polishing.',
-    icon: Sparkles,
-    position: 'bottom'
+    content: 'Fine-tune your resume with real-time design controls and AI-assisted content optimization.',
+    icon: FileText,
+    position: 'bottom',
+    switchToTab: 'smart-editor'
+  },
+  {
+    targetId: 'smart-editor-controls',
+    title: 'Design Controls',
+    content: 'Adjust fonts, colors, and layout sections instantly. Your changes sync live to the preview.',
+    icon: Layout,
+    position: 'right',
+    switchToTab: 'smart-editor'
+  },
+  {
+    targetId: 'smart-editor-preview',
+    title: 'Live Preview',
+    content: 'See your resume take shape in high-fidelity. What you see is exactly what you get.',
+    icon: Eye,
+    position: 'left',
+    switchToTab: 'smart-editor'
   },
   {
     targetId: 'tab-portfolio',
-    title: 'Portfolio Gen',
-    content: 'Transform your resume into a stunning, responsive web portfolio to share with recruiters.',
+    title: 'Portfolio Builder',
+    content: 'Transform your static resume into a high-converting, professional website in one click.',
     icon: Globe,
-    position: 'bottom'
-  },
-  {
-    targetId: 'tab-cover-letter',
-    title: 'Cover Letter',
-    content: 'Generate tailored, high-impact cover letters synced perfectly with your resume content.',
-    icon: FileText,
-    position: 'bottom'
-  },
-  {
-    targetId: 'tab-tracker',
-    title: 'Applications',
-    content: 'Keep your job search organized. Track your applications, interviews, and offers in one place.',
-    icon: Briefcase,
-    position: 'bottom'
+    position: 'bottom',
+    switchToTab: 'portfolio'
   },
   {
     targetId: 'resources-btn',
-    title: 'Resources Hub',
-    content: 'Access our user guide, learn more about Morph, or see feedback from other users.',
+    title: 'Help & Knowledge',
+    content: 'Access tutorials, feedback, and our comprehensive user guide here.',
     icon: Info,
     position: 'bottom'
   },
   {
     targetId: 'tab-account',
     title: 'Your Account',
-    content: 'View your profile, track your level, and manage your usage stats and premium membership.',
+    content: 'Manage your subscription, track your usage, and view your level and profile.',
     icon: User,
-    position: 'bottom'
+    position: 'bottom',
+    switchToTab: 'account'
   }
 ];
 
@@ -96,40 +104,71 @@ export default function InteractiveTour() {
   }, []);
 
   useEffect(() => {
-    const updateCoords = (isFirstLoad = false) => {
+    if (isVisible && currentStep >= 0 && currentStep < TOUR_STEPS.length) {
+      const step = TOUR_STEPS[currentStep];
+      if (step.switchToTab) {
+        window.dispatchEvent(new CustomEvent('set-tab', { detail: step.switchToTab }));
+      }
+      
+      // Auto-scroll to target
+      setTimeout(() => {
+        let targetId = step.targetId;
+        const isMobile = window.innerWidth < 768;
+        if (isMobile && targetId.startsWith('tab-')) {
+          const tabId = targetId.replace('tab-', '');
+          const mobileTarget = document.getElementById(`mobile-tab-${tabId}`);
+          if (mobileTarget) targetId = `mobile-tab-${tabId}`;
+        }
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [currentStep, isVisible]);
+
+  useEffect(() => {
+    const updateCoords = () => {
       if (currentStep >= 0 && currentStep < TOUR_STEPS.length && isVisible) {
         const step = TOUR_STEPS[currentStep];
-        const element = document.getElementById(step.targetId);
         
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          setCoords({
-            top: rect.top + window.scrollY,
-            left: rect.left + window.scrollX,
-            width: rect.width,
-            height: rect.height
-          });
+        const findElement = () => {
+          let target = step.targetId;
+          const isMobile = window.innerWidth < 768;
           
-          if (isFirstLoad) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (isMobile && target.startsWith('tab-')) {
+            const tabId = target.replace('tab-', '');
+            const mobileTarget = document.getElementById(`mobile-tab-${tabId}`);
+            if (mobileTarget) target = `mobile-tab-${tabId}`;
           }
-        } else {
-          // If element not found (e.g. mobile hidden), skip step if it's the target but hidden
-          if (isFirstLoad) {
-            const nextTimer = setTimeout(handleNext, 100);
-            return () => clearTimeout(nextTimer);
+
+          const element = document.getElementById(target);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            setCoords({
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height
+            });
+            return true;
           }
+          return false;
+        };
+
+        if (!findElement()) {
+          setTimeout(findElement, 100);
         }
       }
     };
 
-    updateCoords(true);
-
-    window.addEventListener('resize', () => updateCoords(false));
-    window.addEventListener('scroll', () => updateCoords(false));
+    updateCoords();
+    window.addEventListener('resize', updateCoords);
+    window.addEventListener('scroll', updateCoords, true);
+    
     return () => {
-      window.removeEventListener('resize', () => updateCoords(false));
-      window.removeEventListener('scroll', () => updateCoords(false));
+      window.removeEventListener('resize', updateCoords);
+      window.removeEventListener('scroll', updateCoords, true);
     };
   }, [currentStep, isVisible]);
 
@@ -160,11 +199,25 @@ export default function InteractiveTour() {
   if (!isVisible || currentStep === -1) return null;
 
   const step = TOUR_STEPS[currentStep];
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isBottomNavTarget = isMobile && step.targetId.startsWith('tab-');
+  const position = isBottomNavTarget ? 'top' : step.position;
+
+  const tooltipStyle = {
+    top: position === 'bottom' 
+      ? coords.top + coords.height + 16 
+      : position === 'top' 
+        ? coords.top - (isMobile ? 180 : 200) // Slightly smaller offset on mobile
+        : Math.max(16, coords.top - 100),
+    left: isMobile 
+      ? 16 
+      : Math.max(16, Math.min(window.innerWidth - 336, coords.left + (coords.width / 2) - 160))
+  };
 
   return (
     <div className="fixed inset-0 z-[1000] pointer-events-none">
       {/* Dimmed Background with Hole */}
-      <div className="absolute inset-0 bg-black/60 pointer-events-auto" style={{ 
+      <div className="absolute inset-0 bg-black/60 dark:bg-black/80 pointer-events-auto" style={{ 
         clipPath: `polygon(
           0% 0%, 
           0% 100%, 
@@ -183,8 +236,8 @@ export default function InteractiveTour() {
       <motion.div 
         animate={{ 
           top: coords.top - 4, 
-          left: coords.left - 4, 
-          width: coords.width + 8, 
+          left: coords.left - (isMobile ? 2 : 4), 
+          width: coords.width + (isMobile ? 4 : 8), 
           height: coords.height + 8 
         }}
         className="absolute border-2 border-indigo-400 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.5)] z-[1001]"
@@ -197,77 +250,75 @@ export default function InteractiveTour() {
           initial={{ opacity: 0, y: 10, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.9 }}
-          className="absolute z-[1002] w-[320px] pointer-events-auto"
-          style={{
-            top: step.position === 'bottom' ? coords.top + coords.height + 16 : coords.top - 200,
-            left: Math.max(16, Math.min(window.innerWidth - 336, coords.left + (coords.width / 2) - 160))
-          }}
+          className="absolute z-[1002] w-[calc(100vw-2rem)] xs:w-[320px] pointer-events-auto"
+          style={tooltipStyle}
         >
-          <div className="bg-white rounded-[32px] p-6 shadow-2xl border border-indigo-100/50">
+          <div className="bg-white dark:bg-neutral-900 rounded-[28px] md:rounded-[32px] p-5 md:p-6 shadow-2xl border border-indigo-100/50 dark:border-indigo-900/30">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                <step.icon className="w-5 h-5" />
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                <step.icon className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <div>
-                <h3 className="text-lg font-black text-gray-900 tracking-tight leading-none">{step.title}</h3>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Step {currentStep + 1} of {TOUR_STEPS.length}</p>
+              <div className="flex-grow">
+                <h3 className="text-base md:text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none">{step.title}</h3>
+                <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">Step {currentStep + 1} of {TOUR_STEPS.length}</p>
               </div>
               <button 
                 onClick={handleSkip}
-                className="ml-auto p-2 text-gray-300 hover:text-gray-900 transition-colors"
+                className="p-2 text-gray-300 dark:text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
                 title="Skip Tour"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-gray-600 text-sm font-medium leading-relaxed mb-6">
+            <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm font-medium leading-relaxed mb-6 line-clamp-3 md:line-clamp-none">
               {step.content}
             </p>
 
-            <div className="flex items-center justify-between">
-              <div className="flex gap-1">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex gap-1 shrink-0">
                 {TOUR_STEPS.map((_, i) => (
                   <div 
                     key={i} 
                     className={cn(
-                      "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                      i === currentStep ? "bg-indigo-600 w-4" : "bg-gray-200"
+                      "w-1 md:w-1.5 h-1 md:h-1.5 rounded-full transition-all duration-300",
+                      i === currentStep ? "bg-indigo-600 w-3 md:w-4" : "bg-gray-200 dark:bg-neutral-800"
                     )} 
                   />
                 ))}
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 {currentStep > 0 && (
                   <button 
                     onClick={handleBack}
-                    className="p-2 text-gray-400 hover:text-gray-900 transition-colors"
+                    className="p-1.5 md:p-2 text-gray-400 dark:text-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                 )}
                 <button 
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                  className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-indigo-600 text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 whitespace-nowrap"
                 >
                   {currentStep === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
-                  {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="w-4 h-4" />}
+                  {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />}
                 </button>
               </div>
             </div>
           </div>
           
           {/* Arrow */}
-          <div className={cn(
-            "absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-l border-t border-indigo-100/50 rotate-45 -z-10",
-            step.position === 'bottom' ? "-top-2 border-l-0 border-t-0 bg-white" : "-bottom-2 border-r-0 border-b-0 bg-white"
-          )} style={{
-            clipPath: step.position === 'bottom' ? 'polygon(0% 0%, 100% 0%, 50% 50%)' : 'polygon(50% 50%, 100% 100%, 0% 100%)',
-            background: 'white',
-            top: step.position === 'bottom' ? '-8px' : 'auto',
-            bottom: step.position === 'bottom' ? 'auto' : '-8px'
-          }} />
+          {!isMobile && (
+            <div className={cn(
+              "absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-neutral-900 border-l border-t border-indigo-100/50 dark:border-indigo-900/30 rotate-45 -z-10",
+              position === 'bottom' ? "-top-2 border-l-0 border-t-0" : "-bottom-2 border-r-0 border-b-0"
+            )} style={{
+              clipPath: position === 'bottom' ? 'polygon(0% 0%, 100% 0%, 50% 50%)' : 'polygon(50% 50%, 100% 100%, 0% 100%)',
+              top: position === 'bottom' ? '-8px' : 'auto',
+              bottom: position === 'bottom' ? 'auto' : '-8px'
+            }} />
+          )}
         </motion.div>
       </AnimatePresence>
     </div>

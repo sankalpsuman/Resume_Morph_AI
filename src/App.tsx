@@ -30,7 +30,7 @@ import ResumeAIAssistant from './components/ResumeAIAssistant';
 import AppChatbot from './components/AppChatbot';
 import Resources from './components/Resources';
 import { handleFirestoreError, OperationType } from './lib/firestore';
-import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit } from 'lucide-react';
+import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon } from 'lucide-react';
 
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources';
 
@@ -49,6 +49,27 @@ export default function App() {
   const [pendingDeletions, setPendingDeletions] = useState<Record<string, NodeJS.Timeout>>({});
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') as 'light' | 'dark' || 'light';
+    }
+    return 'light';
+  });
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+  };
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.add('light'); // Ensure light mode is handled if needed
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   const [isOffline, setIsOffline] = useState(false);
 
@@ -139,6 +160,16 @@ export default function App() {
     
     updateActivity();
   }, [user?.uid]);
+
+  useEffect(() => {
+    const handleSetTab = (e: any) => {
+      if (e.detail) {
+        handleTabChange(e.detail as Tab);
+      }
+    };
+    window.addEventListener('set-tab', handleSetTab);
+    return () => window.removeEventListener('set-tab', handleSetTab);
+  }, []); // handleTabChange is stable if defined correctly or just use empty deps if it's in the same scope
 
   useEffect(() => {
     if (!userData || !user) return;
@@ -334,7 +365,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -352,7 +383,7 @@ export default function App() {
   const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
+    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col transition-colors duration-300">
       {/* Offline Banner */}
       <AnimatePresence>
         {isOffline && (
@@ -370,16 +401,16 @@ export default function App() {
 
       {/* Global Top Header */}
       {!isPortfolioFullscreen && (
-        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-white/95 backdrop-blur-xl border-b border-gray-200/50 z-[120] shadow-sm">
+        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--bg-secondary)]/95 backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm">
           <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
             {/* Logo Section */}
             <div className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
-              <div className="w-10 h-10 md:w-11 md:h-11 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
-                <RefreshCw className="text-white w-5 h-5 md:w-6 md:h-6" />
+              <div className="w-9 h-9 md:w-11 md:h-11 bg-indigo-600 rounded-lg md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
+                <RefreshCw className="text-white w-4 h-4 md:w-6 md:h-6" />
               </div>
-              <div className="hidden xs:block">
-                <h1 className="text-base md:text-lg font-black tracking-tight text-gray-900 leading-none">Morph</h1>
-                <p className="text-[8px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-0.5">AI Engine</p>
+              <div className="xs:block">
+                <h1 className="text-sm md:text-lg font-black tracking-tight text-[var(--text-primary)] leading-none">Morph</h1>
+                <p className="text-[7px] md:text-[8px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-0.5">AI Engine</p>
               </div>
             </div>
 
@@ -388,6 +419,7 @@ export default function App() {
               {mainTabs.map((tab) => (
                 <div key={tab.id} className="relative group">
                   <button 
+                    id={`tab-${tab.id}`}
                     onClick={() => handleTabChange(tab.id as Tab)}
                     className={cn(
                       "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs font-black transition-all duration-300 whitespace-nowrap",
@@ -414,9 +446,19 @@ export default function App() {
 
             {/* Actions Section */}
             <div className="flex items-center gap-2 md:gap-4">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:bg-[var(--border-color)] hover:text-indigo-600 transition-all active:scale-95 border border-[var(--border-color)]"
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              >
+                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+
               {/* Resources Dropdown (Desktop) */}
               <div className="hidden sm:block relative">
                 <button 
+                  id="resources-btn"
                   onMouseEnter={() => setIsResourcesOpen(true)}
                   onClick={() => setIsResourcesOpen(!isResourcesOpen)}
                   className={cn(
@@ -462,12 +504,20 @@ export default function App() {
                       <div className="mt-2 p-4 bg-indigo-600 rounded-2xl text-white">
                         <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 italic">Morph Hub</p>
                         <p className="text-[11px] font-medium leading-relaxed">Access 50+ resume modules and AI guides.</p>
-                        <button 
-                          onClick={() => handleTabChange('resources')}
-                          className="mt-3 w-full py-2 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-gray-50 active:scale-95"
-                        >
-                          Open Resources
-                        </button>
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          <button 
+                            onClick={() => handleTabChange('resources')}
+                            className="w-full py-2 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-gray-50 active:scale-95"
+                          >
+                            Open Hub
+                          </button>
+                          <button 
+                            onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
+                            className="w-full py-2 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-indigo-400 active:scale-95"
+                          >
+                            Restart Tour
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -480,6 +530,7 @@ export default function App() {
                   <>
                     <div className="relative group">
                       <button 
+                        id="tab-account"
                         onClick={() => handleTabChange('account')}
                         className="relative p-0.5 rounded-xl bg-white shadow-lg border border-gray-100 transition-transform active:scale-95 overflow-hidden"
                       >
@@ -609,9 +660,9 @@ export default function App() {
       {/* Main Content Area */}
       <main className={cn(
         "flex-grow relative w-full",
-        !isPortfolioFullscreen && "pt-24 md:pt-28 pb-24 md:pb-12"
+        !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32 md:pb-12"
       )}>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
         </div>
 
@@ -630,7 +681,7 @@ export default function App() {
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'portfolio' && "hidden")}>
           <PortfolioGenerator onFullscreenChange={setIsPortfolioFullscreen} />
         </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'guide' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-0 sm:px-6 lg:px-8", activeTab !== 'guide' && "hidden")}>
           <UserGuide />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'about' && "hidden")}>
@@ -648,7 +699,7 @@ export default function App() {
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'resources' && "hidden")}>
           <Resources onTabChange={handleTabChange} />
         </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'account' && "hidden")}>
+        <div className={cn("max-w-7xl mx-auto px-0 sm:px-6 lg:px-8", activeTab !== 'account' && "hidden")}>
           <AccountModal 
             isOpen={true} 
             onClose={() => handleTabChange('builder')} 
@@ -665,7 +716,7 @@ export default function App() {
 
       {/* Bottom Navigation for Mobile */}
       {!isPortfolioFullscreen && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[var(--bg-secondary)]/80 backdrop-blur-2xl border-t border-[var(--border-color)] px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
         {[
           { id: 'builder', icon: Layout, label: 'Morph', desc: 'AI-architected resumes' },
           { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach', desc: 'Mock interviews & feedback' },
@@ -675,6 +726,7 @@ export default function App() {
         ].map((item) => (
           <div key={item.id} className="relative group flex flex-col items-center">
             <button
+              id={`mobile-tab-${item.id}`}
               onClick={() => handleTabChange(item.id as Tab)}
               className={cn(
                 "flex flex-col items-center gap-1 transition-all",
@@ -747,11 +799,14 @@ export default function App() {
           <p className="text-sm text-gray-400 font-medium text-center md:text-left">
             © 2026 Resume Morph. Built with passion by Sankalp Suman.
           </p>
-          <div className="flex items-center gap-6">
-            <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Feedback</button>
-            <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</button>
-            <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">About</button>
-            <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Contact</button>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 px-3 py-1 border border-gray-100 rounded-full">v1.0.1</span>
+            <div className="flex items-center gap-6">
+              <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Feedback</button>
+              <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Privacy</button>
+              <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">About</button>
+              <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-gray-400 hover:text-indigo-600 transition-colors">Contact</button>
+            </div>
           </div>
         </div>
       </footer>
