@@ -49,12 +49,12 @@ export default function AppChatbot() {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isTyping) return;
+  const handleSend = async (customInput?: string) => {
+    const textToSend = typeof customInput === 'string' ? customInput : input;
+    if (!textToSend.trim() || isTyping) return;
 
-    const userMessage = input.trim();
-    setInput('');
-    const newMessages: Message[] = [...messages, { role: 'user', text: userMessage }];
+    if (typeof customInput !== 'string') setInput('');
+    const newMessages: Message[] = [...messages, { role: 'user', text: textToSend.trim() }];
     setMessages(newMessages);
     setIsTyping(true);
 

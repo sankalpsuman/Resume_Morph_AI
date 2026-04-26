@@ -111,11 +111,11 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
   return (
     <div className="max-w-7xl mx-auto px-6 md:px-8 py-16 md:py-24 font-sans selection:bg-indigo-100 dark:bg-[var(--bg-primary)]">
       {/* Hero Section */}
-      <div className="text-center mb-24">
+      <div className="text-center mb-16 md:mb-24 px-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-10 border border-indigo-100 dark:border-indigo-800 shadow-sm"
+          className="inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] md:text-xs font-black uppercase tracking-[0.2em] mb-8 md:mb-10 border border-indigo-100 dark:border-indigo-800 shadow-sm"
         >
           <LifeBuoy className="w-4 h-4" />
           Intelligence Hub
@@ -123,7 +123,7 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-5xl md:text-8xl font-black text-[var(--text-primary)] tracking-tighter mb-8 leading-[0.85]"
+          className="text-4xl sm:text-6xl md:text-8xl font-black text-[var(--text-primary)] tracking-tighter mb-6 md:mb-8 leading-[1.1] md:leading-[0.85]"
         >
           How can we help you <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600">Succeed?</span>
@@ -132,14 +132,14 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-lg md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto font-medium mb-12 leading-relaxed"
+          className="text-base md:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto font-medium mb-10 md:mb-12 leading-relaxed px-4"
         >
           Everything you need to master Resume Morph and accelerate your career growth, consolidated in one intuitive workspace.
         </motion.p>
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8 mb-24">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-20 md:mb-24 px-4">
         {mainResources.map((resource, index) => (
           <ResourceCard 
             key={resource.id}
@@ -155,28 +155,28 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
       </div>
 
       {/* Secondary Resources / Quick Links */}
-      <div className="p-12 md:p-20 bg-gray-900 rounded-[56px] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px] -mr-48 -mt-48" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] -ml-48 -mb-48" />
+      <div className="mx-4 p-8 md:p-20 bg-gray-900 rounded-[32px] md:rounded-[56px] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 md:w-96 h-64 md:h-96 bg-indigo-600/20 rounded-full blur-[100px] md:blur-[120px] -mr-32 md:-mr-48 -mt-32 md:-mt-48" />
+        <div className="absolute bottom-0 left-0 w-64 md:w-96 h-64 md:h-96 bg-purple-600/20 rounded-full blur-[100px] md:blur-[120px] -ml-32 md:-ml-48 -mb-32 md:-mb-48" />
         
         <div className="relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-10 md:gap-12">
             <div className="max-w-md text-center md:text-left">
-              <h2 className="text-3xl md:text-4xl font-black text-white mb-6">Quick Shortcuts</h2>
-              <p className="text-gray-400 font-medium leading-relaxed">
+              <h2 className="text-2xl md:text-4xl font-black text-white mb-4 md:mb-6 leading-tight">Quick Shortcuts</h2>
+              <p className="text-gray-400 text-sm md:text-base font-medium leading-relaxed">
                 Jump directly back into your workflow or review our legal documentation with these quick links.
               </p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 w-full md:w-auto">
               {quickLinks.map((link) => (
                 <button
                   key={link.id}
                   onClick={() => onTabChange(link.id)}
-                  className="flex flex-col items-center gap-4 px-8 py-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-[32px] hover:bg-white/10 transition-all group"
+                  className="flex flex-col items-center gap-3 md:gap-4 px-6 md:px-8 py-6 md:py-8 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl md:rounded-[32px] hover:bg-white/10 transition-all group"
                 >
-                  <link.icon className="w-6 h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{link.title}</span>
+                  <link.icon className="w-5 md:w-6 h-5 md:h-6 text-indigo-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-[8px] md:text-[10px] font-black text-white uppercase tracking-widest">{link.title}</span>
                 </button>
               ))}
             </div>
