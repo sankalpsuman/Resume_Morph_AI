@@ -154,7 +154,7 @@ export default function AppChatbot() {
                       <button
                         key={action}
                         onClick={() => handleSend(action)}
-                        className="p-3 bg-white dark:bg-[var(--bg-secondary)] border border-indigo-100 dark:border-[var(--border-color)] rounded-xl hover:border-indigo-600 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[9px] font-black uppercase tracking-widest transition-all text-[var(--text-secondary)] shadow-sm active:scale-95"
+                        className="p-3 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl hover:border-indigo-600 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[9px] font-black uppercase tracking-widest transition-all text-[var(--text-secondary)] shadow-sm active:scale-95"
                       >
                         {action}
                       </button>
@@ -177,7 +177,7 @@ export default function AppChatbot() {
                     "px-4 py-3 rounded-2xl md:rounded-3xl text-[13px] md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none transition-colors",
                     msg.role === 'user' 
                       ? "bg-indigo-600 text-white rounded-tr-none prose-invert font-semibold" 
-                      : "bg-white dark:bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none border border-indigo-100 dark:border-[var(--border-color)] shadow-[0_4px_12px_rgba(79,70,229,0.08)] prose-p:text-[var(--text-primary)] prose-strong:text-[var(--text-primary)] dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-300 dark:prose-headings:text-indigo-400"
+                      : "bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none border border-[var(--border-color)] shadow-[0_4px_12px_rgba(0,0,0,0.05)] prose-p:text-[var(--text-primary)] prose-strong:text-[var(--text-primary)] dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-300 dark:prose-headings:text-indigo-400"
                   )}>
                     <ReactMarkdown>{msg.text}</ReactMarkdown>
                   </div>
@@ -185,7 +185,7 @@ export default function AppChatbot() {
               ))}
               {isTyping && (
                 <div className="flex flex-col max-w-[85%] mr-auto items-start">
-                  <div className="bg-white dark:bg-[var(--bg-secondary)] px-4 py-3 rounded-2xl rounded-tl-none border border-indigo-100 dark:border-[var(--border-color)] shadow-sm animate-pulse">
+                  <div className="bg-[var(--bg-secondary)] px-4 py-3 rounded-2xl rounded-tl-none border border-[var(--border-color)] shadow-sm animate-pulse">
                     <div className="flex gap-1.5">
                       <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
                       <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />

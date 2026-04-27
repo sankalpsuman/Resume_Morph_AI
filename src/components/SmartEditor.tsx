@@ -194,6 +194,10 @@ export default function SmartEditor() {
       const parsed = await parseResumeToData({ base64, mimeType: file.type, text });
       setResumeData(parsed);
       setStep('studio');
+      
+      // Trigger Success Event for Congratulations Modal
+      window.dispatchEvent(new CustomEvent('morph-success'));
+
       // Force initial refresh 
       setTimeout(() => refreshPreview(), 100);
     } catch (err: any) {
