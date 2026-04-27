@@ -401,8 +401,10 @@ export default function App() {
       </AnimatePresence>
 
       {/* Global Top Header */}
-      {!isPortfolioFullscreen && (
-        <header className="fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm">
+      <header className={cn(
+        "fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm transition-transform duration-500",
+        isPortfolioFullscreen && activeTab === 'portfolio' && "-translate-y-full hover:translate-y-0" 
+      )}>
           <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
             {/* Logo Section */}
             <div className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
@@ -578,7 +580,6 @@ export default function App() {
             </div>
           </div>
         </header>
-      )}
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>

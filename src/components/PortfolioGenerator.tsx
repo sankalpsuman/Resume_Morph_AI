@@ -13,6 +13,7 @@ import {
   Plus, 
   Trash2, 
   ChevronRight,
+  ChevronLeft,
   ExternalLink,
   Code,
   Briefcase,
@@ -1131,6 +1132,20 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
             )}>
               <div className="max-w-fit mx-auto bg-[var(--bg-primary)]/80 backdrop-blur-xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none flex items-center gap-2">
                 <button 
+                  onClick={() => {
+                    setIsFullscreen(false);
+                    onFullscreenChange?.(false);
+                  }}
+                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all text-indigo-600 font-bold flex items-center gap-2 px-4 whitespace-nowrap text-xs uppercase tracking-widest"
+                  title="Back to Dashboard"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Exit Editor</span>
+                </button>
+                
+                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
+
+                <button 
                   onClick={() => setPortfolio(null)}
                   className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all text-[var(--text-tertiary)] hover:text-red-600 group"
                   title="Discard and Start Over"
@@ -1172,6 +1187,20 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
             {/* Fullscreen Controls */}
             {isFullscreen && (
               <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 bg-[var(--bg-primary)]/90 backdrop-blur-2xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-2xl">
+                <button 
+                  onClick={() => {
+                    setIsFullscreen(false);
+                    onFullscreenChange?.(false);
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 text-xs font-black uppercase tracking-widest"
+                  title="Exit Editor"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Exit Editor</span>
+                </button>
+
+                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
+
                 <button 
                   onClick={() => setIsFullscreen(false)}
                   className="p-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
