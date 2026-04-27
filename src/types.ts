@@ -29,6 +29,17 @@ export interface PortfolioContent {
     linkedin?: string;
     github?: string;
   };
+  styles?: Record<string, { 
+    fontSize?: number;
+    fontWeight?: string;
+    fontStyle?: string;
+    textDecoration?: string;
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    color?: string;
+    backgroundColor?: string;
+    lineHeight?: number;
+    fontFamily?: string;
+  }>;
 }
 
 export type PortfolioTemplate = 'minimal' | 'developer' | 'professional' | 'modern' | 'glass' | 'cyber';

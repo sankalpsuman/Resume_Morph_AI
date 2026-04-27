@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import { 
   Upload, 
   Github, 
@@ -37,7 +38,29 @@ import {
   Check,
   FileCode,
   ChevronDown,
-  Minus
+  Minus,
+  Undo2,
+  Redo2,
+  Palette,
+  LayoutList,
+  GripVertical,
+  MousePointer2,
+  Lock,
+  Share2,
+  Scaling,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Type,
+  Baseline,
+  Highlighter,
+  List,
+  ListOrdered,
+  ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
@@ -61,6 +84,10 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   const [portfolio, setPortfolio] = useState<PortfolioContent | null>(null);
   const [template, setTemplate] = useState<PortfolioTemplate>('minimal');
   const [isEditing, setIsEditing] = useState(false);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [baseFontSize, setBaseFontSize] = useState(16);
+  const [autoFit, setAutoFit] = useState(true);
+  const [globalFontFamily, setGlobalFontFamily] = useState('Inter');
   const [githubUsername, setGithubUsername] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -68,18 +95,85 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   const [deployedUrl, setDeployedUrl] = useState<string | null>(null);
   const [isRecruiterView, setIsRecruiterView] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [globalFontSize, setGlobalFontSize] = useState(100); // Percentage
-  const [globalFontFamily, setGlobalFontFamily] = useState('Inter');
   const [activeTab, setActiveTab] = useState<'design' | 'content' | 'export'>('design');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'templates' | 'theme' | 'sections' | 'ai'>('templates');
+  const [rightPanelTab, setRightPanelTab] = useState<'edit' | 'settings'>('edit');
+  const [undoStack, setUndoStack] = useState<PortfolioContent[]>([]);
+  const [redoStack, setRedoStack] = useState<PortfolioContent[]>([]);
+  const [isImproving, setIsImproving] = useState(false);
+
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+  React.useEffect(() => {
+    if (autoFit) {
+      if (previewScale < 0.6) setBaseFontSize(24);
+      else if (previewScale < 0.8) setBaseFontSize(20);
+      else if (previewScale < 1) setBaseFontSize(18);
+      else setBaseFontSize(16);
+    }
+  }, [autoFit, previewScale]);
+
+  const handleAIImprove = async () => {
+    if (!selectedElement || !portfolio) return;
+    
+    setIsImproving(true);
+    try {
+      const currentValue = selectedElement.path.split('.').reduce((obj: any, key) => obj?.[key], portfolio);
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Improve and professionalize the following ${selectedElement.label} for a portfolio website. Keep it concise but impactful. Return ONLY the improved text, nothing else.\n\nCurrent Text: ${currentValue}`,
+      });
+
+      const improvedText = response.text?.trim();
+      if (improvedText) {
+        const newPort = { ...portfolio };
+        const keys = selectedElement.path.split('.');
+        let current = newPort as any;
+        for (let i = 0; i < keys.length - 1; i++) current = current[keys[i]];
+        current[keys[keys.length - 1]] = improvedText;
+        handleContentUpdate(newPort);
+      }
+    } catch (err) {
+      console.error('AI Improvement error:', err);
+    } finally {
+      setIsImproving(false);
+    }
+  };
+
+  // Simple Undo/Redo logic
+  const handleContentUpdate = (updated: PortfolioContent) => {
+    if (portfolio) {
+      setUndoStack(prev => [...prev, portfolio]);
+      setRedoStack([]);
+      setPortfolio(updated);
+    }
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length > 0 && portfolio) {
+      const prev = undoStack[undoStack.length - 1];
+      setRedoStack(r => [...r, portfolio]);
+      setUndoStack(u => u.slice(0, -1));
+      setPortfolio(prev);
+    }
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length > 0 && portfolio) {
+      const next = redoStack[redoStack.length - 1];
+      setUndoStack(u => [...u, portfolio]);
+      setRedoStack(r => r.slice(0, -1));
+      setPortfolio(next);
+    }
+  };
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [showSourceCode, setShowSourceCode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
   const [themeColor, setThemeColor] = useState('#4f46e5');
   const [accentColor, setAccentColor] = useState('#f59e0b');
   const [showThemePicker, setShowThemePicker] = useState(false);
-  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
-  const [previewScale, setPreviewScale] = useState(1);
-  const [autoFit, setAutoFit] = useState(true);
   const [selectedElement, setSelectedElement] = useState<{ path: string, label: string } | null>(null);
   const [showExportOptions, setShowExportOptions] = useState(false);
   const [loadingSteps, setLoadingSteps] = useState<{ id: number; label: string; status: 'pending' | 'loading' | 'complete' }[]>([]);
@@ -713,6 +807,33 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
     downloadAnchorNode.remove();
   };
 
+  const [isLargeScreen, setIsLargeScreen] = useState(true);
+
+  React.useEffect(() => {
+    const checkScreen = () => setIsLargeScreen(window.innerWidth >= 1024);
+    checkScreen();
+    window.addEventListener('resize', checkScreen);
+    return () => window.removeEventListener('resize', checkScreen);
+  }, []);
+
+  if (!isLargeScreen) {
+    return (
+      <div className="min-h-[500px] bg-slate-950 flex flex-col items-center justify-center p-12 text-center rounded-[2rem] border border-slate-800">
+        <div className="w-20 h-20 bg-indigo-600/10 rounded-[2.5rem] flex items-center justify-center mb-8 border border-indigo-500/20">
+          <Smartphone className="w-10 h-10 text-indigo-400" />
+        </div>
+        <h2 className="text-3xl font-black text-white mb-4 tracking-tight uppercase">Desktop Studio</h2>
+        <p className="text-slate-400 text-lg font-medium leading-relaxed mb-8 max-w-sm mx-auto">
+          The Portfolio Editor requires the precision of a desktop workspace.
+        </p>
+        <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-indigo-400 text-sm font-bold uppercase tracking-widest animate-pulse">
+          <Sparkles className="w-4 h-4" />
+          Coming Soon for Mobile & Tablet
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-sm relative">
       {/* Atmospheric Background Gradients */}
@@ -1118,707 +1239,339 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           </div>
         )}
 
-        {/* Preview View */}
+        {/* Studio Workspace */}
         {portfolio && !isGenerating && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-10"
-          >
-            {/* Controls Bar - Moved to Side Panel or kept as minimal floating if preferred, but user asked for panel */}
-            <div className={cn(
-              "sticky top-6 z-[210] transition-all duration-500 px-6",
-              (isFullscreen || isEditing) ? "hidden" : ""
-            )}>
-              <div className="max-w-fit mx-auto bg-[var(--bg-primary)]/80 backdrop-blur-xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none flex items-center gap-2">
-                <button 
-                  onClick={() => {
-                    setIsFullscreen(false);
-                    onFullscreenChange?.(false);
-                  }}
-                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all text-indigo-600 font-bold flex items-center gap-2 px-4 whitespace-nowrap text-xs uppercase tracking-widest"
-                  title="Back to Dashboard"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Exit Editor</span>
-                </button>
-                
-                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
-
-                <button 
-                  onClick={() => setPortfolio(null)}
-                  className="p-3 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all text-[var(--text-tertiary)] hover:text-red-600 group"
-                  title="Discard and Start Over"
-                >
-                  <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </button>
-                
-                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
-                
-                <button 
-                  onClick={() => setIsEditing(!isEditing)}
-                  className={cn(
-                    "flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all shadow-sm text-sm",
-                    isEditing 
-                      ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200" 
-                      : "bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                  )}
-                >
-                  {isEditing ? <CheckCircle className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-                  {isEditing ? 'Finish Editing' : 'Edit Portfolio'}
-                </button>
-
-                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
-
-                <button 
-                  onClick={() => {
-                    const nextVal = !isFullscreen;
-                    setIsFullscreen(nextVal);
-                    onFullscreenChange?.(nextVal);
-                  }}
-                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all text-[var(--text-tertiary)]"
-                  title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                >
-                  {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-                </button>
+          <>
+            {/* Mobile/Tablet Placeholder */}
+            <div className="lg:hidden fixed inset-0 top-16 z-[200] bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
+              <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center mb-8 animate-bounce">
+                <Monitor className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
               </div>
+              <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white mb-4">Coming Soon for Mobile & Tablet</h2>
+              <p className="text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                The full Studio experience is optimized for desktop. Please switch to a larger screen to build your masterpiece.
+              </p>
             </div>
 
-            {/* Fullscreen Controls */}
-            {isFullscreen && (
-              <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-3 bg-[var(--bg-primary)]/90 backdrop-blur-2xl border border-[var(--border-color)] p-2 rounded-[2rem] shadow-2xl">
-                <button 
-                  onClick={() => {
-                    setIsFullscreen(false);
-                    onFullscreenChange?.(false);
-                  }}
-                  className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 text-xs font-black uppercase tracking-widest"
-                  title="Exit Editor"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Exit Editor</span>
+            {/* Desktop View */}
+            <div className="hidden lg:flex fixed inset-0 top-16 md:top-20 z-[200] bg-[#f2f3f5] dark:bg-slate-950 overflow-hidden flex-col font-sans">
+            {/* Studio Toolbar */}
+            <header className="h-14 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between z-30 shadow-sm shrink-0">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setPortfolio(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 transition-all flex items-center gap-2 group">
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Dashboard</span>
                 </button>
+                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                <div className="flex items-center gap-1">
+                  <button onClick={handleUndo} disabled={undoStack.length === 0} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
+                  <button onClick={handleRedo} disabled={redoStack.length === 0} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
+                </div>
+              </div>
 
-                <div className="h-8 w-px bg-[var(--border-color)] mx-1" />
-
-                <button 
-                  onClick={() => setIsFullscreen(false)}
-                  className="p-3 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                  title="Exit Fullscreen"
-                >
-                  <Minimize2 className="w-5 h-5" />
+              {/* Right Side Controls */}
+              <div className="flex items-center gap-3">
+                <button onClick={() => setIsRecruiterView(!isRecruiterView)} className={cn("flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all border shadow-sm", 
+                    isRecruiterView ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400")}>
+                  <Eye className="w-3.5 h-3.5" />Recruiter View
                 </button>
-                <div className="h-8 w-px bg-[var(--border-color)]" />
-                <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl">
-                  {(['desktop', 'tablet', 'mobile'] as const).map((device) => (
-                    <button
-                      key={device}
-                      onClick={() => setPreviewDevice(device)}
-                      className={cn(
-                        "p-2 rounded-lg transition-all",
-                        previewDevice === device ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                      )}
-                    >
-                      {device === 'desktop' ? <Monitor className="w-4 h-4" /> : device === 'tablet' ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                <button onClick={() => handleDeploy()} disabled={isDeploying} className="px-5 py-1.5 bg-slate-900 dark:bg-indigo-600 text-white rounded-full text-xs font-bold hover:bg-black dark:hover:bg-indigo-500 transition-all flex items-center justify-center shadow-lg shadow-black/10">
+                  {isDeploying ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Rocket className="w-3.5 h-3.5 mr-2" />}Publish
+                </button>
+              </div>
+            </header>
+
+            <main className="flex-1 flex overflow-hidden">
+              {/* Left Sidebar */}
+              <aside className="w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800 flex flex-col z-20">
+                <div className="flex border-b border-slate-100 dark:border-slate-800">
+                  {[
+                    { id: 'design', icon: LayoutList, label: 'Design' },
+                    { id: 'pages', icon: Layers, label: 'Pages' }
+                  ].map((tab) => (
+                    <button key={tab.id} onClick={() => setActiveSidebarTab(tab.id as any)} className={cn("flex-1 p-4 flex flex-col items-center gap-1.5 relative transition-colors", activeSidebarTab === tab.id ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300")}>
+                      <tab.icon className="w-5 h-5" /><span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
+                      {activeSidebarTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-full mx-6" />}
                     </button>
                   ))}
                 </div>
-                <div className="h-8 w-px bg-[var(--border-color)]" />
-                <button 
-                  onClick={() => setIsEditing(!isEditing)}
-                  className={cn(
-                    "p-3 rounded-2xl transition-all",
-                    isEditing ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-[var(--bg-secondary)] text-[var(--text-tertiary)]"
-                  )}
-                  title={isEditing ? "Close Editor" : "Open Editor"}
-                >
-                  <Edit3 className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-        
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
-          <button 
-            onClick={() => setIsEditing(!isEditing)}
-            className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all shadow-xl",
-              isEditing 
-                ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                : "bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-color)] hover:bg-[var(--bg-secondary)]"
-            )}
-          >
-            {isEditing ? <CheckCircle className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
-            {isEditing ? 'Save Changes' : 'Edit Content'}
-          </button>
-        </div>
-
-            {/* Deployed Notice */}
-            <AnimatePresence>
-              {deployedUrl && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginBottom: 40 }}
-                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="bg-indigo-600 text-white p-8 rounded-[2.5rem] flex flex-wrap items-center justify-between gap-8 shadow-2xl shadow-indigo-200">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-lg border border-white/20">
-                        <Rocket className="w-8 h-8" />
-                      </div>
+                <div className="flex-1 overflow-y-auto p-5 scrollbar-hide">
+                  {activeSidebarTab === 'design' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-300">
                       <div>
-                        <h4 className="font-bold text-2xl mb-1">Your portfolio is live!</h4>
-                        <p className="text-indigo-100 text-lg">Your professional story is now accessible globally.</p>
+                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-[0.2em]">Templates</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                          {['minimal', 'developer', 'modern', 'professional', 'glass', 'cyber'].map((t) => (
+                            <button 
+                              key={t} 
+                              onClick={() => setTemplate(t as PortfolioTemplate)} 
+                              className={cn(
+                                "p-3 rounded-xl border text-[10px] font-black capitalize transition-all", 
+                                template === t 
+                                  ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/20" 
+                                  : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-200"
+                              )}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+                      <div>
+                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-[0.2em]">Typography</h3>
+                        <div className="grid grid-cols-1 gap-2">
+                          {[
+                            { name: 'Inter (Sans)', family: 'Inter' },
+                            { name: 'Outfit (Modern)', family: 'Outfit' },
+                            { name: 'Playfair (Serif)', family: 'Playfair' },
+                            { name: 'Space Grotesk', family: 'Space Grotesk' },
+                            { name: 'JetBrains (Mono)', family: 'Mono' }
+                          ].map((f) => (
+                            <button 
+                              key={f.family} 
+                              onClick={() => setGlobalFontFamily(f.family)} 
+                              className={cn(
+                                "w-full p-3 rounded-xl border text-left text-xs font-bold transition-all", 
+                                globalFontFamily === f.family 
+                                  ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" 
+                                  : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-100"
+                              )}
+                            >
+                              {f.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+                      <div>
+                        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-[0.2em]">Accent Color</h3>
+                        <div className="grid grid-cols-5 gap-2">
+                          {['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#000000', '#ec4899', '#06b6d4', '#8b5cf6'].map((c) => (
+                            <button 
+                              key={c} 
+                              onClick={() => setThemeColor(c)} 
+                              className={cn(
+                                "aspect-square rounded-full transition-all border-2", 
+                                themeColor === c ? "border-indigo-500 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900" : "border-transparent hover:scale-110 shadow-sm"
+                              )} 
+                              style={{ backgroundColor: c }} 
+                            />
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 bg-white/10 p-2 rounded-3xl border border-white/10 backdrop-blur-sm">
-                      <div className="px-6 py-3 font-mono text-lg font-bold">
-                        {deployedUrl}
+                  )}
+                  {activeSidebarTab === 'pages' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-300">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <h3 className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest">Section Manager</h3>
+                        <div className="space-y-2">
+                          {['Hero', 'About', 'Experience', 'Projects', 'Contact'].map(section => (
+                            <div key={section} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{section}</span>
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <button className="p-4 bg-white text-indigo-600 rounded-2xl hover:bg-indigo-50 transition-all shadow-lg">
-                        <ExternalLink className="w-6 h-6" />
-                      </button>
+                    </div>
+                  )}
+                </div>
+              </aside>
+
+              {/* Center Canvas */}
+              <section className="flex-1 overflow-hidden bg-[#f8f9fb] dark:bg-slate-950 relative flex flex-col items-center p-4">
+                <motion.div layout className="w-full h-full bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden relative transition-all duration-700 flex flex-col">
+                  <div className="h-10 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center px-6 shrink-0 justify-between">
+                    <div className="flex gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-red-400/30" />
+                      <div className="w-2 h-2 rounded-full bg-amber-400/30" />
+                      <div className="w-2 h-2 rounded-full bg-emerald-400/30" />
+                    </div>
+                    <div className="text-[10px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-[0.2em] bg-slate-50 dark:bg-slate-800 px-4 py-1 rounded-full border border-slate-100 dark:border-slate-700">
+                      Live Responsive Workspace
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto relative editor-canvas scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                    <div className="w-full min-h-full transition-all duration-500">
+                      <PortfolioPreview 
+                        content={portfolio} 
+                        template={template} 
+                        isEditing={isEditing || true} 
+                        isRecruiterView={isRecruiterView}
+                        selectedElement={selectedElement}
+                        onSelectElement={(el) => setSelectedElement(el)}
+                        onChange={(updated) => handleContentUpdate(updated)}
+                        themeColor={themeColor}
+                        baseFontSize={baseFontSize}
+                        globalFontFamily={
+                          globalFontFamily === 'Inter' ? '"Inter", sans-serif' : 
+                          globalFontFamily === 'Playfair' ? '"Playfair Display", serif' : 
+                          globalFontFamily === 'Outfit' ? '"Outfit", sans-serif' :
+                          globalFontFamily === 'Space Grotesk' ? '"Space Grotesk", sans-serif' :
+                          '"JetBrains Mono", monospace'
+                        }
+                      />
                     </div>
                   </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
+              </section>
 
-            {/* Analytics Dashboard */}
-            <AnimatePresence>
-              {showAnalytics && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="bg-[var(--bg-primary)] rounded-[2.5rem] p-10 border border-[var(--border-color)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10"
-                >
-                  {[
-                    { label: 'Total Views', value: '1,284', change: '+12%', color: 'indigo' },
-                    { label: 'Project Clicks', value: '432', change: '+5%', color: 'violet' },
-                    { label: 'Resume Downloads', value: '89', change: '+18%', color: 'emerald' },
-                    { label: 'Avg. Session', value: '2m 14s', change: '-2%', color: 'amber' },
-                  ].map((stat, i) => (
-                    <div key={i} className="space-y-2">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{stat.label}</p>
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-4xl font-bold text-[var(--text-primary)] tracking-tight">{stat.value}</span>
-                        <div className={cn(
-                          "px-2 py-1 rounded-lg text-xs font-black",
-                          stat.change.startsWith('+') ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-                        )}>
-                          {stat.change}
+              {/* Right Sidebar */}
+              <aside className="w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col z-20 shrink-0">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest">Inspector</h3>
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+                  {selectedElement ? (
+                    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
+                      <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Metadata</p>
+                          <button onClick={() => setSelectedElement(null)} className="text-indigo-400 hover:text-indigo-600 transition-colors"><X className="w-3 h-3" /></button>
                         </div>
+                        <p className="text-xs font-bold text-indigo-900 dark:text-indigo-300">{selectedElement.label}</p>
                       </div>
-                      <div className="w-full h-1.5 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: '70%' }}
-                          transition={{ delay: i * 0.1, duration: 1 }}
-                          className={cn(
-                            "h-full rounded-full",
-                            stat.color === 'indigo' ? "bg-indigo-500" :
-                            stat.color === 'violet' ? "bg-violet-500" :
-                            stat.color === 'emerald' ? "bg-emerald-500" : "bg-amber-500"
-                          )}
+                      
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Live Content</label>
+                        <textarea 
+                          className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 text-sm font-medium min-h-[200px] outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all shadow-sm text-slate-800 dark:text-slate-200 leading-relaxed" 
+                          value={selectedElement.path.split('.').reduce((obj: any, key) => obj?.[key], portfolio)}
+                          onChange={(e) => {
+                            const newPort = { ...portfolio };
+                            const keys = selectedElement.path.split('.');
+                            let current = newPort as any;
+                            for (let i = 0; i < keys.length - 1; i++) current = current[keys[i]];
+                            current[keys[keys.length - 1]] = e.target.value;
+                            handleContentUpdate(newPort);
+                          }}
                         />
+                      </div>
+
+                      <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <button 
+                          onClick={handleAIImprove}
+                          disabled={isImproving}
+                          className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {isImproving ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              AI Smart Improve
+                            </>
+                          )}
+                        </button>
+                        <p className="text-[10px] text-slate-400 text-center mt-4 font-medium italic">Changes are instantly applied across all devices.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center px-4 space-y-6 opacity-30 select-none">
+                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center">
+                        <MousePointer2 className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 leading-tight">Layer Selected: None</p>
+                        <p className="text-[10px] font-medium text-slate-500 mt-2 leading-relaxed">Click any text on the workspace to begin editing its properties.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={handleDownloadPDF} className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group">
+                      <Printer className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" /><span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">PDF Resume</span>
+                    </button>
+                    <button onClick={() => setShowSourceCode(true)} className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group">
+                      <Code className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" /><span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">Code</span>
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </main>
+          </div>
+        </>
+      )}
+
+        {/* PDF Generation Loading Overlay */}
+        <AnimatePresence>
+          {loadingSteps.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] flex items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl"
+            >
+              <div className="w-full max-w-md p-12 bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl shadow-indigo-500/10 border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-4 mb-12">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
+                    <Printer className="w-6 h-6 text-white animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Generating PDF</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Please stay on this page</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {loadingSteps.map((step) => (
+                    <div key={step.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-500",
+                          step.status === 'complete' ? "bg-green-500" : step.status === 'loading' ? "bg-indigo-600" : "bg-slate-100 dark:bg-slate-800"
+                        )}>
+                          {step.status === 'complete' ? (
+                            <Check className="w-3 h-3 text-white" />
+                          ) : step.status === 'loading' ? (
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          ) : null}
+                        </div>
+                        <span className={cn(
+                          "text-sm font-bold tracking-tight transition-colors duration-500",
+                          step.status === 'complete' ? "text-slate-900 dark:text-slate-100" : step.status === 'loading' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"
+                        )}>
+                          {step.label}
+                        </span>
                       </div>
                     </div>
                   ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Portfolio Preview Container - Browser Frame */}
-            <div className="flex flex-1 overflow-hidden relative">
-              <div className={cn(
-                "flex-1 transition-all duration-500 overflow-auto",
-                isEditing && !isFullscreen ? "mr-80 md:mr-96" : ""
-              )}>
-                <div className={cn(
-                  "relative group/preview transition-all duration-500 min-h-screen flex flex-col items-center",
-                  isFullscreen ? "fixed inset-0 z-[999] bg-[var(--bg-secondary)] p-6 pt-24 overflow-auto" : "p-6 md:p-12 lg:p-20"
-                )}>
-                  <div className={cn(
-                    "w-full transition-all duration-500 origin-top flex flex-col items-center",
-                    previewDevice === 'desktop' ? "max-w-full" : 
-                    previewDevice === 'tablet' ? "max-w-[768px]" : "max-w-[375px]"
-                  )}>
-                    <div className="absolute -inset-4 bg-gradient-to-br from-indigo-500/10 via-transparent to-violet-500/10 blur-2xl rounded-5xl opacity-0 group-hover/preview:opacity-100 transition-opacity duration-1000" />
-                    <div className={cn(
-                      "relative bg-white dark:bg-neutral-900 rounded-4xl shadow-[0_40px_100px_rgba(0,0,0,0.1)] border border-[var(--border-color)] overflow-hidden ring-1 ring-black/[0.05] w-full",
-                      previewDevice === 'mobile' ? "aspect-[9/19.5] max-h-[800px]" : 
-                      previewDevice === 'tablet' ? "aspect-[3/4] max-h-[900px]" : "min-h-[80vh]"
-                    )}>
-                      {/* Browser Header */}
-                      <div id="portfolio-preview-header" className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-6 py-4 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md">
-                        <div className="flex gap-2">
-                          <div className="w-3 h-3 rounded-full bg-red-400/20 border border-red-400/40" />
-                          <div className="w-3 h-3 rounded-full bg-amber-400/20 border border-amber-400/40" />
-                          <div className="w-3 h-3 rounded-full bg-green-400/20 border border-green-400/40" />
-                        </div>
-                        <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] px-4 py-1 rounded-lg text-[10px] font-medium text-[var(--text-tertiary)] flex items-center gap-2 min-w-[200px] justify-center shadow-sm">
-                          <Globe className="w-3 h-3 text-indigo-500" />
-                          {portfolio.hero.name.toLowerCase().replace(/\s+/g, '-')}.portfolio.site
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => setAutoFit(!autoFit)}
-                            className={cn(
-                              "p-1.5 rounded-lg transition-all",
-                              autoFit ? "bg-indigo-600 text-white" : "text-[var(--text-tertiary)] hover:bg-[var(--bg-primary)]"
-                            )}
-                            title="Auto-fit content"
-                          >
-                            <Maximize2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div id="portfolio-preview" className="relative overflow-auto h-[calc(100%-57px)]" style={{ 
-                        fontSize: `${globalFontSize}%`,
-                        fontFamily: globalFontFamily === 'Inter' ? '"Inter", sans-serif' : 
-                                   globalFontFamily === 'Playfair' ? '"Playfair Display", serif' : 
-                                   '"JetBrains Mono", monospace'
-                      }}>
-                        <div id="portfolio-preview-content" className={cn(
-                          "w-full h-full transition-transform duration-500 origin-top",
-                          autoFit && previewDevice !== 'desktop' ? "scale-[0.85] md:scale-100" : ""
-                        )}>
-                          <PortfolioPreview 
-                            content={portfolio} 
-                            template={template} 
-                            isEditing={isEditing} 
-                            isRecruiterView={isRecruiterView}
-                            selectedElement={selectedElement}
-                            onSelectElement={(el) => setSelectedElement(el)}
-                            onChange={(updated) => setPortfolio(updated)}
-                            themeColor={themeColor}
-                            globalFontFamily={
-                              globalFontFamily === 'Inter' ? '"Inter", sans-serif' : 
-                              globalFontFamily === 'Playfair' ? '"Playfair Display", serif' : 
-                              '"JetBrains Mono", monospace'
-                            }
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              {/* Right Side Edit Panel */}
-              <AnimatePresence>
-                {isEditing && (
-                  <motion.div
-                    initial={{ x: 400 }}
-                    animate={{ x: 0 }}
-                    exit={{ x: 400 }}
-                    className={cn(
-                      "fixed top-24 right-6 bottom-6 w-80 md:w-96 bg-[var(--bg-primary)] rounded-[2.5rem] shadow-2xl border border-[var(--border-color)] flex flex-col overflow-hidden z-[1001]",
-                      isFullscreen && "top-24"
-                    )}
-                  >
-                    {/* Panel Header */}
-                    <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-secondary)]/50">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-600 rounded-xl">
-                          <Edit3 className="w-4 h-4 text-white" />
-                        </div>
-                        <h3 className="font-bold text-[var(--text-primary)]">Portfolio Editor</h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => setPortfolio(null)}
-                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-red-600"
-                          title="Discard Portfolio"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => setIsEditing(false)}
-                          className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)]"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Tabs */}
-                    <div className="flex border-b border-[var(--border-color)]">
-                      {(['design', 'content', 'export'] as const).map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setActiveTab(tab)}
-                          className={cn(
-                            "flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all",
-                            activeTab === tab ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                          )}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Panel Content */}
-                    <div className="flex-1 overflow-auto p-6 space-y-8 scrollbar-hide">
-                      {activeTab === 'design' && (
-                        <>
-                          {/* Template Selection */}
-                          <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Template</label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {(['minimal', 'developer', 'professional', 'modern'] as const).map((t) => (
-                                <button
-                                  key={t}
-                                  onClick={() => setTemplate(t)}
-                                  className={cn(
-                                    "px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border",
-                                    template === t ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200" : "bg-[var(--bg-primary)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-indigo-200"
-                                  )}
-                                >
-                                  {t}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Font Family */}
-                          <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Typography</label>
-                            <div className="space-y-2">
-                              {(['Inter', 'Playfair', 'Mono'] as const).map((f) => (
-                                <button
-                                  key={f}
-                                  onClick={() => setGlobalFontFamily(f)}
-                                  className={cn(
-                                    "w-full px-4 py-3 rounded-xl text-sm font-bold transition-all border flex items-center justify-between",
-                                    globalFontFamily === f ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 text-indigo-600 dark:text-indigo-400" : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-indigo-200"
-                                  )}
-                                >
-                                  <span style={{ fontFamily: f === 'Inter' ? 'Inter' : f === 'Playfair' ? 'Playfair Display' : 'JetBrains Mono' }}>
-                                    {f === 'Inter' ? 'Modern Sans' : f === 'Playfair' ? 'Elegant Serif' : 'Technical Mono'}
-                                  </span>
-                                  {globalFontFamily === f && <CheckCircle className="w-4 h-4" />}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Font Size */}
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Scale</label>
-                              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md">{globalFontSize}%</span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <button 
-                                onClick={() => setGlobalFontSize(Math.max(70, globalFontSize - 5))}
-                                className="p-2 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-lg transition-colors text-[var(--text-primary)]"
-                              >
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <input 
-                                type="range" 
-                                min="70" 
-                                max="150" 
-                                value={globalFontSize} 
-                                onChange={(e) => setGlobalFontSize(parseInt(e.target.value))}
-                                className="flex-1 accent-indigo-600"
-                              />
-                              <button 
-                                onClick={() => setGlobalFontSize(Math.min(150, globalFontSize + 5))}
-                                className="p-2 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-lg transition-colors text-[var(--text-primary)]"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Device Preview */}
-                          <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Preview Device</label>
-                            <div className="flex bg-[var(--bg-secondary)] p-1 rounded-xl">
-                              {(['desktop', 'tablet', 'mobile'] as const).map((device) => (
-                                <button
-                                  key={device}
-                                  onClick={() => setPreviewDevice(device)}
-                                  className={cn(
-                                    "flex-1 flex items-center justify-center py-2 rounded-lg transition-all",
-                                    previewDevice === device ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                                  )}
-                                >
-                                  {device === 'desktop' ? <Monitor className="w-4 h-4" /> : device === 'tablet' ? <Tablet className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      {activeTab === 'content' && (
-                        <div className="space-y-6">
-                          {selectedElement ? (
-                            <div className="space-y-4 p-5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100 dark:border-indigo-900/20">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Editing: {selectedElement.label}</span>
-                                <button onClick={() => setSelectedElement(null)} className="text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]">
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              <div className="space-y-2">
-                                <textarea 
-                                  value={selectedElement.path.split('.').reduce((o, i) => o[i], portfolio as any)}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    const newPortfolio = { ...portfolio };
-                                    const keys = selectedElement.path.split('.');
-                                    let current: any = newPortfolio;
-                                    for (let i = 0; i < keys.length - 1; i++) current = current[keys[i]];
-                                    current[keys[keys.length - 1]] = val;
-                                    setPortfolio(newPortfolio);
-                                  }}
-                                  className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-2xl p-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none min-h-[120px] resize-none"
-                                  placeholder="Enter content..."
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-                              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
-                                <Sparkles className="w-4 h-4" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">AI Tip</span>
-                              </div>
-                              <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed font-medium">Click on any text in the preview to edit it directly. Your changes are saved in real-time.</p>
-                            </div>
-                          )}
-                          
-                          <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Recruiter View</label>
-                            <button
-                              onClick={() => setIsRecruiterView(!isRecruiterView)}
-                              className={cn(
-                                "w-full flex items-center justify-between p-4 rounded-2xl border transition-all",
-                                isRecruiterView ? "bg-indigo-600 border-indigo-600 text-white" : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-secondary)]"
-                              )}
-                            >
-                              <span className="text-sm font-bold">Show Insights</span>
-                              <div className={cn(
-                                "w-10 h-5 rounded-full relative transition-colors",
-                                isRecruiterView ? "bg-white/20" : "bg-[var(--bg-secondary)]"
-                              )}>
-                                <div className={cn(
-                                  "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
-                                  isRecruiterView ? "right-1" : "left-1"
-                                  )} />
-                              </div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {activeTab === 'export' && (
-                        <div className="space-y-4">
-                          <button 
-                            onClick={handleDownloadPDF}
-                            className={cn(
-                              "w-full flex items-center gap-3 p-4 rounded-2xl transition-all text-left",
-                              isPrinting ? "bg-indigo-600 text-white" : "bg-indigo-50 dark:bg-indigo-900/10 hover:bg-indigo-100 dark:hover:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400"
-                            )}
-                            disabled={isPrinting}
-                          >
-                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
-                              {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-[var(--text-primary)]">Download PDF</p>
-                              <p className="text-[10px] text-[var(--text-tertiary)]">Professional resume format</p>
-                            </div>
-                          </button>
-
-                          <button 
-                            onClick={() => setShowSourceCode(true)}
-                            className="w-full flex items-center gap-3 p-4 bg-[var(--bg-secondary)] hover:bg-[var(--border-color)] rounded-2xl transition-all text-left border border-[var(--border-color)]"
-                          >
-                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
-                              <Code className="w-4 h-4 text-[var(--text-secondary)]" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-[var(--text-primary)]">Source Code</p>
-                              <p className="text-[10px] text-[var(--text-tertiary)]">Get JSON configuration</p>
-                            </div>
-                          </button>
-
-                          <button 
-                            onClick={() => {
-                              if (!portfolio) return;
-                              const htmlContent = generateStaticHTML();
-                              const blob = new Blob([htmlContent], { type: 'text/html' });
-                              const url = URL.createObjectURL(blob);
-                              const downloadAnchorNode = document.createElement('a');
-                              downloadAnchorNode.setAttribute("href", url);
-                              downloadAnchorNode.setAttribute("download", `${portfolio.hero.name.toLowerCase().replace(/\s+/g, '-')}-portfolio.html`);
-                              document.body.appendChild(downloadAnchorNode);
-                              downloadAnchorNode.click();
-                              downloadAnchorNode.remove();
-                              URL.revokeObjectURL(url);
-                              setShowExportOptions(false);
-                            }}
-                            className="w-full flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/20 rounded-2xl transition-all text-left border border-emerald-100 dark:border-emerald-900/20"
-                          >
-                            <div className="p-2 bg-[var(--bg-primary)] rounded-xl shadow-sm">
-                              <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-[var(--text-primary)]">Export HTML</p>
-                              <p className="text-[10px] text-[var(--text-tertiary)]">Download standalone file</p>
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Panel Footer */}
-                    <div className="p-6 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/50">
-                      <button 
-                        onClick={() => setIsEditing(false)}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Save & Close
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* PDF Generation Loading Overlay */}
-            <AnimatePresence>
-              {loadingSteps.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--bg-primary)]/80 backdrop-blur-xl"
-                >
-                  <div className="w-full max-w-md p-12 bg-[var(--bg-primary)] rounded-[3rem] shadow-2xl shadow-indigo-500/10 border border-[var(--border-color)]">
-                    <div className="flex items-center gap-4 mb-12">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center">
-                        <Printer className="w-6 h-6 text-white animate-pulse" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">Generating PDF</h3>
-                        <p className="text-sm text-[var(--text-tertiary)] font-medium tracking-tight">Please stay on this page</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      {loadingSteps.map((step) => (
-                        <div key={step.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className={cn(
-                              "w-6 h-6 rounded-full flex items-center justify-center transition-colors duration-500",
-                              step.status === 'complete' ? "bg-green-500" : step.status === 'loading' ? "bg-indigo-600" : "bg-[var(--bg-secondary)]"
-                            )}>
-                              {step.status === 'complete' ? (
-                                <Check className="w-3 h-3 text-white" />
-                              ) : step.status === 'loading' ? (
-                                <div className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                              ) : null}
-                            </div>
-                            <span className={cn(
-                              "text-sm font-bold tracking-tight transition-colors duration-500",
-                              step.status === 'complete' ? "text-[var(--text-primary)]" : step.status === 'loading' ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-tertiary)]"
-                            )}>
-                              {step.label}
-                            </span>
-                          </div>
-                          {step.status === 'loading' && (
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: "100%" }}
-                              className="h-1 bg-indigo-100 dark:bg-indigo-900/20 rounded-full overflow-hidden w-24"
-                            >
-                              <motion.div
-                                animate={{ x: ["-100%", "100%"] }}
-                                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                                className="h-full bg-indigo-600 w-1/2"
-                              />
-                            </motion.div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+        {/* Source Code Modal */}
+        <AnimatePresence>
+          {showSourceCode && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSourceCode(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-5xl bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-600 rounded-xl"><Code className="w-5 h-5 text-white" /></div>
+                    <h3 className="text-slate-900 font-bold">Portfolio Source Code</h3>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Source Code Modal */}
-            <AnimatePresence>
-              {showSourceCode && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setShowSourceCode(false)}
-                    className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                  />
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative w-full max-w-5xl bg-neutral-900 rounded-4xl shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-full"
-                  >
-                    <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-500/20 rounded-xl">
-                          <Code className="w-5 h-5 text-indigo-400" />
-                        </div>
-                        <div>
-                          <h3 className="text-white font-bold">Portfolio Source Code</h3>
-                          <p className="text-xs text-neutral-500">React + Tailwind CSS Implementation</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => setShowSourceCode(false)}
-                        className="p-2 hover:bg-white/10 rounded-xl text-neutral-400 transition-colors"
-                      >
-                        <X className="w-6 h-6" />
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-auto p-6 font-mono text-sm">
-                      <pre className="text-indigo-300 bg-black/40 p-6 rounded-2xl border border-white/5 overflow-x-auto whitespace-pre-wrap">
-                        {`// Generated Portfolio Component\n// Template: ${template}\n\nimport React from 'react';\nimport { Github, Linkedin, Mail, ExternalLink, ArrowRight } from 'lucide-react';\n\nexport default function Portfolio() {\n  return (\n    <div className="min-h-screen bg-white text-neutral-900">\n      {/* This is a simplified version of your generated portfolio code */}\n      {/* You can use the JSON config to recreate the full experience */}\n      <header className="max-w-5xl mx-auto py-24 px-10">\n        <h1 className="text-7xl font-bold mb-6">${portfolio.hero.name}</h1>\n        <p className="text-3xl text-neutral-400">${portfolio.hero.headline}</p>\n      </header>\n      \n      <main className="max-w-5xl mx-auto px-10 pb-24">\n        <section className="mb-20">\n          <h2 className="text-xs uppercase tracking-widest text-neutral-300 mb-8">About</h2>\n          <p className="text-2xl leading-relaxed">${portfolio.about}</p>\n        </section>\n        \n        {/* ... more sections ... */}\n      </main>\n    </div>\n  );\n}`}
-                      </pre>
-                    </div>
-                    <div className="p-6 border-t border-white/10 bg-white/5 flex justify-end gap-4">
-                      <button 
-                        onClick={handleDownloadSource}
-                        className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold transition-all flex items-center gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download JSON Config
-                      </button>
-                      <button 
-                        onClick={() => {
-                          if (portfolio) {
-                            navigator.clipboard.writeText(JSON.stringify(portfolio, null, 2));
-                          }
-                        }}
-                        className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20"
-                      >
-                        Copy JSON
-                      </button>
-                    </div>
-                  </motion.div>
+                  <button onClick={() => setShowSourceCode(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400"><X className="w-6 h-6" /></button>
                 </div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
+                <div className="flex-1 overflow-auto p-8 bg-slate-50">
+                  <pre className="text-indigo-600 bg-white p-8 rounded-3xl border border-slate-200 overflow-x-auto whitespace-pre-wrap font-mono text-xs">
+                    {`// Managed JSON Portfolio Configuration\n\n${JSON.stringify(portfolio, null, 2)}`}
+                  </pre>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -1833,7 +1586,8 @@ function PortfolioPreview({
   onSelectElement,
   onChange,
   themeColor,
-  globalFontFamily
+  globalFontFamily,
+  baseFontSize
 }: { 
   content: PortfolioContent; 
   template: PortfolioTemplate; 
@@ -1844,6 +1598,7 @@ function PortfolioPreview({
   onChange: (updated: PortfolioContent) => void;
   themeColor: string;
   globalFontFamily: string;
+  baseFontSize: number;
 }) {
   const updateField = (path: string, value: any) => {
     const newContent = { ...content };
@@ -1858,79 +1613,273 @@ function PortfolioPreview({
 
   const EditableText = ({ value, onSave, className, multiline = false, path, label }: any) => {
     const isSelected = selectedElement?.path === path;
+    const styleOverride = content?.styles?.[path] || {};
+    
+    const computedStyles: React.CSSProperties = {
+      fontSize: styleOverride.fontSize ? `${styleOverride.fontSize}px` : undefined,
+      fontWeight: styleOverride.fontWeight || undefined,
+      fontStyle: styleOverride.fontStyle || undefined,
+      textDecoration: styleOverride.textDecoration || undefined,
+      textAlign: styleOverride.textAlign || undefined,
+      color: styleOverride.color || undefined,
+      backgroundColor: styleOverride.backgroundColor || undefined,
+      lineHeight: styleOverride.lineHeight || 1.4,
+      fontFamily: styleOverride.fontFamily || undefined,
+      wordBreak: 'break-word',
+      maxWidth: '100%',
+      display: 'inline-block',
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+    };
 
-    if (!isEditing) return <span className={className}>{value}</span>;
+    const updateStyle = (key: string, val: any) => {
+      const newContent = { ...content };
+      if (!newContent.styles) newContent.styles = {};
+      newContent.styles[path] = { ...newContent.styles[path], [key]: val };
+      onChange(newContent);
+    };
+
+    const toggleStyle = (key: string, activeVal: any, defaultVal: any = undefined) => {
+      const current = styleOverride[key];
+      updateStyle(key, current === activeVal ? defaultVal : activeVal);
+    };
+
+    if (!isEditing) return <span className={cn(className, "inline-block max-w-full break-words")} style={computedStyles}>{value}</span>;
     
     return (
-      <div 
+      <span 
         className={cn(
-          "relative group/edit w-full transition-all cursor-text",
-          isSelected ? "ring-2 ring-indigo-500 ring-offset-4 rounded-lg" : "hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 rounded-lg"
+          "relative group/edit inline-block w-full transition-all cursor-text max-w-full",
+          isSelected ? "ring-2 ring-indigo-500 ring-offset-8 rounded-lg" : "hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 rounded-lg"
         )}
+        style={computedStyles}
         onClick={(e) => {
           e.stopPropagation();
           onSelectElement({ path, label });
         }}
       >
         {multiline ? (
-          <textarea
+          <textarea 
             value={value}
             onChange={(e) => onSave(e.target.value)}
             className={cn(
-              "w-full bg-transparent border-none focus:outline-none transition-all text-inherit resize-none py-1",
+              "w-full bg-transparent border-none focus:outline-none transition-all text-inherit resize-none py-1 block overflow-hidden break-words",
               className
             )}
             rows={Math.max(1, value.split('\n').length)}
+            style={computedStyles}
           />
         ) : (
-          <input
-            type="text"
+          <input 
+            type="text" 
             value={value}
             onChange={(e) => onSave(e.target.value)}
             className={cn(
-              "w-full bg-transparent border-none focus:outline-none transition-all text-inherit py-1",
+              "w-full bg-transparent border-none focus:outline-none transition-all text-inherit py-1 block truncate",
               className
             )}
+            style={computedStyles}
           />
         )}
-        <div className="absolute -top-6 right-0 opacity-0 group-hover/edit:opacity-100 transition-opacity pointer-events-none z-10">
-          <div className="bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest shadow-lg flex items-center gap-1">
-            <Edit3 className="w-2 h-2" />
-            Edit {label}
+
+        {/* Simplified professional toolbar */}
+        <div className={cn(
+          "absolute -top-16 left-1/2 -translate-x-1/2 opacity-0 group-hover/edit:opacity-100 transition-all duration-300 pointer-events-auto z-[100] flex flex-col items-center gap-1 min-w-max",
+          isSelected && "opacity-100 -top-20 scale-100",
+          !isSelected && "scale-95"
+        )}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center p-1.5 gap-1 backdrop-blur-2xl ring-1 ring-black/5 dark:ring-white/5">
+            
+            {/* Font & Size Group */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+              {/* Font Family Dropdown */}
+              <div className="relative group/font">
+                <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-indigo-400 transition-all min-w-[130px] justify-between h-9 shadow-sm">
+                  <span className="text-[12px] font-semibold truncate text-slate-700 dark:text-slate-200">
+                    {styleOverride.fontFamily?.split(',')[0]?.replace(/"/g, '') || 'Inter'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover/font:opacity-100 group-hover/font:visible transition-all z-[110] p-1.5 ring-1 ring-black/5">
+                  {['Inter', 'Outfit', 'Playfair Display', 'Space Grotesk', 'JetBrains Mono', 'Plus Jakarta Sans', 'Cabinet Grotesk', 'General Sans'].map(f => (
+                    <button 
+                      key={f} 
+                      onClick={(e) => { e.stopPropagation(); updateStyle('fontFamily', f === 'Playfair Display' ? '"Playfair Display", serif' : `"${f}", sans-serif`); }}
+                      className="w-full px-3 py-2 text-left text-[12px] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg text-slate-700 dark:text-slate-200 transition-colors font-medium"
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font Size Control */}
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1 h-9 shadow-sm">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); updateStyle('fontSize', Math.max(8, (styleOverride.fontSize || 16) - 2)); }} 
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 transition-colors"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <div className="relative group/size">
+                  <button className="flex items-center gap-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors h-full">
+                    <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 min-w-[20px] text-center">{styleOverride.fontSize || 16}</span>
+                    <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover/size:opacity-100 group-hover/size:visible transition-all z-[110] p-1 max-h-48 overflow-y-auto">
+                    {[10, 12, 14, 16, 18, 20, 24, 32, 40, 48, 64, 96, 128].map(s => (
+                      <button 
+                        key={s} 
+                        onClick={(e) => { e.stopPropagation(); updateStyle('fontSize', s); }}
+                        className="w-full text-center py-1 text-[11px] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); updateStyle('fontSize', (styleOverride.fontSize || 16) + 2); }} 
+                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-500 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            {/* Style Formatting */}
+            <div className="flex items-center gap-0.5">
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleStyle('fontWeight', 'bold', 'normal'); }}
+                className={cn("w-9 h-9 flex items-center justify-center rounded-xl transition-all", styleOverride.fontWeight === 'bold' ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400")}
+              >
+                <Bold className="w-4.5 h-4.5" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleStyle('fontStyle', 'italic', 'normal'); }}
+                className={cn("w-9 h-9 flex items-center justify-center rounded-xl transition-all", styleOverride.fontStyle === 'italic' ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400")}
+              >
+                <Italic className="w-4.5 h-4.5" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleStyle('textDecoration', 'underline', 'none'); }}
+                className={cn("w-9 h-9 flex items-center justify-center rounded-xl transition-all", styleOverride.textDecoration === 'underline' ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400")}
+              >
+                <Underline className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            {/* Colors */}
+            <div className="flex items-center gap-0.5 px-1">
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleStyle('backgroundColor', '#fef08a', 'transparent'); }} 
+                className={cn("w-9 h-9 flex flex-col items-center justify-center rounded-xl transition-all", styleOverride.backgroundColor === '#fef08a' ? "bg-yellow-100 dark:bg-yellow-900/40" : "hover:bg-slate-100 dark:hover:bg-slate-800")}
+              >
+                <Highlighter className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                <div className="w-4 h-1 bg-yellow-400 rounded-full mt-0.5" />
+              </button>
+              <div className="relative group/color">
+                <button 
+                  className={cn("w-9 h-9 flex flex-col items-center justify-center rounded-xl transition-all", styleOverride.color ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-100 dark:hover:bg-slate-800")}
+                >
+                  <Baseline className="w-4 h-4" style={{ color: styleOverride.color || 'currentColor' }} />
+                  <div className="w-4 h-1 rounded-full mt-0.5" style={{ backgroundColor: styleOverride.color || '#4f46e5' }} />
+                </button>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl opacity-0 invisible group-hover/color:opacity-100 group-hover/color:visible transition-all z-[110] grid grid-cols-5 gap-1.5 w-40 ring-1 ring-black/5">
+                  {['#000000', '#ffffff', '#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef'].map(c => (
+                    <button 
+                      key={c} 
+                      onClick={(e) => { e.stopPropagation(); updateStyle('color', c); }}
+                      className="w-6 h-6 rounded-md border border-slate-200 dark:border-slate-700 transition-transform hover:scale-110 shadow-sm"
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); updateStyle('color', 'inherit'); }}
+                    className="col-span-5 text-[10px] py-1 bg-slate-50 dark:bg-slate-700 rounded-md hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors font-bold uppercase tracking-wider"
+                  >
+                    Reset Color
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            {/* Alignment */}
+            <div className="flex items-center gap-0.5">
+              {[
+                { id: 'left', icon: AlignLeft },
+                { id: 'center', icon: AlignCenter },
+                { id: 'right', icon: AlignRight }
+              ].map(align => (
+                <button 
+                  key={align.id}
+                  onClick={(e) => { e.stopPropagation(); updateStyle('textAlign', align.id); }}
+                  className={cn("w-9 h-9 flex items-center justify-center rounded-xl transition-all", styleOverride.textAlign === align.id ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400")}
+                >
+                  <align.icon className="w-4.5 h-4.5" />
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-1 group/label">
+            <div className="w-px h-3 bg-indigo-500/40 group-hover/label:bg-indigo-500 transition-colors" />
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-full shadow-lg border border-indigo-500/50">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                {label}
+              </span>
+              <div className="w-1 h-1 rounded-full bg-white/40" />
+              <button 
+                onClick={(e) => { e.stopPropagation(); onSelectElement(null); }}
+                className="hover:scale-125 transition-transform"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </span>
     );
+  };
+
+  const responsiveStyles = {
+    fontSize: `${baseFontSize}px`,
+    fontFamily: globalFontFamily
   };
 
   if (template === 'glass') {
     return (
-      <div className="min-h-screen bg-[#f0f2f5] p-6 lg:p-20 text-slate-800 transition-colors duration-500" style={{ 
-        fontFamily: globalFontFamily,
+      <div className="min-h-full bg-[#f0f2f5] p-6 md:p-10 lg:p-20 text-slate-800 transition-colors duration-500" style={{ 
+        ...responsiveStyles,
         background: `radial-gradient(circle at top left, ${themeColor}15, transparent), radial-gradient(circle at bottom right, #4f46e510, transparent), #f0f2f5`
       }}>
         <div className="max-w-5xl mx-auto">
-          <header className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-12 mb-8 text-center shadow-2xl shadow-black/5">
-            <h1 className="text-6xl font-black mb-4 tracking-tighter" style={{ background: `linear-gradient(to right, ${themeColor}, #4f46e5)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <header className="mb-16 md:mb-24">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-black mb-4 tracking-tighter max-w-full break-words" style={{ background: `linear-gradient(to right, ${themeColor}, #4f46e5)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
             </h1>
-            <p className="text-2xl text-slate-500 mb-8 font-medium">
+            <div className="text-lg md:text-xl lg:text-3xl text-slate-500 mb-6 md:mb-8 font-medium max-w-full">
               <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
-            </p>
+            </div>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-10 shadow-2xl shadow-black/5">
-              <h2 className="text-[10px] font-black uppercase tracking-widest mb-6" style={{ color: themeColor }}>The Story</h2>
-              <div className="text-lg leading-relaxed text-slate-600 font-medium">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl shadow-black/5">
+              <h2 className="text-[10px] font-black uppercase tracking-widest mb-4 md:mb-6" style={{ color: themeColor }}>The Story</h2>
+              <div className="text-base md:text-lg leading-relaxed text-slate-600 font-medium">
                 <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
               </div>
             </div>
-            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-10 shadow-2xl shadow-black/5">
-              <h2 className="text-[10px] font-black uppercase tracking-widest mb-6" style={{ color: themeColor }}>Expertise</h2>
+            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl shadow-black/5">
+              <h2 className="text-[10px] font-black uppercase tracking-widest mb-4 md:mb-6" style={{ color: themeColor }}>Expertise</h2>
               <div className="flex flex-wrap gap-2">
                 {content.skills.map((s, i) => (
-                  <span key={i} className="px-5 py-3 bg-white/50 backdrop-blur-md border border-white/80 rounded-2xl text-sm font-bold shadow-sm">
+                  <span key={i} className="px-4 md:px-5 py-2 md:py-3 bg-white/50 backdrop-blur-md border border-white/80 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-sm">
                     {s}
                   </span>
                 ))}
@@ -1938,16 +1887,16 @@ function PortfolioPreview({
             </div>
           </div>
 
-          <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-12 mb-8 shadow-2xl shadow-black/5">
-            <h2 className="text-[10px] font-black uppercase tracking-widest mb-10" style={{ color: themeColor }}>Experience</h2>
-            <div className="space-y-12">
+          <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-12 mb-8 shadow-2xl shadow-black/5">
+            <h2 className="text-[10px] font-black uppercase tracking-widest mb-6 md:mb-10" style={{ color: themeColor }}>Experience</h2>
+            <div className="space-y-8 md:space-y-12">
               {content.experience.map((exp, i) => (
-                <div key={i} className="border-l-4 p-8 transition-all hover:bg-white/30 rounded-r-3xl" style={{ borderColor: `${themeColor}40` }}>
-                  <h3 className="text-3xl font-black mb-2 tracking-tight">{exp.company}</h3>
-                  <p className="text-xl font-bold mb-6" style={{ color: themeColor }}>{exp.role} · {exp.duration}</p>
-                  <ul className="space-y-4 text-slate-500 font-medium">
+                <div key={i} className="border-l-4 p-6 md:p-8 transition-all hover:bg-white/30 rounded-r-3xl" style={{ borderColor: `${themeColor}40` }}>
+                  <h3 className="text-xl md:text-2xl lg:text-3xl font-black mb-2 tracking-tight">{exp.company}</h3>
+                  <p className="text-base md:text-lg lg:text-xl font-bold mb-4 md:mb-6" style={{ color: themeColor }}>{exp.role} · {exp.duration}</p>
+                  <ul className="space-y-3 md:space-y-4 text-sm md:text-base text-slate-500 font-medium">
                     {exp.description.map((d, j) => <li key={j} className="flex gap-4">
-                      <div className="w-1.5 h-1.5 rounded-full mt-2.5 shrink-0" style={{ backgroundColor: themeColor }} />
+                      <div className="w-1.5 h-1.5 rounded-full mt-2 shrink-0" style={{ backgroundColor: themeColor }} />
                       {d}
                     </li>)}
                   </ul>
@@ -1976,55 +1925,55 @@ function PortfolioPreview({
 
   if (template === 'cyber') {
     return (
-      <div className="min-h-screen bg-[#030303] text-white p-6 lg:p-20 selection:bg-indigo-500/50" style={{ fontFamily: globalFontFamily }}>
+      <div className="min-h-full bg-black text-white p-6 md:p-12 lg:p-20 selection:bg-indigo-500/50" style={responsiveStyles}>
         <div className="max-w-7xl mx-auto">
-          <header className="mb-24">
-            <h1 className="text-6xl lg:text-9xl font-black uppercase tracking-tighter relative group" style={{ color: themeColor }}>
+          <header className="mb-16 md:mb-24">
+            <h1 className="text-4xl md:text-7xl lg:text-9xl font-black uppercase tracking-tighter relative group break-words leading-none max-w-full" style={{ color: themeColor }}>
               <div className="absolute -inset-1 bg-white/5 blur-3xl rounded-full group-hover:bg-indigo-500/10 transition-colors" />
               <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
             </h1>
-            <p className="text-xl lg:text-3xl font-bold opacity-80 mt-6" style={{ color: themeColor }}>
+            <div className="text-lg md:text-2xl lg:text-4xl font-bold opacity-80 mt-4 md:mt-6 max-w-full" style={{ color: themeColor }}>
               <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
-            </p>
+            </div>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 mb-8">
              <div className="lg:col-span-12 border border-indigo-500/30 p-1 bg-white/[0.02]">
-                <div className="border border-indigo-500/50 p-10 relative overflow-hidden group">
+                <div className="border border-indigo-500/50 p-6 md:p-10 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl" />
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 flex items-center gap-2" style={{ color: themeColor }}>
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-4 md:mb-6 flex items-center gap-2" style={{ color: themeColor }}>
                     <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
                     Neural Biography
                   </h2>
-                  <div className="text-xl lg:text-3xl leading-relaxed font-bold max-w-4xl">
+                  <div className="text-lg md:text-2xl lg:text-3xl leading-relaxed font-bold max-w-4xl">
                     <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
                   </div>
                 </div>
              </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-            <div className="lg:col-span-8 border border-white/5 p-10 bg-white/[0.02]">
-               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-12 flex items-center gap-2" style={{ color: themeColor }}>Experience Sequence</h2>
-               <div className="space-y-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 mb-8">
+            <div className="lg:col-span-8 border border-white/5 p-6 md:p-10 bg-white/[0.02]">
+               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 md:mb-12 flex items-center gap-2" style={{ color: themeColor }}>Experience Sequence</h2>
+               <div className="space-y-12 md:space-y-16">
                  {content.experience.map((exp, i) => (
                    <div key={i} className="group relative">
-                      <div className="flex justify-between items-baseline mb-4">
-                        <h3 className="text-3xl font-black uppercase group-hover:text-indigo-400 transition-colors">{exp.company}</h3>
-                        <span className="text-xs font-bold opacity-40">{exp.duration}</span>
+                      <div className="flex flex-wrap justify-between items-baseline gap-2 mb-4">
+                        <h3 className="text-2xl md:text-3xl font-black uppercase group-hover:text-indigo-400 transition-colors">{exp.company}</h3>
+                        <span className="text-[10px] font-bold opacity-40">{exp.duration}</span>
                       </div>
-                      <p className="text-xl font-bold mb-8" style={{ color: themeColor }}>{exp.role}</p>
-                      <ul className="space-y-4 opacity-50 text-sm font-bold">
+                      <p className="text-lg md:text-xl font-bold mb-6 md:mb-8" style={{ color: themeColor }}>{exp.role}</p>
+                      <ul className="space-y-3 md:space-y-4 opacity-50 text-xs md:text-sm font-bold">
                         {exp.description.map((d, j) => <li key={j}>/ {d}</li>)}
                       </ul>
                    </div>
                  ))}
                </div>
             </div>
-            <div className="lg:col-span-4 border border-white/5 p-10 bg-white/[0.02]">
-               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-12 flex items-center gap-2" style={{ color: themeColor }}>Core Modules</h2>
-               <div className="flex flex-wrap gap-3">
-                 {content.skills.map((s, i) => <span key={i} className="px-4 py-2 border border-white/10 text-[10px] font-bold hover:border-indigo-500/50 transition-colors">{s}</span>)}
+            <div className="lg:col-span-4 border border-white/5 p-6 md:p-10 bg-white/[0.02]">
+               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 md:mb-12 flex items-center gap-2" style={{ color: themeColor }}>Core Modules</h2>
+               <div className="flex flex-wrap gap-2 md:gap-3">
+                 {content.skills.map((s, i) => <span key={i} className="px-3 md:px-4 py-1.5 md:py-2 border border-white/10 text-[9px] md:text-[10px] font-bold hover:border-indigo-500/50 transition-colors">{s}</span>)}
                </div>
             </div>
           </div>
@@ -2047,40 +1996,40 @@ function PortfolioPreview({
 
   if (template === 'minimal') {
     return (
-      <div className="min-h-screen bg-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
-        <div className="max-w-5xl mx-auto py-16 lg:py-40 px-6 md:px-10">
-          <header className="mb-24 lg:mb-40">
+      <div className="min-h-full bg-white transition-colors duration-500" style={responsiveStyles}>
+        <div className="max-w-5xl mx-auto py-12 md:py-24 lg:py-40 px-6 md:px-10">
+          <header className="mb-16 md:mb-24 lg:mb-40">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-5xl sm:text-7xl lg:text-[10rem] font-bold mb-8 lg:mb-12 tracking-tighter leading-[0.85]"
+              className="text-4xl sm:text-6xl lg:text-9xl font-bold mb-6 lg:mb-12 tracking-tighter leading-[0.85] break-words max-w-full"
             >
               <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
             </motion.h1>
-            <div className="flex flex-wrap items-end justify-between gap-8 lg:gap-12">
-              <p className="text-2xl lg:text-5xl text-neutral-400 max-w-3xl leading-[1.1] tracking-tight font-medium">
+            <div className="flex flex-wrap items-end justify-between gap-6 md:gap-12">
+              <div className="text-xl md:text-3xl lg:text-5xl text-neutral-400 max-w-3xl leading-[1.1] tracking-tight font-medium">
                 <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
-              </p>
-              <div className="flex gap-6 lg:gap-8">
-                {content.contact.github && <a href={content.contact.github} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Github className="w-6 h-6 lg:w-8 lg:h-8" /></a>}
-                {content.contact.linkedin && <a href={content.contact.linkedin} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Linkedin className="w-6 h-6 lg:w-8 lg:h-8" /></a>}
-                <a href={`mailto:${content.contact.email}`} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Mail className="w-6 h-6 lg:w-8 lg:h-8" /></a>
+              </div>
+              <div className="flex gap-4 md:gap-8">
+                {content.contact.github && <a href={content.contact.github} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Github className="w-5 h-5 md:w-8 md:h-8" /></a>}
+                {content.contact.linkedin && <a href={content.contact.linkedin} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Linkedin className="w-5 h-5 md:w-8 md:h-8" /></a>}
+                <a href={`mailto:${content.contact.email}`} className="text-neutral-300 hover:text-neutral-900 transition-all hover:scale-110"><Mail className="w-5 h-5 md:w-8 md:h-8" /></a>
               </div>
             </div>
           </header>
 
-          <section className="mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <section className="mb-16 md:mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
             <div className="lg:col-span-4">
               <h2 className="text-[10px] uppercase tracking-[0.4em] text-neutral-300 font-black">01 / About</h2>
             </div>
             <div className="lg:col-span-8">
               <div className={cn(
-                "text-xl lg:text-4xl leading-snug text-neutral-800 font-medium tracking-tight",
-                isRecruiterView && "bg-amber-50 p-8 lg:p-12 rounded-[2rem] lg:rounded-[3rem] border border-amber-100 shadow-xl shadow-amber-900/5"
+                "text-lg md:text-2xl lg:text-4xl leading-snug text-neutral-800 font-medium tracking-tight",
+                isRecruiterView && "bg-amber-50 p-6 md:p-12 rounded-[2rem] border border-amber-100 shadow-xl shadow-amber-900/5"
               )}>
                 {isRecruiterView && (
-                  <div className="flex items-center gap-3 mb-6 lg:mb-8">
-                    <div className="px-4 py-1.5 bg-amber-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full">Recruiter Insight</div>
+                  <div className="flex items-center gap-3 mb-4 md:mb-8 text-amber-600">
+                    <div className="px-3 py-1 bg-amber-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full">Recruiter Insight</div>
                     <div className="h-px flex-1 bg-amber-200" />
                   </div>
                 )}
@@ -2089,19 +2038,19 @@ function PortfolioPreview({
             </div>
           </section>
 
-          <section className="mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <section className="mb-16 md:mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
             <div className="lg:col-span-4">
               <h2 className="text-[10px] uppercase tracking-[0.4em] text-neutral-300 font-black">02 / Expertise</h2>
             </div>
             <div className="lg:col-span-8">
-              <div className="flex flex-wrap gap-3 lg:gap-4">
+              <div className="flex flex-wrap gap-2 md:gap-4">
                 {content.skills.map((skill, i) => (
                   <span key={i} className={cn(
-                    "px-6 lg:px-10 py-3 lg:py-5 rounded-2xl lg:rounded-3xl text-lg lg:text-xl font-bold transition-all duration-500",
+                    "px-4 md:px-10 py-2 md:py-5 rounded-xl md:rounded-3xl text-sm md:text-xl font-bold transition-all duration-500",
                     isRecruiterView 
                       ? "text-white shadow-2xl scale-105" 
                       : "bg-neutral-50 text-neutral-800 border border-neutral-100 hover:border-neutral-300"
-                  )} style={isRecruiterView ? { backgroundColor: themeColor, shadowColor: `${themeColor}40` } : {}}>
+                  )} style={isRecruiterView ? { backgroundColor: themeColor, boxShadow: `0 20px 50px ${themeColor}40` } : {}}>
                     {skill}
                   </span>
                 ))}
@@ -2109,22 +2058,22 @@ function PortfolioPreview({
             </div>
           </section>
 
-          <section className="mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <section className="mb-16 md:mb-24 lg:mb-40 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
             <div className="lg:col-span-4">
               <h2 className="text-[10px] uppercase tracking-[0.4em] text-neutral-300 font-black">03 / Experience</h2>
             </div>
-            <div className="lg:col-span-8 space-y-20 lg:space-y-32">
+            <div className="lg:col-span-8 space-y-12 md:space-y-32">
               {content.experience.map((exp, i) => (
                 <div key={i} className="group">
-                  <div className="flex flex-wrap justify-between items-baseline gap-4 mb-6 lg:mb-8">
-                    <h3 className="text-3xl lg:text-5xl font-bold tracking-tighter">{exp.company}</h3>
-                    <span className="text-neutral-300 font-mono text-xs lg:text-sm font-bold">{exp.duration}</span>
+                  <div className="flex flex-wrap justify-between items-baseline gap-3 mb-4 md:mb-8">
+                    <h3 className="text-2xl md:text-5xl font-bold tracking-tighter">{exp.company}</h3>
+                    <span className="text-neutral-300 font-mono text-[10px] md:text-sm font-bold">{exp.duration}</span>
                   </div>
-                  <p className="text-xl lg:text-2xl font-bold mb-6 lg:mb-10 tracking-tight" style={{ color: themeColor }}>{exp.role}</p>
-                  <ul className="space-y-4 lg:space-y-6 text-lg lg:text-xl text-neutral-500 leading-relaxed max-w-3xl">
+                  <p className="text-lg md:text-2xl font-bold mb-4 md:mb-10 tracking-tight" style={{ color: themeColor }}>{exp.role}</p>
+                  <ul className="space-y-3 md:space-y-6 text-base md:text-xl text-neutral-500 leading-relaxed max-w-3xl">
                     {exp.description.map((bullet, j) => (
-                      <li key={j} className="flex gap-4 lg:gap-5">
-                        <span className="text-neutral-200 mt-2.5 w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-current shrink-0" />
+                      <li key={j} className="flex gap-3 md:gap-5">
+                        <span className="text-neutral-200 mt-2 w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                         {bullet}
                       </li>
                     ))}
@@ -2188,29 +2137,29 @@ function PortfolioPreview({
 
   if (template === 'developer') {
     return (
-      <div className="min-h-screen bg-[#050505] text-slate-400 selection:bg-indigo-500/30 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
-        <div className="max-w-7xl mx-auto p-6 md:p-10 lg:p-24 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
+      <div className="min-h-full bg-[#050505] text-slate-400 selection:bg-indigo-500/30 selection:text-white transition-colors duration-500" style={responsiveStyles}>
+        <div className="max-w-7xl mx-auto p-6 md:p-12 lg:p-24 grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-24">
           <aside className="lg:col-span-5 lg:sticky lg:top-24 h-fit">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-6 lg:mb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-widest mb-6 lg:mb-8">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                 Available for hire
               </div>
-              <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black text-white mb-6 lg:mb-8 tracking-tighter leading-none">
+              <h1 className="text-3xl md:text-6xl lg:text-8xl font-black text-white mb-4 md:mb-8 tracking-tighter leading-none break-words">
                 <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
               </h1>
-              <h2 className="text-xl lg:text-3xl mb-8 lg:mb-12 font-bold tracking-tight" style={{ color: themeColor }}>
+              <h2 className="text-lg md:text-2xl lg:text-3xl mb-6 md:mb-12 font-bold tracking-tight" style={{ color: themeColor }}>
                 <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
               </h2>
-              <div className="text-slate-500 leading-relaxed mb-12 lg:mb-16 text-lg lg:text-xl max-w-md">
+              <div className="text-slate-500 leading-relaxed mb-10 md:mb-16 text-base md:text-xl max-w-md">
                 <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
               </div>
 
-              <div className="mb-12 lg:mb-20">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mb-6 lg:mb-8">Core Stack</h3>
+              <div className="mb-10 md:mb-20">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 mb-4 md:mb-8">Core Stack</h3>
                 <div className="flex flex-wrap gap-2 lg:gap-3">
                   {content.skills.map((skill, i) => (
                     <span key={i} className="px-3 py-1.5 lg:px-4 lg:py-2 bg-white/5 text-indigo-400 text-[10px] lg:text-[11px] font-bold rounded-lg lg:rounded-xl border border-white/5 hover:border-indigo-500/30 transition-colors">
@@ -2220,38 +2169,38 @@ function PortfolioPreview({
                 </div>
               </div>
 
-              <nav className="space-y-6 lg:space-y-8 mb-16 lg:mb-24 hidden lg:block">
+              <nav className="space-y-6 lg:space-y-8 mb-12 hidden lg:block">
                 {['Experience', 'Projects', 'Education'].map((item) => (
                   <a key={item} href={`#${item.toLowerCase()}`} className="flex items-center gap-6 lg:gap-8 group text-slate-600 hover:text-white transition-all">
                     <div className="h-px w-8 lg:w-12 bg-slate-800 group-hover:w-16 lg:group-hover:w-24 group-hover:bg-indigo-500 transition-all duration-500" />
-                    <span className="text-[10px] lg:text-xs font-black uppercase tracking-[0.4em]">{item}</span>
+                    <span className="text-[9px] lg:text-xs font-black uppercase tracking-[0.4em]">{item}</span>
                   </a>
                 ))}
               </nav>
 
-              <div className="flex gap-8 lg:gap-10">
-                {content.contact.github && <a href={content.contact.github} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Github className="w-6 h-6 lg:w-8 lg:h-8" /></a>}
-                {content.contact.linkedin && <a href={content.contact.linkedin} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Linkedin className="w-6 h-6 lg:w-8 lg:h-8" /></a>}
-                <a href={`mailto:${content.contact.email}`} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Mail className="w-6 h-6 lg:w-8 lg:h-8" /></a>
+              <div className="flex gap-6 md:gap-10">
+                {content.contact.github && <a href={content.contact.github} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Github className="w-5 h-5 md:w-8 md:h-8" /></a>}
+                {content.contact.linkedin && <a href={content.contact.linkedin} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Linkedin className="w-5 h-5 md:w-8 md:h-8" /></a>}
+                <a href={`mailto:${content.contact.email}`} className="text-slate-600 hover:text-white transition-all hover:scale-125"><Mail className="w-5 h-5 md:w-8 md:h-8" /></a>
               </div>
             </motion.div>
           </aside>
 
-          <main className="lg:col-span-7 space-y-32 lg:space-y-48">
-            <section id="experience" className="space-y-12 lg:space-y-20">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-800 mb-12 lg:mb-16">01 / Experience</h3>
+          <main className="lg:col-span-7 space-y-24 md:space-y-48">
+            <section id="experience" className="space-y-12 md:space-y-20">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-800 mb-8 md:mb-16">01 / Experience</h3>
               {content.experience.map((exp, i) => (
-                <div key={i} className="group relative grid grid-cols-1 sm:grid-cols-4 gap-6 lg:gap-8 hover:bg-white/[0.03] p-6 lg:p-10 rounded-2xl lg:rounded-[3rem] transition-all duration-700 border border-transparent hover:border-white/5">
-                  <div className="sm:col-span-1 text-[10px] lg:text-[11px] font-black text-slate-700 uppercase tracking-widest pt-1 lg:pt-2">
+                <div key={i} className="group relative grid grid-cols-1 sm:grid-cols-4 gap-4 md:gap-8 hover:bg-white/[0.03] p-6 lg:p-10 rounded-2xl lg:rounded-[3rem] transition-all duration-700 border border-transparent hover:border-white/5">
+                  <div className="sm:col-span-1 text-[9px] md:text-[11px] font-black text-slate-700 uppercase tracking-widest pt-1 md:pt-2">
                     {exp.duration}
                   </div>
                   <div className="sm:col-span-3">
-                    <h3 className="text-white font-black text-xl lg:text-2xl mb-1 lg:mb-2 group-hover:text-indigo-400 transition-colors">{exp.role}</h3>
-                    <p className="text-slate-500 font-bold text-base lg:text-lg mb-6 lg:mb-8">{exp.company}</p>
-                    <ul className="space-y-3 lg:space-y-4 text-sm lg:text-base text-slate-500 leading-relaxed">
+                    <h3 className="text-white font-black text-xl md:text-2xl mb-1 lg:mb-2 group-hover:text-indigo-400 transition-colors">{exp.role}</h3>
+                    <p className="text-slate-500 font-bold text-sm md:text-lg mb-4 md:mb-8">{exp.company}</p>
+                    <ul className="space-y-3 lg:space-y-4 text-xs md:text-base text-slate-500 leading-relaxed">
                       {exp.description.map((bullet, j) => (
                         <li key={j} className="flex gap-3 lg:gap-4">
-                          <span className="text-indigo-500/40 mt-1.5 lg:mt-2">»</span>
+                          <span className="text-indigo-500/40 mt-1 md:mt-2">»</span>
                           {bullet}
                         </li>
                       ))}
@@ -2303,33 +2252,33 @@ function PortfolioPreview({
 
   if (template === 'modern') {
     return (
-      <div className="bg-[#f8f9ff] text-neutral-900 min-h-screen selection:bg-indigo-600 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
-        <div className="max-w-7xl mx-auto p-10 lg:p-24">
-          <header className="mb-24">
+      <div className="bg-[#f8f9ff] text-neutral-900 min-h-full selection:bg-indigo-600 selection:text-white transition-colors duration-500" style={responsiveStyles}>
+        <div className="max-w-7xl mx-auto p-6 md:p-10 lg:p-24">
+          <header className="mb-12 md:mb-24">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="max-w-4xl"
             >
-              <h1 className="text-5xl sm:text-7xl lg:text-[9rem] font-bold tracking-tighter leading-[0.85] mb-8 lg:mb-12">
+              <h1 className="text-4xl md:text-7xl lg:text-9xl font-bold tracking-tighter leading-[0.85] mb-6 md:mb-12 break-words max-w-full">
                 <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
               </h1>
-              <p className="text-xl sm:text-3xl lg:text-5xl text-neutral-500 font-medium tracking-tight leading-tight">
+              <div className="text-lg md:text-3xl lg:text-5xl text-neutral-500 font-medium tracking-tight leading-tight max-w-full">
                 <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
-              </p>
+              </div>
             </motion.div>
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
             {/* About & Skills - Bento Style */}
-            <div className="lg:col-span-8 bg-white rounded-[2rem] lg:rounded-[3rem] p-8 lg:p-12 shadow-2xl shadow-indigo-500/5 border border-neutral-100">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 lg:mb-10" style={{ color: themeColor }}>About</h2>
-              <div className="text-xl sm:text-2xl lg:text-4xl leading-snug font-medium tracking-tight text-neutral-800 mb-12 lg:mb-16">
-                <EditableText multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
+            <div className="lg:col-span-8 bg-white rounded-[2rem] lg:rounded-[3rem] p-6 md:p-12 shadow-2xl shadow-indigo-500/5 border border-neutral-100">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] mb-6 md:mb-10" style={{ color: themeColor }}>About</h2>
+              <div className="text-lg md:text-2xl lg:text-4xl leading-snug font-medium tracking-tight text-neutral-800 mb-8 md:mb-16">
+                <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
               </div>
               <div className="flex flex-wrap gap-2 lg:gap-3">
                 {content.skills.map((skill, i) => (
-                  <span key={i} className="px-4 lg:px-6 py-2 lg:py-3 bg-neutral-50 text-neutral-900 text-xs lg:text-sm font-bold rounded-xl lg:rounded-2xl border border-neutral-100">
+                  <span key={i} className="px-3 md:px-6 py-2 md:py-3 bg-neutral-50 text-neutral-900 text-[10px] md:text-sm font-bold rounded-lg md:rounded-2xl border border-neutral-100">
                     {skill}
                   </span>
                 ))}
@@ -2337,20 +2286,20 @@ function PortfolioPreview({
             </div>
 
             {/* Contact - Bento Style */}
-            <div className="lg:col-span-4 bg-indigo-600 rounded-[2rem] lg:rounded-[3rem] p-8 lg:p-12 text-white shadow-2xl shadow-indigo-500/20 flex flex-col justify-between">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 mb-8 lg:mb-10">Connect</h2>
-              <div className="space-y-6 lg:space-y-8">
+            <div className="lg:col-span-4 bg-indigo-600 rounded-[2rem] lg:rounded-[3rem] p-6 md:p-12 text-white shadow-2xl shadow-indigo-500/20 flex flex-col justify-between min-h-[300px]">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 mb-6 md:mb-10">Connect</h2>
+              <div className="space-y-4 md:space-y-8">
                 <a href={`mailto:${content.contact.email}`} className="block group">
-                  <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-2">Email</p>
-                  <p className="text-lg sm:text-2xl font-bold group-hover:translate-x-2 transition-transform flex items-center gap-3">
-                    {content.contact.email} <ArrowRight className="w-5 h-5" />
+                  <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1">Email</p>
+                  <p className="text-base md:text-2xl font-bold group-hover:translate-x-2 transition-transform flex items-center gap-3 break-all">
+                    {content.contact.email} <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                   </p>
                 </a>
                 {content.contact.linkedin && (
                   <a href={content.contact.linkedin} className="block group">
-                    <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-2">LinkedIn</p>
-                    <p className="text-lg sm:text-2xl font-bold group-hover:translate-x-2 transition-transform flex items-center gap-3">
-                      View Profile <ArrowRight className="w-5 h-5" />
+                    <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-1">LinkedIn</p>
+                    <p className="text-base md:text-2xl font-bold group-hover:translate-x-2 transition-transform flex items-center gap-3">
+                      View Profile <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                     </p>
                   </a>
                 )}
@@ -2360,39 +2309,39 @@ function PortfolioPreview({
             {/* Projects - Bento Style */}
             {content.projects.map((project, i) => (
               <div key={i} className={cn(
-                "rounded-[2rem] lg:rounded-[3rem] p-8 lg:p-12 shadow-2xl shadow-neutral-500/5 border border-neutral-100 group transition-all duration-700",
+                "rounded-[2rem] lg:rounded-[3rem] p-6 md:p-12 shadow-2xl shadow-neutral-500/5 border border-neutral-100 group transition-all duration-700",
                 i % 3 === 0 ? "lg:col-span-8 bg-white" : "lg:col-span-4 bg-white"
               )}>
-                <div className="flex justify-between items-start mb-6 lg:mb-8">
-                  <h3 className="text-2xl lg:text-3xl font-bold tracking-tight group-hover:text-indigo-600 transition-colors">{project.title}</h3>
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl bg-neutral-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                    <ExternalLink className="w-4 h-4 lg:w-5 lg:h-5" />
+                <div className="flex justify-between items-start mb-4 md:mb-8">
+                  <h3 className="text-xl md:text-3xl font-bold tracking-tight group-hover:text-indigo-600 transition-colors uppercase">{project.title}</h3>
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl bg-neutral-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                    <ExternalLink className="w-3.5 h-3.5 md:w-5 md:h-5" />
                   </div>
                 </div>
-                <p className="text-neutral-500 text-base lg:text-lg mb-8 lg:mb-12 leading-relaxed font-medium">{project.description}</p>
+                <p className="text-neutral-500 text-sm md:text-lg mb-6 md:mb-12 leading-relaxed font-medium line-clamp-3">{project.description}</p>
                 <div className="flex flex-wrap gap-2">
                   {project.tech.map((t, j) => (
-                    <span key={j} className="px-3 lg:px-4 py-1.5 lg:py-2 bg-neutral-50 text-neutral-400 text-[9px] lg:text-[10px] font-black uppercase tracking-widest rounded-lg lg:rounded-xl border border-neutral-100">{t}</span>
+                    <span key={j} className="px-2 md:px-4 py-1 md:py-2 bg-neutral-50 text-neutral-400 text-[8px] md:text-[10px] font-black uppercase tracking-widest rounded-md md:rounded-xl border border-neutral-100">{t}</span>
                   ))}
                 </div>
               </div>
             ))}
 
             {/* Experience - Bento Style */}
-            <div className="lg:col-span-12 bg-white rounded-[2rem] lg:rounded-[3rem] p-8 lg:p-20 shadow-2xl shadow-indigo-500/5 border border-neutral-100">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 mb-12 lg:mb-16">Experience</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 lg:gap-16">
+            <div className="lg:col-span-12 bg-white rounded-[2rem] lg:rounded-[3rem] p-6 md:p-20 shadow-2xl shadow-indigo-500/5 border border-neutral-100">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 mb-8 md:mb-16 uppercase">Experience</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-16">
                 {content.experience.map((exp, i) => (
-                  <div key={i} className="space-y-4 lg:space-y-6">
-                    <div className="flex justify-between items-baseline gap-4">
-                      <h3 className="text-xl lg:text-2xl font-bold tracking-tight">{exp.company}</h3>
-                      <span className="text-neutral-300 font-mono text-[10px] lg:text-xs font-bold">{exp.duration}</span>
+                  <div key={i} className="space-y-3 md:space-y-6">
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h3 className="text-lg md:text-2xl font-bold tracking-tight uppercase leading-tight">{exp.company}</h3>
+                      <span className="text-neutral-300 font-mono text-[9px] md:text-xs font-bold shrink-0">{exp.duration}</span>
                     </div>
-                    <p className="text-indigo-600 font-bold text-base lg:text-lg">{exp.role}</p>
-                    <ul className="space-y-2 lg:space-y-3 text-sm lg:text-base text-neutral-500 leading-relaxed font-medium">
+                    <p className="text-indigo-600 font-bold text-sm md:text-lg">{exp.role}</p>
+                    <ul className="space-y-2 md:space-y-3 text-xs md:text-base text-neutral-500 leading-relaxed font-medium">
                       {exp.description.slice(0, 2).map((bullet, j) => (
-                        <li key={j} className="flex gap-3">
-                          <span className="text-indigo-200 mt-2 w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                        <li key={j} className="flex gap-2 underline-offset-4">
+                          <span className="text-indigo-200 mt-1.5 w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                           {bullet}
                         </li>
                       ))}
@@ -2416,48 +2365,48 @@ function PortfolioPreview({
 
   // Professional Template
   return (
-    <div className="bg-[#fdfdfb] text-neutral-900 min-h-full selection:bg-neutral-900 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
-      <div className="max-w-6xl mx-auto px-10 lg:px-24 py-32">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 border-b-2 border-neutral-900 pb-16 lg:pb-24 mb-16 lg:mb-24">
+    <div className="bg-[#fdfdfb] text-neutral-900 min-h-full selection:bg-neutral-900 selection:text-white transition-colors duration-500" style={responsiveStyles}>
+      <div className="max-w-6xl mx-auto px-6 md:px-10 lg:px-24 py-12 md:py-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-24 border-b-2 border-neutral-900 pb-12 md:pb-24 mb-12 md:mb-24">
           <div className="lg:col-span-8">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-5xl sm:text-7xl lg:text-[10rem] font-black mb-8 lg:mb-12 leading-[0.85] tracking-tighter"
+              className="text-4xl sm:text-6xl lg:text-9xl font-black mb-6 md:mb-12 leading-[0.85] tracking-tighter break-words max-w-full"
             >
-              <EditableText value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
+              <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
             </motion.h1>
-            <p className="text-xl sm:text-3xl lg:text-4xl text-neutral-400 italic font-light tracking-tight">
-              <EditableText value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
-            </p>
+            <div className="text-lg md:text-3xl lg:text-4xl text-neutral-400 italic font-light tracking-tight max-w-full">
+              <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
+            </div>
           </div>
-          <div className="lg:col-span-4 flex flex-col justify-end space-y-4 lg:space-y-6 text-left lg:text-right">
+          <div className="lg:col-span-4 flex flex-col justify-end space-y-4 md:space-y-6 text-left lg:text-right">
             <div className="space-y-1">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-300">Contact</p>
-              <p className="text-lg lg:text-xl font-bold">{content.contact.email}</p>
+              <p className="text-base md:text-xl font-bold break-all">{content.contact.email}</p>
             </div>
             {content.contact.linkedin && (
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-300">LinkedIn</p>
-                <p className="text-lg lg:text-xl font-bold truncate">{content.contact.linkedin.replace('https://', '')}</p>
+                <p className="text-base md:text-xl font-bold truncate">{content.contact.linkedin.replace('https://', '')}</p>
               </div>
             )}
             {content.contact.github && (
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-300">GitHub</p>
-                <p className="text-lg lg:text-xl font-bold truncate">{content.contact.github.replace('https://', '')}</p>
+                <p className="text-base md:text-xl font-bold truncate">{content.contact.github.replace('https://', '')}</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
-          <div className="lg:col-span-4 space-y-16 lg:space-y-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 md:gap-24">
+          <div className="lg:col-span-4 space-y-12 md:space-y-20">
             <section>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-8 lg:mb-10">Expertise</h2>
-              <div className="space-y-4 lg:space-y-6">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-6 md:mb-10">Expertise</h2>
+              <div className="space-y-3 md:space-y-6">
                 {content.skills.map((skill, i) => (
-                  <div key={i} className="text-xl lg:text-2xl font-bold border-b-2 border-neutral-100 pb-3 lg:pb-4 hover:border-neutral-900 transition-colors cursor-default">
+                  <div key={i} className="text-lg md:text-2xl font-bold border-b-2 border-neutral-100 pb-2 md:pb-4 hover:border-neutral-900 transition-colors cursor-default uppercase">
                     {skill}
                   </div>
                 ))}
@@ -2465,41 +2414,41 @@ function PortfolioPreview({
             </section>
             
             <section>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-8 lg:mb-10">Education</h2>
-              <div className="space-y-8 lg:space-y-10">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-6 md:mb-10">Education</h2>
+              <div className="space-y-6 md:space-y-10">
                 {content.education.map((edu, i) => (
                   <div key={i} className="group">
-                    <p className="text-xl lg:text-2xl font-black mb-1">{edu.school}</p>
-                    <p className="text-base lg:text-lg text-neutral-500 italic mb-2">{edu.degree}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-300">{edu.year}</p>
+                    <p className="text-lg md:text-2xl font-black mb-1 uppercase tracking-tight leading-tight">{edu.school}</p>
+                    <p className="text-sm md:text-lg text-neutral-500 italic mb-2">{edu.degree}</p>
+                    <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-neutral-300">{edu.year}</p>
                   </div>
                 ))}
               </div>
             </section>
           </div>
 
-          <div className="lg:col-span-8 space-y-24 lg:space-y-32">
+          <div className="lg:col-span-8 space-y-16 md:space-y-32">
             <section>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-8 lg:mb-12">Professional Narrative</h2>
-              <div className="text-xl sm:text-2xl lg:text-4xl leading-[1.3] font-light text-neutral-800 tracking-tight">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-6 md:mb-12">Professional Narrative</h2>
+              <div className="text-lg md:text-2xl lg:text-4xl leading-[1.3] font-light text-neutral-800 tracking-tight">
                 <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
               </div>
             </section>
 
             <section>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-12 lg:mb-16">Selected Experience</h2>
-              <div className="space-y-16 lg:space-y-24">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-900 mb-8 md:mb-16">Selected Experience</h2>
+              <div className="space-y-12 md:space-y-24">
                 {content.experience.map((exp, i) => (
                   <div key={i} className="relative">
-                    <div className="flex flex-wrap justify-between items-baseline gap-4 lg:gap-6 mb-6 lg:mb-8">
-                      <h3 className="text-3xl lg:text-5xl font-black tracking-tighter">{exp.company}</h3>
-                      <span className="text-neutral-300 italic text-lg lg:text-xl">{exp.duration}</span>
+                    <div className="flex flex-wrap justify-between items-baseline gap-3 md:gap-6 mb-4 md:mb-8">
+                      <h3 className="text-2xl md:text-5xl font-black tracking-tighter uppercase">{exp.company}</h3>
+                      <span className="text-neutral-300 italic text-base md:text-xl shrink-0">{exp.duration}</span>
                     </div>
-                    <p className="text-xl lg:text-2xl text-neutral-400 italic mb-8 lg:mb-10">{exp.role}</p>
-                    <ul className="space-y-4 lg:space-y-6 text-lg lg:text-xl leading-relaxed text-neutral-600 max-w-2xl">
+                    <p className="text-lg md:text-2xl text-neutral-400 italic mb-6 md:mb-10">{exp.role}</p>
+                    <ul className="space-y-3 md:space-y-6 text-base md:text-xl leading-relaxed text-neutral-600 max-w-2xl">
                       {exp.description.map((bullet, j) => (
-                        <li key={j} className="relative pl-8 lg:pl-10">
-                          <span className="absolute left-0 top-3 lg:top-4 w-3 lg:w-4 h-[2px] bg-neutral-200" />
+                        <li key={j} className="relative pl-6 md:pl-10">
+                          <span className="absolute left-0 top-3 w-3 md:w-4 h-[2px] bg-neutral-200" />
                           {bullet}
                         </li>
                       ))}
