@@ -1,7 +1,16 @@
 import { GoogleGenAI, GenerateContentResponse, Type, ThinkingLevel } from "@google/genai";
 
 // Gemini supported multimodal types
-const SUPPORTED_MIMES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/heic', 'image/heif'];
+const SUPPORTED_MIMES = [
+  'application/pdf', 
+  'image/png', 
+  'image/jpeg', 
+  'image/webp', 
+  'image/heic', 
+  'image/heif',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword'
+];
 
 function isSupportedMime(mime?: string) {
   if (!mime) return false;
@@ -457,23 +466,32 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `Expert Portfolio Architect.
+    const prompt = `SUPREME PORTFOLIO ARCHITECT & BRAND STRATEGIST.
     
-    RESUME CONTENT: ${resumeText}
-    ${githubData ? `GITHUB DATA: ${JSON.stringify(githubData)}` : ""}
+    RESUME DATA: ${resumeText}
+    ${githubData ? `GITHUB REPOSITORIES: ${JSON.stringify(githubData)}` : ""}
     
-    TASK:
-    1. Parse the resume and extract: Name, Title, Skills, Experience, Projects, Education.
-    2. Improve content:
-       - Rewrite experience into impactful bullet points.
-       - Generate a professional summary.
-       - Create a strong, catchy hero headline.
-    3. Generate missing content:
-       - If no projects are found, create 2-3 realistic sample projects based on their skills.
-       - If the summary is weak, enhance it significantly.
-    4. If GitHub data is provided, incorporate top repositories as projects.
+    TASK: Architect a world-class personal brand identity and website content based on the provided resume.
     
-    OUTPUT: JSON object matching the PortfolioContent interface.
+    CONTENT STRATEGY:
+    1. BRAND POSITIONING:
+       - Create a "Headline" that is bold, unique, and value-driven (e.g., "Architecting Scalable Cloud Ecosystems" instead of "Cloud Engineer").
+       - Craft an "About Me" narrative that focuses on the "Why" and "How", not just the "What". Use an engaging, professional story-telling tone.
+    2. PROJECT STORYTELLING:
+       - If GitHub data exists, select the top 3 most technically impressive repositories.
+       - Each project must have:
+         - A clear "Problem Statement" (implied from tech stack).
+         - A "Technical Solution" description.
+         - An "Impact" statement (even if predicted, e.g., "Optimizing for 20% faster execution").
+    3. EXPERIENCE REFINEMENT:
+       - Transform resume bullets into "Achievement Markers".
+       - Focus on scale, complexity, and specific technical contributions.
+    4. SKILLS CURATION:
+       - Select the most powerful, industry-relevant skills. Categorize them mentally to pick a balanced mix.
+    5. DATA COMPLETION:
+       - If sections are sparse (e.g., no projects), simulate 2-3 high-level industry-standard projects that someone with those specific skills would realistically build.
+    
+    OUTPUT: JSON object strictly adhering to the PortfolioContent interface.
     
     PortfolioContent Interface:
     {
@@ -486,7 +504,7 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
       contact: { email: string, linkedin?: string, github?: string }
     }
     
-    Return ONLY JSON.`;
+    Return ONLY JSON. No markdown formatting.`;
 
     const response = await ai.models.generateContent({ 
       model,

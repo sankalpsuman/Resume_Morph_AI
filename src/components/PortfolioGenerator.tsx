@@ -73,6 +73,9 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   const [showSourceCode, setShowSourceCode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [themeColor, setThemeColor] = useState('#4f46e5');
+  const [accentColor, setAccentColor] = useState('#f59e0b');
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [previewScale, setPreviewScale] = useState(1);
   const [autoFit, setAutoFit] = useState(true);
@@ -85,15 +88,15 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
 
     const templateStyles = {
       minimal: `
-        :root { --text: #171717; --muted: #a3a3a3; --bg: #fdfdfb; }
-        body { font-family: 'Playfair Display', serif; background: var(--bg); color: var(--text); margin: 0; }
+        :root { --text: #171717; --muted: #a3a3a3; --bg: #fdfdfb; --accent: ${themeColor}; }
+        body { font-family: '${globalFontFamily}', serif; background: var(--bg); color: var(--text); margin: 0; line-height: 1.6; }
         .container { max-width: 1100px; margin: 0 auto; padding: 100px 40px; }
         header { border-bottom: 2px solid var(--text); padding-bottom: 60px; margin-bottom: 80px; display: grid; grid-template-columns: 2fr 1fr; gap: 40px; }
         h1 { font-size: clamp(4rem, 12vw, 10rem); font-weight: 900; margin: 0; letter-spacing: -0.05em; line-height: 0.85; }
         .headline { font-size: 2.5rem; color: var(--muted); font-style: italic; margin-top: 40px; }
         .main-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 80px; }
         section { margin-bottom: 80px; }
-        h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4em; margin-bottom: 40px; font-weight: 900; }
+        h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4em; margin-bottom: 40px; font-weight: 900; color: var(--accent); }
         .skill-item { font-size: 1.5rem; font-weight: bold; border-bottom: 1px solid #e5e5e5; padding: 16px 0; }
         .exp-item { margin-bottom: 80px; }
         .exp-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
@@ -107,7 +110,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
         }
       `,
       developer: `
-        :root { --primary: #00ff88; --bg: #050505; --text: #ffffff; }
+        :root { --primary: ${themeColor}; --bg: #050505; --text: #ffffff; }
         body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); margin: 0; }
         .container { max-width: 1200px; margin: 0 auto; padding: 60px 40px; display: grid; grid-template-columns: 350px 1fr; gap: 80px; }
         h1 { font-size: 4rem; font-weight: 800; margin: 0 0 20px 0; color: var(--primary); }
@@ -123,13 +126,13 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
         }
       `,
       professional: `
-        :root { --text: #171717; --muted: #737373; --bg: #ffffff; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+        :root { --text: #171717; --muted: #737373; --bg: #ffffff; --accent: ${themeColor}; }
+        body { font-family: '${globalFontFamily}', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
         .container { max-width: 1000px; margin: 0 auto; padding: 80px 40px; }
         header { border-bottom: 2px solid var(--text); padding-bottom: 60px; margin-bottom: 80px; display: flex; justify-content: space-between; align-items: flex-end; }
         h1 { font-size: 5rem; font-weight: 900; margin: 0; letter-spacing: -0.05em; }
         .main-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 80px; }
-        h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4em; margin-bottom: 40px; font-weight: 900; }
+        h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4em; margin-bottom: 40px; font-weight: 900; color: var(--accent); }
         .skill-item { font-size: 1.25rem; font-weight: bold; border-bottom: 1px solid #e5e5e5; padding: 12px 0; }
         .exp-item { margin-bottom: 60px; }
         .exp-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
@@ -141,8 +144,8 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
         }
       `,
       modern: `
-        :root { --primary: #4f46e5; --bg: #f8f9ff; --text: #171717; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+        :root { --primary: ${themeColor}; --bg: #f8f9ff; --text: #171717; }
+        body { font-family: '${globalFontFamily}', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
         .container { max-width: 1200px; margin: 0 auto; padding: 80px 40px; }
         h1 { font-size: clamp(4rem, 10vw, 9rem); font-weight: 800; margin: 0 0 40px 0; letter-spacing: -0.05em; line-height: 0.85; }
         .headline { font-size: clamp(1.5rem, 4vw, 3.5rem); color: #6b7280; font-weight: 500; margin-bottom: 80px; }
@@ -156,10 +159,153 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           .span-8, .span-4 { grid-column: span 12; }
           .bento-grid { gap: 24px; }
         }
+      `,
+      glass: `
+        :root { --primary: ${themeColor}; --bg: #f0f2f5; --text: #1e293b; }
+        body { 
+          font-family: '${globalFontFamily}', sans-serif; 
+          background: radial-gradient(circle at top left, ${themeColor}15, transparent),
+                      radial-gradient(circle at bottom right, #4f46e510, transparent),
+                      var(--bg);
+          color: var(--text); 
+          margin: 0;
+          min-height: 100vh;
+        }
+        .container { max-width: 1000px; margin: 0 auto; padding: 60px 20px; }
+        .glass-card {
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 32px;
+          padding: 40px;
+          margin-bottom: 32px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        h1 { font-size: 4rem; font-weight: 800; margin: 0; background: linear-gradient(to right, ${themeColor}, #4f46e5); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .headline { font-size: 1.5rem; color: #64748b; margin: 16px 0 32px; }
+        .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: ${themeColor}; margin-bottom: 24px; }
+        .skill-tag { padding: 8px 16px; background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 12px; margin: 4px; display: inline-block; font-size: 0.875rem; font-weight: 600; }
+        .exp-item { border-left: 2px solid ${themeColor}40; padding-left: 24px; margin-bottom: 32px; }
+        @media (max-width: 768px) { h1 { font-size: 2.5rem; } }
+      `,
+      cyber: `
+        :root { --primary: ${themeColor}; --bg: #030303; --text: #ffffff; }
+        body { font-family: 'JetBrains Mono', monospace; background: var(--bg); color: var(--text); margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px; }
+        .glitch-text { font-size: 5rem; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: -4px; position: relative; margin: 0; }
+        .glitch-text::after { content: attr(data-text); position: absolute; left: 2px; text-shadow: -2px 0 #ff00ff; background: var(--bg); overflow: hidden; clip: rect(0,900px,0,0); animation: noise-2 3s infinite linear alternate-reverse; }
+        @keyframes noise-2 { 0% { clip: rect(40px,940px,50px,0); } 100% { clip: rect(20px,940px,80px,0); } }
+        .cyber-panel { border: 1px solid var(--primary); position: relative; padding: 32px; background: rgba(255,255,255,0.02); margin-bottom: 24px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%); }
+        .cyber-panel::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(45deg, transparent 95%, var(--primary) 95%); }
+        .label { font-size: 0.65rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 16px; display: block; opacity: 0.7; }
+        .skill-tag { border: 1px solid var(--primary); color: var(--primary); padding: 4px 12px; margin: 4px; display: inline-block; font-size: 0.75rem; text-transform: uppercase; }
+        @media (max-width: 768px) { .glitch-text { font-size: 2.5rem; letter-spacing: -2px; } }
       `
     };
 
     const getTemplateHTML = () => {
+      if (template === 'cyber') {
+        return `
+          <div class="container">
+            <header style="margin-bottom: 80px">
+              <span class="label">System Identity / Active</span>
+              <h1 class="glitch-text" data-text="${portfolio.hero.name}">${portfolio.hero.name}</h1>
+              <p class="headline" style="color: var(--primary); opacity: 0.8">${portfolio.hero.headline}</p>
+            </header>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px">
+              <div class="cyber-panel">
+                <span class="label">Core Bio</span>
+                <p style="line-height: 1.8; opacity: 0.9">${portfolio.about}</p>
+              </div>
+              
+              <div class="cyber-panel">
+                <span class="label">Neural Stack / Skills</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  ${portfolio.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="cyber-panel" style="margin-top: 40px">
+              <span class="label">Operational History</span>
+              ${portfolio.experience.map(exp => `
+                <div style="margin-bottom: 32px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 24px">
+                  <h3 style="color: var(--primary); margin: 0 0 8px 0">${exp.company}</h3>
+                  <p style="font-weight: bold; margin: 0 0 16px 0">${exp.role} / ${exp.duration}</p>
+                  <ul style="opacity: 0.7; font-size: 0.9rem">${exp.description.map(d => `<li>${d}</li>`).join('')}</ul>
+                </div>
+              `).join('')}
+            </div>
+
+            <div style="margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px">
+               ${portfolio.projects.map(p => `
+                <div class="cyber-panel">
+                  <span class="label">Artifact / ${p.tech[0] || 'Project'}</span>
+                  <h3 style="margin: 16px 0">${p.title}</h3>
+                  <p style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 24px">${p.description}</p>
+                  <div style="display: flex; gap: 8px">
+                    ${p.tech.map(t => `<span style="font-size: 10px; color: var(--primary)">[${t}]</span>`).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (template === 'glass') {
+        return `
+          <div class="container">
+            <div class="glass-card" style="text-align: center">
+              <h1>${portfolio.hero.name}</h1>
+              <p class="headline">${portfolio.hero.headline}</p>
+              <div style="display: flex; justify-content: center; gap: 16px">
+                ${portfolio.contact.linkedin ? `<a href="${portfolio.contact.linkedin}" style="color: var(--primary); font-weight: bold; text-decoration: none">LinkedIn</a>` : ''}
+                ${portfolio.contact.github ? `<a href="${portfolio.contact.github}" style="color: var(--primary); font-weight: bold; text-decoration: none">GitHub</a>` : ''}
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px">
+              <div class="glass-card">
+                <span class="section-title">The Story</span>
+                <p style="font-size: 1.1rem; line-height: 1.8; color: #475569">${portfolio.about}</p>
+              </div>
+              <div class="glass-card">
+                <span class="section-title">Expertise</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                  ${portfolio.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="glass-card">
+              <span class="section-title">Experience</span>
+              ${portfolio.experience.map(exp => `
+                <div class="exp-item">
+                  <h3 style="margin: 0; font-size: 1.5rem">${exp.company}</h3>
+                  <p style="color: var(--primary); font-weight: 700; margin: 4px 0 16px">${exp.role} · ${exp.duration}</p>
+                  <ul style="color: #64748b; font-size: 0.95rem">${exp.description.map(d => `<li style="margin-bottom: 8px">${d}</li>`).join('')}</ul>
+                </div>
+              `).join('')}
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px">
+              ${portfolio.projects.map(p => `
+                <div class="glass-card" style="margin-bottom: 0">
+                  <h3 style="margin: 0 0 12px 0">${p.title}</h3>
+                  <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 20px">${p.description}</p>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                    ${p.tech.map(t => `<span style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--primary)">${t}</span>`).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
       if (template === 'developer') {
         return `
           <div class="container">
@@ -264,8 +410,8 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   ${portfolio.skills.map(s => `<span style="display: inline-block; padding: 8px 16px; background: #f8f9ff; border-radius: 12px; margin: 4px; font-weight: bold; font-size: 0.875rem">${s}</span>`).join('')}
                 </div>
               </div>
-              <div class="card span-4" style="background: #4f46e5; color: white">
-                <span class="label" style="color: #c7d2fe">Connect</span>
+              <div class="card span-4" style="background: var(--primary); color: white">
+                <span class="label" style="color: white; opacity: 0.7">Connect</span>
                 <p style="font-size: 1.5rem; font-weight: bold">${portfolio.contact.email}</p>
                 <p style="margin-top: 20px">Let's build something amazing together.</p>
               </div>
@@ -274,6 +420,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   <span class="label">Project</span>
                   <h3 style="font-size: 2rem; margin: 0 0 16px 0">${p.title}</h3>
                   <p style="color: #6b7280">${p.description}</p>
+                  <div style="margin-top: 24px">${p.tech.map(t => `<span style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; color: var(--primary); margin-right: 12px">${t}</span>`).join('')}</div>
                 </div>
               `).join('')}
               <div class="card span-12">
@@ -282,7 +429,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                   ${portfolio.experience.map(exp => `
                     <div>
                       <h3 style="font-size: 1.5rem; margin: 0 0 8px 0">${exp.company}</h3>
-                      <p style="color: #4f46e5; font-weight: bold; margin-bottom: 16px">${exp.role}</p>
+                      <p style="color: var(--primary); font-weight: bold; margin-bottom: 16px">${exp.role}</p>
                       <p style="font-size: 0.875rem; color: #6b7280">${exp.duration}</p>
                     </div>
                   `).join('')}
@@ -302,7 +449,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
           </header>
           <section>
             <h2>01 / About</h2>
-            <p style="font-size: 2rem; font-weight: 500">${portfolio.about}</p>
+            <p style="font-size: 2.5rem; font-weight: 500">${portfolio.about}</p>
           </section>
           <section>
             <h2>02 / Expertise</h2>
@@ -314,8 +461,8 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
               ${portfolio.experience.map(exp => `
                 <div class="exp-item">
                   <div style="display: flex; justify-content: space-between; align-items: baseline">
-                    <h3 style="font-size: 2.5rem; margin: 0">${exp.company}</h3>
-                    <span style="color: #a3a3a3; font-family: monospace">${exp.duration}</span>
+                    <h3 style="font-size: 3rem; margin: 0">${exp.company}</h3>
+                    <span style="color: var(--muted); font-family: monospace">${exp.duration}</span>
                   </div>
                   <p class="role">${exp.role}</p>
                   <ul>${exp.description.map(d => `<li>${d}</li>`).join('')}</ul>
@@ -330,7 +477,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                 <div class="project-card">
                   <h3 style="font-size: 1.75rem; margin: 0 0 16px 0">${p.title}</h3>
                   <p>${p.description}</p>
-                  <div style="margin-top: 24px">${p.tech.map(t => `<span style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; color: #a3a3a3; margin-right: 12px">${t}</span>`).join('')}</div>
+                  <div style="margin-top: 24px">${p.tech.map(t => `<span style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; color: var(--muted); margin-right: 12px">${t}</span>`).join('')}</div>
                 </div>
               `).join('')}
             </div>
@@ -455,7 +602,10 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setResumeFile(file);
+    if (file) {
+      setResumeFile(file);
+      e.target.value = ''; // Reset to allow re-uploading same file if needed
+    }
   };
 
   const fetchGitHubProjects = async (username: string) => {
@@ -632,12 +782,25 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                       <div className="px-2.5 py-1 rounded-full bg-[var(--bg-secondary)] text-[9px] md:text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest shrink-0">Required</div>
                     </div>
                     
-                    <div className={cn(
-                      "relative border-2 border-dashed rounded-[1.5rem] md:rounded-[2rem] p-8 md:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
-                      resumeFile 
-                        ? "border-green-500/30 bg-green-500/5" 
-                        : "border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-indigo-500/30 hover:bg-indigo-500/5"
-                    )}>
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) setResumeFile(file);
+                      }}
+                      className={cn(
+                        "relative border-2 border-dashed rounded-[1.5rem] md:rounded-[2rem] p-8 md:p-20 text-center cursor-pointer transition-all duration-500 overflow-hidden group/drop",
+                        resumeFile 
+                          ? "border-green-500/30 bg-green-500/5" 
+                          : "border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-indigo-500/30 hover:bg-indigo-500/5 shadow-inner"
+                      )}
+                    >
                       <input 
                         type="file" 
                         ref={fileInputRef} 
@@ -659,7 +822,13 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             </div>
                             <p className="text-[var(--text-primary)] font-display font-bold text-xl md:text-2xl mb-1.5 md:mb-2 truncate max-w-full px-4">{resumeFile.name}</p>
                             <p className="text-[var(--text-secondary)] text-xs md:text-sm font-medium mb-6 md:mb-8">{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            <button className="px-6 md:px-8 py-2.5 md:py-3 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl md:rounded-2xl text-[13px] md:text-sm font-bold hover:bg-[var(--bg-secondary)] transition-all shadow-sm active:scale-95">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                fileInputRef.current?.click();
+                              }}
+                              className="px-6 md:px-8 py-2.5 md:py-3 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-xl md:rounded-2xl text-[13px] md:text-sm font-bold hover:bg-[var(--bg-secondary)] transition-all shadow-sm active:scale-95"
+                            >
                               Change File
                             </button>
                           </motion.div>
@@ -1195,6 +1364,12 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                             selectedElement={selectedElement}
                             onSelectElement={(el) => setSelectedElement(el)}
                             onChange={(updated) => setPortfolio(updated)}
+                            themeColor={themeColor}
+                            globalFontFamily={
+                              globalFontFamily === 'Inter' ? '"Inter", sans-serif' : 
+                              globalFontFamily === 'Playfair' ? '"Playfair Display", serif' : 
+                              '"JetBrains Mono", monospace'
+                            }
                           />
                         </div>
                       </div>
@@ -1627,7 +1802,9 @@ function PortfolioPreview({
   isRecruiterView,
   selectedElement,
   onSelectElement,
-  onChange 
+  onChange,
+  themeColor,
+  globalFontFamily
 }: { 
   content: PortfolioContent; 
   template: PortfolioTemplate; 
@@ -1636,6 +1813,8 @@ function PortfolioPreview({
   selectedElement: { path: string, label: string } | null;
   onSelectElement: (el: { path: string, label: string } | null) => void;
   onChange: (updated: PortfolioContent) => void;
+  themeColor: string;
+  globalFontFamily: string;
 }) {
   const updateField = (path: string, value: any) => {
     const newContent = { ...content };
@@ -1695,9 +1874,151 @@ function PortfolioPreview({
     );
   };
 
+  if (template === 'glass') {
+    return (
+      <div className="min-h-screen bg-[#f0f2f5] p-6 lg:p-20 text-slate-800 transition-colors duration-500" style={{ 
+        fontFamily: globalFontFamily,
+        background: `radial-gradient(circle at top left, ${themeColor}15, transparent), radial-gradient(circle at bottom right, #4f46e510, transparent), #f0f2f5`
+      }}>
+        <div className="max-w-5xl mx-auto">
+          <header className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-12 mb-8 text-center shadow-2xl shadow-black/5">
+            <h1 className="text-6xl font-black mb-4 tracking-tighter" style={{ background: `linear-gradient(to right, ${themeColor}, #4f46e5)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
+            </h1>
+            <p className="text-2xl text-slate-500 mb-8 font-medium">
+              <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
+            </p>
+          </header>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-10 shadow-2xl shadow-black/5">
+              <h2 className="text-[10px] font-black uppercase tracking-widest mb-6" style={{ color: themeColor }}>The Story</h2>
+              <div className="text-lg leading-relaxed text-slate-600 font-medium">
+                <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
+              </div>
+            </div>
+            <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-10 shadow-2xl shadow-black/5">
+              <h2 className="text-[10px] font-black uppercase tracking-widest mb-6" style={{ color: themeColor }}>Expertise</h2>
+              <div className="flex flex-wrap gap-2">
+                {content.skills.map((s, i) => (
+                  <span key={i} className="px-5 py-3 bg-white/50 backdrop-blur-md border border-white/80 rounded-2xl text-sm font-bold shadow-sm">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-12 mb-8 shadow-2xl shadow-black/5">
+            <h2 className="text-[10px] font-black uppercase tracking-widest mb-10" style={{ color: themeColor }}>Experience</h2>
+            <div className="space-y-12">
+              {content.experience.map((exp, i) => (
+                <div key={i} className="border-l-4 p-8 transition-all hover:bg-white/30 rounded-r-3xl" style={{ borderColor: `${themeColor}40` }}>
+                  <h3 className="text-3xl font-black mb-2 tracking-tight">{exp.company}</h3>
+                  <p className="text-xl font-bold mb-6" style={{ color: themeColor }}>{exp.role} · {exp.duration}</p>
+                  <ul className="space-y-4 text-slate-500 font-medium">
+                    {exp.description.map((d, j) => <li key={j} className="flex gap-4">
+                      <div className="w-1.5 h-1.5 rounded-full mt-2.5 shrink-0" style={{ backgroundColor: themeColor }} />
+                      {d}
+                    </li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {content.projects.map((p, i) => (
+              <div key={i} className="bg-white/70 backdrop-blur-2xl border border-white/30 rounded-[2.5rem] p-10 shadow-2xl shadow-black/5 hover:scale-[1.02] transition-transform">
+                <h3 className="text-2xl font-black mb-4 tracking-tight">{p.title}</h3>
+                <p className="text-slate-500 mb-8 line-clamp-3 font-medium">{p.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {p.tech.map((t, j) => (
+                    <span key={j} className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg bg-white/50 border border-white/80" style={{ color: themeColor }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (template === 'cyber') {
+    return (
+      <div className="min-h-screen bg-[#030303] text-white p-6 lg:p-20 selection:bg-indigo-500/50" style={{ fontFamily: globalFontFamily }}>
+        <div className="max-w-7xl mx-auto">
+          <header className="mb-24">
+            <h1 className="text-6xl lg:text-9xl font-black uppercase tracking-tighter relative group" style={{ color: themeColor }}>
+              <div className="absolute -inset-1 bg-white/5 blur-3xl rounded-full group-hover:bg-indigo-500/10 transition-colors" />
+              <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
+            </h1>
+            <p className="text-xl lg:text-3xl font-bold opacity-80 mt-6" style={{ color: themeColor }}>
+              <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
+            </p>
+          </header>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+             <div className="lg:col-span-12 border border-indigo-500/30 p-1 bg-white/[0.02]">
+                <div className="border border-indigo-500/50 p-10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl" />
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-6 flex items-center gap-2" style={{ color: themeColor }}>
+                    <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                    Neural Biography
+                  </h2>
+                  <div className="text-xl lg:text-3xl leading-relaxed font-bold max-w-4xl">
+                    <EditableText path="about" label="About" multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
+                  </div>
+                </div>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+            <div className="lg:col-span-8 border border-white/5 p-10 bg-white/[0.02]">
+               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-12 flex items-center gap-2" style={{ color: themeColor }}>Experience Sequence</h2>
+               <div className="space-y-16">
+                 {content.experience.map((exp, i) => (
+                   <div key={i} className="group relative">
+                      <div className="flex justify-between items-baseline mb-4">
+                        <h3 className="text-3xl font-black uppercase group-hover:text-indigo-400 transition-colors">{exp.company}</h3>
+                        <span className="text-xs font-bold opacity-40">{exp.duration}</span>
+                      </div>
+                      <p className="text-xl font-bold mb-8" style={{ color: themeColor }}>{exp.role}</p>
+                      <ul className="space-y-4 opacity-50 text-sm font-bold">
+                        {exp.description.map((d, j) => <li key={j}>/ {d}</li>)}
+                      </ul>
+                   </div>
+                 ))}
+               </div>
+            </div>
+            <div className="lg:col-span-4 border border-white/5 p-10 bg-white/[0.02]">
+               <h2 className="text-[10px] font-black uppercase tracking-[0.4em] mb-12 flex items-center gap-2" style={{ color: themeColor }}>Core Modules</h2>
+               <div className="flex flex-wrap gap-3">
+                 {content.skills.map((s, i) => <span key={i} className="px-4 py-2 border border-white/10 text-[10px] font-bold hover:border-indigo-500/50 transition-colors">{s}</span>)}
+               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {content.projects.map((p, i) => (
+              <div key={i} className="border border-white/5 p-10 bg-white/[0.01] hover:bg-white/[0.03] transition-all group">
+                <h3 className="text-2xl font-black uppercase mb-4 group-hover:text-indigo-400 transition-colors">{p.title}</h3>
+                <p className="text-sm opacity-40 mb-10 leading-relaxed font-bold">{p.description}</p>
+                <div className="flex flex-wrap gap-2 mt-auto">
+                  {p.tech.map((t, j) => <span key={j} className="text-[10px] font-bold opacity-60">[{t}]</span>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (template === 'minimal') {
     return (
-      <div className="font-sans text-neutral-900 min-h-screen bg-white">
+      <div className="min-h-screen bg-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
         <div className="max-w-5xl mx-auto py-16 lg:py-40 px-6 md:px-10">
           <header className="mb-24 lg:mb-40">
             <motion.h1 
@@ -1749,9 +2070,9 @@ function PortfolioPreview({
                   <span key={i} className={cn(
                     "px-6 lg:px-10 py-3 lg:py-5 rounded-2xl lg:rounded-3xl text-lg lg:text-xl font-bold transition-all duration-500",
                     isRecruiterView 
-                      ? "bg-indigo-600 text-white shadow-2xl shadow-indigo-200 scale-105" 
+                      ? "text-white shadow-2xl scale-105" 
                       : "bg-neutral-50 text-neutral-800 border border-neutral-100 hover:border-neutral-300"
-                  )}>
+                  )} style={isRecruiterView ? { backgroundColor: themeColor, shadowColor: `${themeColor}40` } : {}}>
                     {skill}
                   </span>
                 ))}
@@ -1770,7 +2091,7 @@ function PortfolioPreview({
                     <h3 className="text-3xl lg:text-5xl font-bold tracking-tighter">{exp.company}</h3>
                     <span className="text-neutral-300 font-mono text-xs lg:text-sm font-bold">{exp.duration}</span>
                   </div>
-                  <p className="text-indigo-600 text-xl lg:text-2xl font-bold mb-6 lg:mb-10 tracking-tight">{exp.role}</p>
+                  <p className="text-xl lg:text-2xl font-bold mb-6 lg:mb-10 tracking-tight" style={{ color: themeColor }}>{exp.role}</p>
                   <ul className="space-y-4 lg:space-y-6 text-lg lg:text-xl text-neutral-500 leading-relaxed max-w-3xl">
                     {exp.description.map((bullet, j) => (
                       <li key={j} className="flex gap-4 lg:gap-5">
@@ -1838,7 +2159,7 @@ function PortfolioPreview({
 
   if (template === 'developer') {
     return (
-      <div className="font-mono bg-[#050505] text-slate-400 min-h-screen selection:bg-indigo-500/30 selection:text-white">
+      <div className="min-h-screen bg-[#050505] text-slate-400 selection:bg-indigo-500/30 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
         <div className="max-w-7xl mx-auto p-6 md:p-10 lg:p-24 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">
           <aside className="lg:col-span-5 lg:sticky lg:top-24 h-fit">
             <motion.div
@@ -1852,7 +2173,7 @@ function PortfolioPreview({
               <h1 className="text-4xl sm:text-6xl lg:text-8xl font-black text-white mb-6 lg:mb-8 tracking-tighter leading-none">
                 <EditableText path="hero.name" label="Name" value={content.hero.name} onSave={(v: string) => updateField('hero.name', v)} />
               </h1>
-              <h2 className="text-xl lg:text-3xl text-indigo-400 mb-8 lg:mb-12 font-bold tracking-tight">
+              <h2 className="text-xl lg:text-3xl mb-8 lg:mb-12 font-bold tracking-tight" style={{ color: themeColor }}>
                 <EditableText path="hero.headline" label="Headline" value={content.hero.headline} onSave={(v: string) => updateField('hero.headline', v)} />
               </h2>
               <div className="text-slate-500 leading-relaxed mb-12 lg:mb-16 text-lg lg:text-xl max-w-md">
@@ -1953,7 +2274,7 @@ function PortfolioPreview({
 
   if (template === 'modern') {
     return (
-      <div className="font-sans bg-[#f8f9ff] text-neutral-900 min-h-screen selection:bg-indigo-600 selection:text-white">
+      <div className="bg-[#f8f9ff] text-neutral-900 min-h-screen selection:bg-indigo-600 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
         <div className="max-w-7xl mx-auto p-10 lg:p-24">
           <header className="mb-24">
             <motion.div 
@@ -1973,7 +2294,7 @@ function PortfolioPreview({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* About & Skills - Bento Style */}
             <div className="lg:col-span-8 bg-white rounded-[2rem] lg:rounded-[3rem] p-8 lg:p-12 shadow-2xl shadow-indigo-500/5 border border-neutral-100">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600 mb-8 lg:mb-10">About</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 lg:mb-10" style={{ color: themeColor }}>About</h2>
               <div className="text-xl sm:text-2xl lg:text-4xl leading-snug font-medium tracking-tight text-neutral-800 mb-12 lg:mb-16">
                 <EditableText multiline value={content.about} onSave={(v: string) => updateField('about', v)} />
               </div>
@@ -2066,7 +2387,7 @@ function PortfolioPreview({
 
   // Professional Template
   return (
-    <div className="font-serif bg-[#fdfdfb] text-neutral-900 min-h-full selection:bg-neutral-900 selection:text-white">
+    <div className="bg-[#fdfdfb] text-neutral-900 min-h-full selection:bg-neutral-900 selection:text-white transition-colors duration-500" style={{ fontFamily: globalFontFamily }}>
       <div className="max-w-6xl mx-auto px-10 lg:px-24 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24 border-b-2 border-neutral-900 pb-16 lg:pb-24 mb-16 lg:mb-24">
           <div className="lg:col-span-8">

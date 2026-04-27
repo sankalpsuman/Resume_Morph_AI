@@ -31,4 +31,4 @@ export interface PortfolioContent {
   };
 }
 
-export type PortfolioTemplate = 'minimal' | 'developer' | 'professional' | 'modern';
+export type PortfolioTemplate = 'minimal' | 'developer' | 'professional' | 'modern' | 'glass' | 'cyber';
