@@ -197,36 +197,56 @@ export default function InteractiveTour() {
     localStorage.setItem('has_seen_tour_v1', 'true');
   };
 
-  // Measurement ref for the tooltip height calculation
   const tooltipRef = React.useRef<HTMLDivElement>(null);
   const [tooltipHeight, setTooltipHeight] = useState(200);
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (tooltipRef.current) {
       setTooltipHeight(tooltipRef.current.offsetHeight);
     }
-  }, [currentStep]);
+  }, [currentStep, windowSize]);
 
   if (!isVisible || currentStep === -1) return null;
 
   const step = TOUR_STEPS[currentStep];
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobile = windowSize.width < 768;
   const isBottomNavTarget = isMobile && step.targetId.startsWith('tab-');
-  const position = isBottomNavTarget ? 'top' : step.position;
+  
+  // Smart Positioning
+  let position = isBottomNavTarget ? 'top' : step.position;
+  
+  // If at bottom of screen and position is bottom, flip to top
+  if (position === 'bottom' && coords.top + coords.height + tooltipHeight + 32 > windowSize.height) {
+    position = 'top';
+  }
+  // If at top and position is top, flip to bottom
+  if (position === 'top' && coords.top - tooltipHeight - 32 < 0) {
+    position = 'bottom';
+  }
 
   const tooltipStyle = {
     top: position === 'bottom' 
       ? coords.top + coords.height + 16 
       : position === 'top' 
         ? coords.top - tooltipHeight - 16
-        : Math.max(16, coords.top - (tooltipHeight / 2) + (coords.height / 2)),
+        : Math.max(16, Math.min(windowSize.height - tooltipHeight - 16, coords.top - (tooltipHeight / 2) + (coords.height / 2))),
     left: isMobile 
       ? 16 
       : position === 'right'
-        ? coords.left + coords.width + 16
+        ? Math.min(windowSize.width - 320 - 16, coords.left + coords.width + 16)
         : position === 'left'
-          ? coords.left - 336 - 16
-          : Math.max(16, Math.min(window.innerWidth - 336, coords.left + (coords.width / 2) - 160))
+          ? Math.max(16, coords.left - 320 - 16)
+          : Math.max(16, Math.min(windowSize.width - 320 - 16, coords.left + (coords.width / 2) - 160))
   };
 
   return (
@@ -266,7 +286,7 @@ export default function InteractiveTour() {
           initial={{ opacity: 0, y: 10, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 10, scale: 0.9 }}
-          className="absolute z-[1002] w-[calc(100vw-2rem)] xs:w-[320px] pointer-events-auto"
+          className="absolute z-[1002] w-fit min-w-[260px] max-w-[calc(100vw-2rem)] md:max-w-[320px] pointer-events-auto"
           style={tooltipStyle}
         >
           <div className="bg-[var(--bg-primary)] rounded-[28px] md:rounded-[32px] p-5 md:p-6 shadow-2xl border border-[var(--border-color)]">

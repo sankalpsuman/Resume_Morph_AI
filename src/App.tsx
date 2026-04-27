@@ -25,6 +25,7 @@ import AccountModal from './components/AccountModal';
 import AdminPanel from './components/AdminPanel';
 import UserGuide from './components/UserGuide';
 import PremiumModal from './components/PremiumModal';
+import CreatorWelcomeModal from './components/CreatorWelcomeModal';
 import InteractiveTour from './components/InteractiveTour';
 import ResumeAIAssistant from './components/ResumeAIAssistant';
 import AppChatbot from './components/AppChatbot';
@@ -500,6 +501,18 @@ export default function App() {
                             </div>
                           </button>
                         ))}
+                        <button
+                          onClick={() => { window.dispatchEvent(new CustomEvent('open-creator-about')); setIsResourcesOpen(false); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[var(--bg-secondary)] transition-all group"
+                        >
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform bg-purple-50 group-hover:scale-110">
+                            <UserIcon className="w-4 h-4 text-purple-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-[var(--text-primary)] leading-tight group-hover:text-indigo-600">About Creator</p>
+                            <p className="text-[9px] font-bold text-[var(--text-tertiary)] truncate uppercase mt-0.5 tracking-tighter">Meet the architect</p>
+                          </div>
+                        </button>
                       </div>
                       <div className="mt-2 p-4 bg-indigo-600 rounded-2xl text-white">
                         <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 italic">Morph Hub</p>
@@ -784,6 +797,7 @@ export default function App() {
         user={user}
       />
 
+      <CreatorWelcomeModal />
       <InteractiveTour />
       <AppChatbot />
 
@@ -797,7 +811,7 @@ export default function App() {
             <span className="font-black text-lg tracking-tight text-[var(--text-primary)]">Resume Morph</span>
           </div>
           <p className="text-sm text-[var(--text-tertiary)] font-medium text-center md:text-left">
-            © 2026 Resume Morph. Built with passion by Sankalp Suman.
+            © 2026 Resume Morph. Built with passion by <button onClick={() => window.dispatchEvent(new CustomEvent('open-creator-about'))} className="text-indigo-600 hover:underline font-bold">Sankalp Suman</button>.
           </p>
           <div className="flex flex-col md:flex-row items-center gap-6">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] px-3 py-1 border border-[var(--border-color)] rounded-full">v1.0.1</span>

@@ -208,7 +208,7 @@ export default function AppChatbot() {
                   className="w-full pl-4 pr-12 py-4 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/5 outline-none text-sm font-medium text-[var(--text-primary)] transition-all placeholder:text-[var(--text-secondary)]/50"
                 />
                 <button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={!input.trim() || isTyping}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/20 dark:shadow-none hover:bg-indigo-700 transition-all disabled:opacity-50"
                 >

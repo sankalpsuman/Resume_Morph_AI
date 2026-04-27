@@ -5,7 +5,7 @@ import {
   Settings, Layout, Type, Palette, Move, Trash2, Plus, ArrowLeft, 
   Download, Printer, Eye, Languages, Wand2, Search, Target, 
   ChevronRight, ChevronDown, GripVertical, Save, Edit3, Github, Linkedin, Globe, Mail, Phone, MapPin,
-  RefreshCw, MousePointerClick
+  RefreshCw, MousePointerClick, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, compressImage } from '../lib/utils';
@@ -110,10 +110,17 @@ export default function SmartEditor() {
   
   // UI States
   const [activeTab, setActiveTab] = useState<'content' | 'design' | 'sections' | 'analyze'>('content');
+  const [mobileMode, setMobileMode] = useState<'edit' | 'preview'>('edit');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Tab change handler for mobile (auto-switch to edit)
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setMobileMode('edit');
+  };
   
   // Analysis States
   const [atsAnalysis, setAtsAnalysis] = useState<any>(null);
@@ -273,10 +280,39 @@ export default function SmartEditor() {
     if (!resumeData) return;
     setResumeData(prev => {
       if (!prev) return null;
-      const newExp = [...prev.experience];
+      const newExp = [...(prev.experience || [])];
       newExp[index] = { ...newExp[index], [field]: value };
       return { ...prev, experience: newExp };
     });
+  };
+
+  const updateEducation = (index: number, field: string, value: any) => {
+    if (!resumeData) return;
+    setResumeData(prev => {
+      if (!prev) return null;
+      const newEdu = [...(prev.education || [])];
+      newEdu[index] = { ...newEdu[index], [field]: value };
+      return { ...prev, education: newEdu };
+    });
+  };
+
+  const updateSkills = (value: string[]) => {
+    if (!resumeData) return;
+    setResumeData(prev => prev ? ({ ...prev, skills: value }) : null);
+  };
+
+  const addExperience = () => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      experience: [...(prev.experience || []), { company: '', role: '', dates: '', bullets: [''] }]
+    }) : null);
+  };
+
+  const addEducation = () => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      education: [...(prev.education || []), { school: '', degree: '', dates: '' }]
+    }) : null);
   };
 
   const optimizeSummary = async () => {
@@ -294,74 +330,119 @@ export default function SmartEditor() {
     }
   };
 
-  const addExperience = () => {
-    if (!resumeData) return;
-    setResumeData({
-      ...resumeData,
-      experience: [{ company: 'New Company', role: 'Role', dates: '2024 - Present', bullets: [] }, ...resumeData.experience]
-    });
-  };
-
   if (step === 'import') {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-sm">
-        <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-3 px-6 py-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 shadow-sm border border-indigo-500/20"
-          >
-            <Sparkles className="w-4 h-4 fill-indigo-600 dark:fill-indigo-400" />
-            Premium Studio Mode
-          </motion.div>
-          <h1 className="text-5xl md:text-7xl font-black text-[var(--text-primary)] mb-6 tracking-tight">
-            Resume <span className="text-indigo-600">Studio</span>
-          </h1>
-          <p className="text-[var(--text-secondary)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-            The ultimate professional editor. Import any resume, clone any design, and customize every pixel with AI-powered precision.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
-          {/* Step 1: Upload Source */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">1</div>
-              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Your Content</h2>
-            </div>
-            <Dropzone onDrop={onDropResume} loading={loading} label="Upload your current resume" icon={<FileText className="w-10 h-10" />} />
-          </motion.div>
-
-          {/* Step 2: Upload Design Reference (Optional) */}
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">2</div>
-              <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Reference Design</h2>
-            </div>
-            <Dropzone onDrop={onDropReference} loading={loading} label="Upload a design reference (Optional)" icon={<Layout className="w-10 h-10" />} />
-            {referenceFile && (
-              <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-2xl flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-xs font-bold text-green-700 dark:text-green-400">Visual Pattern Analyzed Successfully</span>
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-20">
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div 
+              key="loading"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.1 }}
+              className="flex flex-col items-center justify-center min-h-[500px] text-center space-y-8"
+            >
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full border-4 border-indigo-100 dark:border-indigo-900/30 animate-pulse" />
+                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 text-indigo-600 animate-spin" />
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl"
+                />
               </div>
-            )}
-          </motion.div>
-        </div>
+              <div className="space-y-3">
+                <h2 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">AI Engine Processing...</h2>
+                <p className="text-[var(--text-secondary)] font-medium max-w-sm mx-auto">Extracting architectural data and semantic patterns from your resume.</p>
+              </div>
+              <div className="flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [0.5, 1, 0.5]
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      delay: i * 0.2
+                    }}
+                    className="w-2 h-2 bg-indigo-600 rounded-full"
+                  />
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] p-8 md:p-20 shadow-sm relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full -mr-48 -mt-48 blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/5 rounded-full -ml-48 -mb-48 blur-3xl pointer-events-none" />
+              
+              <div className="text-center mb-16 relative z-10">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-3 px-6 py-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 shadow-sm border border-indigo-500/20"
+                >
+                  <Sparkles className="w-4 h-4 fill-indigo-600 dark:fill-indigo-400" />
+                  Premium Studio Mode
+                </motion.div>
+                <h1 className="text-5xl md:text-8xl font-black text-[var(--text-primary)] mb-6 tracking-tighter leading-none">
+                  Resume <span className="text-indigo-600">Studio.</span>
+                </h1>
+                <p className="text-[var(--text-secondary)] text-lg md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
+                  The ultimate professional editor. Import your resume, clone any design, and customize every pixel with AI precision.
+                </p>
+              </div>
 
-        {error && (
-          <div className="mt-12 p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 rounded-[24px] max-w-2xl mx-auto flex items-center gap-4 text-red-600 dark:text-red-400">
-            <AlertCircle className="w-6 h-6 shrink-0" />
-            <p className="text-sm font-black">{error}</p>
-          </div>
-        )}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 max-w-5xl mx-auto relative z-10">
+                {/* Step 1: Upload Source */}
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">1</div>
+                    <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Structure Source</h2>
+                  </div>
+                  <Dropzone onDrop={onDropResume} loading={loading} label="Upload your current resume" icon={<FileText className="w-10 h-10" />} />
+                </motion.div>
+
+                {/* Step 2: Upload Design Reference (Optional) */}
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-10 h-10 rounded-2xl bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center font-black shadow-lg">2</div>
+                    <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Design Pattern</h2>
+                  </div>
+                  <Dropzone onDrop={onDropReference} loading={loading} label="Reference a layout (Optional)" icon={<Layout className="w-10 h-10" />} />
+                  {referenceFile && (
+                    <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-2xl flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="text-xs font-bold text-green-700 dark:text-green-400">Visual Pattern Analyzed Successfully</span>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+
+              {error && (
+                <div className="mt-12 p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 rounded-[28px] max-w-2xl mx-auto flex items-center gap-4 text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-6 h-6 shrink-0" />
+                  <p className="text-sm font-black">{error}</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -409,17 +490,47 @@ export default function SmartEditor() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        {/* Mobile Toggle Bar */}
+        <div className="lg:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-[60] p-1.5 gap-1">
+          <button 
+            onClick={() => setMobileMode('edit')}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+              mobileMode === 'edit' ? "bg-indigo-600 text-white shadow-lg" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+            )}
+          >
+            <Edit3 className="w-4 h-4" />
+            Editor
+          </button>
+          <button 
+            onClick={() => setMobileMode('preview')}
+            className={cn(
+              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+              mobileMode === 'preview' ? "bg-indigo-600 text-white shadow-lg" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+            )}
+          >
+            <Eye className="w-4 h-4" />
+            Preview
+          </button>
+        </div>
+
         {/* Left Sidebar: Controls */}
-        <aside id="smart-editor-controls" className="w-full lg:w-[450px] bg-[var(--bg-primary)] border-r border-[var(--border-color)] flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden">
+        <aside 
+          id="smart-editor-controls" 
+          className={cn(
+            "w-full lg:w-[450px] bg-[var(--bg-primary)] border-r border-[var(--border-color)] flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden transition-all duration-300",
+            mobileMode === 'preview' && "hidden lg:flex"
+          )}
+        >
           {/* Tabs */}
-          <div className="flex border-b border-[var(--border-color)] shrink-0">
+          <div className="flex border-b border-[var(--border-color)] shrink-0 overflow-x-auto no-scrollbar">
             {(['content', 'design', 'sections', 'analyze'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "flex-1 py-5 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
+                  "flex-1 py-5 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap min-w-[100px]",
                   activeTab === tab ? "text-indigo-600" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                 )}
               >
@@ -431,8 +542,8 @@ export default function SmartEditor() {
             ))}
           </div>
 
-           {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
             <AnimatePresence mode="wait">
               {activeTab === 'content' && (
                 <motion.div 
@@ -440,7 +551,7 @@ export default function SmartEditor() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
-                  className="space-y-10"
+                  className="space-y-8 md:space-y-10"
                 >
                   <IdentitySection 
                     data={resumeData?.personalInfo} 
@@ -456,6 +567,17 @@ export default function SmartEditor() {
                     data={resumeData?.experience} 
                     update={updateExperience}
                     add={addExperience}
+                  />
+
+                  <EducationSection 
+                    data={resumeData?.education} 
+                    update={updateEducation}
+                    add={addEducation}
+                  />
+
+                  <SkillsSection 
+                    data={resumeData?.skills} 
+                    update={updateSkills}
                   />
                 </motion.div>
               )}
@@ -483,38 +605,44 @@ export default function SmartEditor() {
                 />
               )}
             </AnimatePresence>
+            
+            {/* Bottom Spacing for Mobile Toggle Bar */}
+            <div className="h-24 lg:hidden" />
           </div>
         </aside>
 
         {/* Right Area: Preview Canvas */}
-        <main className="flex-1 bg-[var(--bg-secondary)] p-12 overflow-y-auto relative flex flex-col items-center">
+        <main className={cn(
+          "flex-1 bg-[var(--bg-secondary)] p-4 md:p-12 overflow-y-auto relative flex flex-col items-center custom-scrollbar transition-all duration-300",
+          mobileMode === 'edit' && "hidden lg:flex"
+        )}>
           {isRefreshing && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 z-40">
+            <div className="absolute top-4 md:top-12 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-32px)] md:w-auto">
               <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="px-6 py-2 bg-[var(--bg-primary)] rounded-full shadow-xl border border-[var(--border-color)] flex items-center gap-3"
+                className="px-6 py-3 md:py-2 bg-[var(--bg-primary)] rounded-full shadow-xl border border-[var(--border-color)] flex items-center justify-center gap-3"
               >
                 <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">Synchronizing Design...</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">AI Syncing...</span>
               </motion.div>
             </div>
           )}
 
-          <div className="w-full max-w-[850px] space-y-8 animate-in fade-in duration-1000">
+          <div className="w-full max-w-[850px] space-y-6 md:space-y-8 animate-in fade-in duration-1000">
              {/* Toolbar Overlay */}
-             <div className="flex items-center justify-center gap-3 px-6 py-3 bg-[var(--bg-primary)]/80 backdrop-blur-md rounded-2xl shadow-xl shadow-black/5 border border-[var(--border-color)] mb-8 sticky top-0 z-30">
-               <button className="p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-primary)] flex items-center gap-2 group">
-                 <MousePointerClick className="w-4 h-4 text-indigo-600" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Select Mode</span>
+             <div className="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-[var(--bg-primary)]/80 backdrop-blur-md rounded-2xl shadow-xl shadow-black/5 border border-[var(--border-color)] mb-4 md:mb-8 sticky top-0 z-30">
+               <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-indigo-600 flex items-center gap-2 group shrink-0">
+                 <MousePointerClick className="w-4 h-4" />
+                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Select Mode</span>
                </button>
                <div className="w-px h-6 bg-[var(--border-color)]" />
-               <button className="p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center gap-2 group">
+               <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center gap-2 group shrink-0">
                  <Move className="w-4 h-4 group-hover:scale-110" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Layout</span>
+                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Layout</span>
                </button>
                <div className="w-px h-6 bg-[var(--border-color)]" />
-               <div className="flex items-center gap-1.5">
+               <div className="flex items-center gap-0.5 md:gap-1.5">
                  <button 
                    onClick={refreshPreview}
                    disabled={isRefreshing}
@@ -648,11 +776,11 @@ const IdentitySection = memo(({ data, update }: any) => (
       <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Identity & Contact</h2>
       <p className="text-sm font-medium text-[var(--text-tertiary)]">Essential contact information and professional headline.</p>
     </div>
-    <div className="grid grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <Input label="Full Name" value={data?.name} onChange={(v: string) => update('name', v)} icon={<Edit3 />} />
       <Input label="Job Title" value={data?.title} onChange={(v: string) => update('title', v)} icon={<Target />} />
     </div>
-    <div className="grid grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       <Input label="Email" value={data?.email} onChange={(v: string) => update('email', v)} icon={<Mail />} />
       <Input label="Phone" value={data?.phone} onChange={(v: string) => update('phone', v)} icon={<Phone />} />
     </div>
@@ -660,29 +788,136 @@ const IdentitySection = memo(({ data, update }: any) => (
   </section>
 ));
 
-const SummarySection = memo(({ value, onChange }: any) => (
+const EducationSection = memo(({ data, update, add }: any) => (
   <section className="space-y-6">
     <div className="flex items-center justify-between">
       <div className="space-y-1">
-        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Profile Summary</h2>
-        <p className="text-sm font-medium text-[var(--text-tertiary)]">Your professional pitch and unique value proposition.</p>
+        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Education</h2>
+        <p className="text-sm font-medium text-[var(--text-tertiary)]">Academic background and certifications.</p>
       </div>
       <button 
+        onClick={add}
         className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 group shadow-sm border border-indigo-500/20"
-        title="Polish with AI"
       >
-        <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Optimize</span>
+        <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Add Item</span>
       </button>
     </div>
-    <textarea 
-      value={value || ''} 
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-3xl p-6 text-sm font-medium min-h-[180px] focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] focus:border-indigo-100 transition-all outline-none resize-none leading-relaxed text-[var(--text-secondary)]"
-      placeholder="Write a brief, high-impact summary of your career..."
-    />
+    <div className="grid gap-6">
+      {data?.map((edu: any, i: number) => (
+        <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
+           <div className="flex justify-between items-start gap-4">
+             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+               <Input label="School / University" value={edu.school} onChange={(v: any) => update(i, 'school', v)} small />
+               <Input label="Dates" value={edu.dates} onChange={(v: any) => update(i, 'dates', v)} small />
+             </div>
+             <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
+               <Trash2 className="w-5 h-5" />
+             </button>
+           </div>
+           <Input label="Degree / Major" value={edu.degree} onChange={(v: any) => update(i, 'degree', v)} small />
+        </div>
+      ))}
+    </div>
   </section>
 ));
+
+const SkillsSection = memo(({ data, update }: any) => {
+  const [newSkill, setNewSkill] = useState('');
+  
+  const handleAdd = () => {
+    if (!newSkill.trim()) return;
+    update([...(data || []), newSkill.trim()]);
+    setNewSkill('');
+  };
+
+  const handleRemove = (index: number) => {
+    update(data.filter((_: any, i: number) => i !== index));
+  };
+
+  return (
+    <section className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Key Skills</h2>
+        <p className="text-sm font-medium text-[var(--text-tertiary)]">Technical expertise and core competencies.</p>
+      </div>
+      <div className="p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6">
+        <div className="flex gap-3">
+          <div className="flex-1 relative group">
+            <input 
+              type="text" 
+              value={newSkill}
+              onChange={(e) => setNewSkill(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              placeholder="Add a skill (e.g. TypeScript, Strategy)"
+              className="w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl py-4 px-6 text-sm font-bold transition-all outline-none focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5 text-[var(--text-primary)]"
+            />
+          </div>
+          <button 
+            onClick={handleAdd}
+            className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-none"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {data?.map((skill: string, i: number) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="group flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl hover:border-indigo-200 transition-all"
+            >
+              <span className="text-xs font-black uppercase tracking-widest text-[var(--text-primary)]">{skill}</span>
+              <button onClick={() => handleRemove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+});
+
+const SummarySection = memo(({ value, onChange }: any) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Profile Summary</h2>
+          <p className="text-sm font-medium text-[var(--text-tertiary)]">Your professional pitch and unique value proposition.</p>
+        </div>
+        <button 
+          className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 group shadow-sm border border-indigo-500/20"
+          title="Polish with AI"
+        >
+          <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+          <span className="text-[10px] font-black uppercase tracking-widest leading-none">Optimize</span>
+        </button>
+      </div>
+      <div className={cn(
+        "relative rounded-3xl transition-all duration-300 p-0.5",
+        isFocused ? "bg-gradient-to-br from-indigo-500/20 to-purple-500/20 shadow-xl" : "bg-transparent"
+      )}>
+        <textarea 
+          value={value || ''} 
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(
+            "w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-[22px] p-6 text-sm font-medium min-h-[180px] transition-all outline-none resize-none leading-relaxed text-[var(--text-secondary)]",
+            "focus:bg-[var(--bg-primary)] focus:border-indigo-600/20",
+            "placeholder:text-[var(--text-tertiary)]/30"
+          )}
+          placeholder="Write a brief, high-impact summary of your career..."
+        />
+      </div>
+    </section>
+  );
+});
 
 const ExperienceSection = memo(({ data, update, add }: any) => {
   const [isOptimizing, setIsOptimizing] = useState<{index: number, lineIndex: number} | null>(null);
@@ -722,20 +957,23 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
       </div>
       <div className="grid gap-6">
         {data?.map((exp: any, i: number) => (
-          <div key={i} className="p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-xl hover:shadow-black/5 transition-all">
+          <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
             <div className="flex justify-between items-start gap-4">
-               <div className="flex-1 grid grid-cols-2 gap-4">
+               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                  <Input label="Company" value={exp.company} onChange={(v: any) => update(i, 'company', v)} small />
                  <Input label="Dates" value={exp.dates} onChange={(v: any) => update(i, 'dates', v)} small />
                </div>
-               <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100">
+               <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
                  <Trash2 className="w-5 h-5" />
                </button>
             </div>
             <Input label="Role / Title" value={exp.role} onChange={(v: any) => update(i, 'role', v)} small />
             <div className="space-y-3">
-              <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-1">Key Achievements</label>
-              <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Key Achievements</label>
+                <div className="h-px flex-1 bg-[var(--border-color)] mx-4 md:block hidden" />
+              </div>
+              <div className="space-y-4">
                 {exp.bullets.map((bullet: string, lineIdx: number) => (
                   <div key={lineIdx} className="relative group/line">
                     <textarea 
@@ -746,20 +984,23 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
                         update(i, 'bullets', newBullets);
                       }}
                       rows={2}
-                      className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl p-5 pr-12 text-xs font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] focus:border-indigo-100 transition-all resize-none leading-relaxed outline-none text-[var(--text-primary)]"
+                      className="w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl p-4 md:p-5 pr-12 text-xs font-medium focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5 transition-all resize-none leading-relaxed outline-none text-[var(--text-primary)] transition-all duration-300"
+                      placeholder="Describe your impact and results..."
                     />
-                    <button 
-                      onClick={() => optimizeLine(i, lineIdx)}
-                      disabled={isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx}
-                      className="absolute right-4 top-4 p-2 bg-indigo-600 shadow-lg shadow-indigo-500/20 dark:shadow-none border border-indigo-500/30 rounded-xl text-white hover:scale-110 transition-all opacity-0 group-hover/line:opacity-100 disabled:opacity-50 z-30"
-                      title="AI Optimize Achievement: Use the X-Y-Z formula to boost impact"
-                    >
-                      {isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Wand2 className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    <div className="absolute right-2 top-2 bottom-2 flex flex-col justify-center opacity-0 group-hover/line:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => optimizeLine(i, lineIdx)}
+                        disabled={isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx}
+                        className="p-2 bg-indigo-600 shadow-xl shadow-indigo-500/30 dark:shadow-none border border-indigo-400 rounded-xl text-white hover:scale-110 transition-all disabled:opacity-50 z-30"
+                        title="Boost Impact with AI"
+                      >
+                        {isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 fill-white" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button 
@@ -933,35 +1174,62 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
             </button>
           </div>
           
-          {atsAnalysis ? (
-            <div className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="relative w-20 h-20 flex items-center justify-center">
-                  <svg className="absolute inset-0 w-full h-full -rotate-90">
-                    <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/10" />
-                    <motion.circle 
-                      cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" 
-                      strokeDasharray={`${atsAnalysis.score * 2.26} 226`}
-                      className="text-indigo-500"
-                    />
-                  </svg>
-                  <span className="text-2xl font-black">{atsAnalysis.score}</span>
-                </div>
-                <div>
-                  <p className="text-lg font-black tracking-tight">High Matching Probability</p>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Optimized for Enterprise ATS</p>
-                </div>
-              </div>
-              <div className="space-y-3 pt-4 border-t border-white/10">
-                {atsAnalysis.recommendations.map((rec: string, i: number) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5" />
-                    <p className="text-xs font-medium text-gray-300 leading-relaxed">{rec}</p>
-                  </div>
-                ))}
+      {atsAnalysis ? (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-10">
+            <div className="relative w-32 h-32 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+                <motion.circle 
+                  cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                  strokeDasharray={`${atsAnalysis.score * 3.64} 364`}
+                  strokeLinecap="round"
+                  initial={{ strokeDasharray: "0 364" }}
+                  animate={{ strokeDasharray: `${atsAnalysis.score * 3.64} 364` }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className={cn(
+                    atsAnalysis.score >= 80 ? "text-green-500" :
+                    atsAnalysis.score >= 60 ? "text-indigo-500" : "text-amber-500"
+                  )}
+                />
+              </svg>
+              <div className="flex flex-col items-center">
+                <span className="text-4xl font-black">{atsAnalysis.score}</span>
+                <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-400">Score</span>
               </div>
             </div>
-          ) : (
+            <div className="flex-1 text-center md:text-left space-y-2">
+              <p className="text-xl font-black tracking-tight leading-none">
+                {atsAnalysis.score >= 80 ? "Elite Architecture" : 
+                 atsAnalysis.score >= 60 ? "Strong Baseline" : "Needs Structural Prep"}
+              </p>
+              <p className="text-xs text-indigo-200/50 font-bold uppercase tracking-widest leading-relaxed">
+                Optimized for enterprise-grade <br className="hidden md:block" /> applicant tracking systems.
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-4 pt-6 border-t border-white/10">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Architectural Fixes</h4>
+            <div className="grid gap-3">
+              {atsAnalysis.recommendations.map((rec: string, i: number) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-start gap-3 group hover:bg-white/10 hover:border-white/10 transition-all"
+                >
+                  <div className="w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                    <CheckCircle className="w-3 h-3" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-300 leading-relaxed">{rec}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
             <div className="py-8 text-center border-2 border-dashed border-white/10 rounded-3xl">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Click analyze to see your score</p>
             </div>
@@ -1116,26 +1384,43 @@ function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) =>
 
 function Input({ label, value, onChange, small = false, icon = null }: any) {
   const [localValue, setLocalValue] = useState(value || '');
+  const [isFocused, setIsFocused] = useState(false);
   
   useEffect(() => {
     setLocalValue(value || '');
   }, [value]);
 
   return (
-    <div className="space-y-1.5 flex-1">
-      <label className="block text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest ml-1">{label}</label>
+    <div className="space-y-2 flex-1">
+      <label className={cn(
+        "block text-[10px] font-black uppercase tracking-widest ml-1 transition-colors",
+        isFocused ? "text-indigo-600" : "text-[var(--text-tertiary)]"
+      )}>
+        {label}
+      </label>
       <div className="relative group">
-        {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] group-focus-within:text-indigo-600 transition-colors">{React.cloneElement(icon, { size: 14 })}</div>}
+        {icon && (
+          <div className={cn(
+            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
+            isFocused ? "text-indigo-600" : "text-[var(--text-tertiary)]"
+          )}>
+            {React.cloneElement(icon, { size: 14 })}
+          </div>
+        )}
         <input 
           type="text" 
           value={localValue} 
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           onChange={(e) => {
             setLocalValue(e.target.value);
             onChange(e.target.value);
           }}
           className={cn(
-            "w-full bg-[var(--bg-secondary)] border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500/10 text-[var(--text-primary)] transition-all",
-            small ? "py-3 pl-4 pr-4" : "py-4 pr-6",
+            "w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl text-sm font-bold transition-all outline-none",
+            "focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5",
+            "text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]/30",
+            small ? "py-3 pl-4 pr-4" : "py-4 pr-6 font-black tracking-tight",
             icon && "pl-11"
           )}
         />
