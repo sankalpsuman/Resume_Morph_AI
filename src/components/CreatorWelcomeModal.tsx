@@ -14,6 +14,7 @@ export default function CreatorWelcomeModal() {
   
   const welcomeMessage = "Hi, I'm Sankalp Suman, creator of this platform.";
   const congratsMessage = "Boom! That's your first professional Morph. Welcome to the elite tier.";
+  const [congratsData, setCongratsData] = useState<{ title: string; content: string; points: string[] } | null>(null);
   
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem('morph_creator_welcome_seen');
@@ -29,30 +30,66 @@ export default function CreatorWelcomeModal() {
   useEffect(() => {
     const handleOpenAbout = () => {
       setModalType('welcome');
+      setCongratsData(null);
       setIsOpen(true);
     };
 
-    const handleMorphSuccess = () => {
-      const hasSeenCongrats = localStorage.getItem('morph_congrats_seen');
+    const handleMorphSuccess = (e?: any) => {
+      const featureId = e?.detail?.feature || 'morph';
+      const storageKey = `morph_congrats_seen_${featureId}`;
+      const hasSeenCongrats = localStorage.getItem(storageKey);
+      
       if (!hasSeenCongrats) {
+        const featureConfig: Record<string, any> = {
+          morph: {
+            title: "Morph Engine Success",
+            content: "You've just cloned your first elite layout. Your visual identity is now structurally superior.",
+            points: ["AI Precision", "Visual Cloning", "Structural Mastery"]
+          },
+          portfolio: {
+            title: "Portfolio Success",
+            content: "Your digital storefront is live. You're no longer just applying; you're attracting.",
+            points: ["Responsive Design", "SEO Ready", "Modern Stack"]
+          },
+          coverletter: {
+            title: "Cover Letter Mastery",
+            content: "That's a high-impact narrative. You've just replaced generic intro text with a calculated pitch.",
+            points: ["Psychological Triggers", "ATS Proof", "Tailored Strategy"]
+          },
+          coach: {
+            title: "AI Analysis Complete",
+            content: "Your career roadmap is optimized. Data-driven strategy always beats guessing.",
+            points: ["Skill Mapping", "Gap Analysis", "Market Fit"]
+          },
+          tracker: {
+            title: "System Online",
+            content: "Your first application is tracked. The difference between a job hunter and a career engineer is the system they use.",
+            points: ["Application Funnel", "Interview Prep", "Status Mastery"]
+          }
+        };
+
+        const config = featureConfig[featureId] || featureConfig.morph;
+        setCongratsData(config);
         setModalType('congrats');
         setIsOpen(true);
-        localStorage.setItem('morph_congrats_seen', 'true');
+        localStorage.setItem(storageKey, 'true');
       }
     };
 
     window.addEventListener('open-creator-about', handleOpenAbout);
     window.addEventListener('morph-success', handleMorphSuccess);
+    window.addEventListener('feature-success', handleMorphSuccess);
     return () => {
       window.removeEventListener('open-creator-about', handleOpenAbout);
       window.removeEventListener('morph-success', handleMorphSuccess);
+      window.removeEventListener('feature-success', handleMorphSuccess);
     };
   }, []);
 
   useEffect(() => {
     if (isOpen) {
       let index = 0;
-      const message = modalType === 'welcome' ? welcomeMessage : congratsMessage;
+      const message = modalType === 'welcome' ? welcomeMessage : (congratsData?.content || congratsMessage);
       setDisplayText('');
       
       const timer = setInterval(() => {
@@ -63,7 +100,7 @@ export default function CreatorWelcomeModal() {
       
       return () => clearInterval(timer);
     }
-  }, [isOpen, modalType]);
+  }, [isOpen, modalType, congratsData]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -83,10 +120,10 @@ export default function CreatorWelcomeModal() {
 
   const congratsSteps = [
     {
-      title: "Trust First",
+      title: congratsData?.title || "Trust First",
       icon: <Heart className="w-6 h-6 text-pink-500" />,
-      content: "Thank you for trusting the Morph AI Engine. You've just taken the first step toward total professional dominance.",
-      points: ["AI Precision", "Visual Cloning", "Structural Mastery"]
+      content: congratsData?.content || "Thank you for trusting the Morph AI Engine. You've just taken the first step toward total professional dominance.",
+      points: congratsData?.points || ["AI Precision", "Visual Cloning", "Structural Mastery"]
     }
   ];
 
@@ -131,7 +168,7 @@ export default function CreatorWelcomeModal() {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70 mb-8">Architect & Creator</p>
               
               <div className="grid grid-cols-2 gap-3 w-full">
-                <a href="https://linkedin.com/in/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
+                <a href="https://www.linkedin.com/in/sankalpsuman/" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
                   <Linkedin className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
                 <a href="https://github.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
@@ -147,7 +184,7 @@ export default function CreatorWelcomeModal() {
               
               <div className="mt-auto pt-8 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-300">
                 <Globe className="w-3 h-3" />
-                Sankalp Smuan
+                Sankalp Suman
               </div>
             </div>
 
@@ -209,7 +246,7 @@ export default function CreatorWelcomeModal() {
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
                   <a 
-                    href="https://linkedin.com/in/sankalpsmn"
+                    href="https://www.linkedin.com/in/sankalpsuman/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full sm:w-auto px-8 py-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] hover:bg-[var(--border-color)] text-[var(--text-primary)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all text-center"

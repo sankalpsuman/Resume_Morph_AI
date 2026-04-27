@@ -86,6 +86,10 @@ export default function ApplyTracker() {
         date: new Date().toISOString()
       });
       setShowAddModal(false);
+      
+      // Trigger Congrats Modal
+      window.dispatchEvent(new CustomEvent('feature-success', { detail: { feature: 'tracker' } })); 
+      
       setNewApp({
         company: '',
         role: '',

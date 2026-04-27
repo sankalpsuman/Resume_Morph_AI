@@ -103,6 +103,9 @@ export default function ResumeAIAssistant() {
           
           if (extractionResponse && extractionResponse.text) {
             extractedText = extractionResponse.text;
+            
+            // Trigger Congrats Modal
+            window.dispatchEvent(new CustomEvent('feature-success', { detail: { feature: 'coach' } }));
           }
         }
       }

@@ -75,7 +75,7 @@ export default function Contact() {
                   </p>
                 </div>
                 <a 
-                  href="https://in.linkedin.com/in/sankalpsuman" 
+                  href="https://www.linkedin.com/in/sankalpsuman/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-6 md:px-10 py-4 md:py-5 bg-indigo-600 hover:bg-indigo-700 rounded-[20px] md:rounded-[28px] text-white text-[10px] md:text-sm font-black uppercase tracking-widest transition-all shadow-2xl shadow-indigo-100 dark:shadow-none"

@@ -189,7 +189,7 @@ export default function Resources({ onTabChange }: ResourcesProps) {
                 <h3 className="text-3xl md:text-6xl font-black text-white tracking-tighter leading-[1.1]">Join the Beta <br className="hidden md:block" />Community.</h3>
                 <p className="text-gray-400 text-sm md:text-lg font-medium leading-relaxed max-w-md mx-auto md:mx-0">Get exclusive industry news, success stories, and AI optimization tips directly from our community.</p>
                 <a 
-                  href="https://in.linkedin.com/in/sankalpsuman" 
+                  href="https://www.linkedin.com/in/sankalpsuman/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-4 px-6 md:px-8 py-4 md:py-5 bg-white text-gray-950 rounded-2xl md:rounded-[28px] text-[10px] md:text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-900/40"

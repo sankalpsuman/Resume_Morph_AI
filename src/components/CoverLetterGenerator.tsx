@@ -19,6 +19,10 @@ export default function CoverLetterGenerator({ resumeData }: { resumeData: any }
       const resumeText = JSON.stringify(resumeData);
       const letter = await generateCoverLetter(resumeText, jobTitle, company, jobDescription);
       setGeneratedLetter(letter);
+      
+      // Trigger Congrats Modal
+      window.dispatchEvent(new CustomEvent('feature-success', { detail: { feature: 'coverletter' } }));
+      
     } catch (e) {
       console.error(e);
     } finally {

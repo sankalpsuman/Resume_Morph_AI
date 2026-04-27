@@ -217,7 +217,7 @@ export default function About() {
                 </div>
 
                 <div className="flex flex-wrap gap-3 md:gap-4">
-                  <a href="https://in.linkedin.com/in/sankalpsuman" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 md:px-6 py-2.5 md:py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl md:rounded-2xl text-white text-[10px] md:text-sm font-bold transition-all">
+                  <a href="https://www.linkedin.com/in/sankalpsuman/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 md:px-6 py-2.5 md:py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl md:rounded-2xl text-white text-[10px] md:text-sm font-bold transition-all">
                     <Linkedin className="w-4 h-4" />
                     LinkedIn
                   </a>

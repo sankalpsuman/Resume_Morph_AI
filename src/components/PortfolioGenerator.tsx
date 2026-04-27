@@ -528,6 +528,9 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
       updateStepStatus('enhance', 'completed');
       updateStepStatus('generate', 'completed');
       
+      // Trigger Congrats Modal
+      window.dispatchEvent(new CustomEvent('feature-success', { detail: { feature: 'portfolio' } }));
+      
     } catch (err: any) {
       setError(err.message || 'An error occurred during generation');
       setSteps(prev => prev.map(s => s.status === 'loading' ? { ...s, status: 'error' } : s));
