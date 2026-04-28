@@ -84,10 +84,13 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   }, [userData?.showResetSurprise]);
 
   useEffect(() => {
-    if (user && showLoginPrompt) {
-      setShowLoginPrompt(false);
-      setIsLoginPendingForDownload(false);
-    }
+    const checkAuthAndDismiss = () => {
+      if ((user || auth.currentUser) && showLoginPrompt) {
+        setShowLoginPrompt(false);
+        setIsLoginPendingForDownload(false);
+      }
+    };
+    checkAuthAndDismiss();
   }, [user, showLoginPrompt]);
 
   const dismissResetSurprise = async () => {
@@ -161,6 +164,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             if (contentType && contentType.includes("application/json")) {
               const data = await response.json();
               text = data.text;
+            } else {
+              console.warn("Server preferred HTML/Text over JSON. Likely a session check.");
             }
           }
         } catch (fetchErr) {
@@ -220,6 +225,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               if (contentType && contentType.includes("application/json")) {
                 const data = await response.json();
                 text = data.text;
+              } else {
+                console.warn("Server returned non-JSON response. Falling back.");
               }
             }
           } catch (fetchErr) {

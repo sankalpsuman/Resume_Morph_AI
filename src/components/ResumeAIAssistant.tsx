@@ -56,10 +56,15 @@ export default function ResumeAIAssistant() {
             const data = await response.json();
             extractedText = data.text || "";
           } else {
-            console.error("Server returned non-JSON response:", await response.text());
+            const textContent = await response.text();
+            if (textContent.includes("<!doctype html>") && textContent.includes("Cookie check")) {
+              console.warn("Session check triggered by platform. Browser is likely blocking third-party cookies. Falling back to AI extraction.");
+            } else {
+              console.warn("Server returned non-JSON response. Falling back to AI extraction.");
+            }
           }
         } catch (jsonErr) {
-          console.error("Failed to parse JSON from server:", jsonErr);
+          console.warn("Failed to parse JSON from server. Falling back to AI extraction.");
         }
       }
 

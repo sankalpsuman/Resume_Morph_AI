@@ -6,10 +6,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
 import mammoth from "mammoth";
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+import { PDFParse } from "pdf-parse";
 
 dotenv.config();
 
@@ -49,8 +46,11 @@ async function startServer() {
       // Case 1: PDF
       if (file.mimetype === "application/pdf" || fileName.endsWith('.pdf')) {
         try {
-          const data = await pdf(file.buffer);
-          extractedText = data.text;
+          const parser = new PDFParse({ data: file.buffer });
+          const result = await parser.getText();
+          extractedText = result.text;
+          // Ensure we cleanup
+          await parser.destroy();
         } catch (pdfError) {
           console.error("PDF Parsing Error:", pdfError);
         }
