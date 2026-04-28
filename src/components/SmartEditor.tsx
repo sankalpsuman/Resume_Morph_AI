@@ -280,6 +280,23 @@ export default function SmartEditor() {
     }) : null);
   };
 
+  const updateProject = (index: number, field: string, value: any) => {
+    if (!resumeData) return;
+    setResumeData(prev => {
+      if (!prev) return null;
+      const newProj = [...(prev.projects || [])];
+      newProj[index] = { ...newProj[index], [field]: value };
+      return { ...prev, projects: newProj };
+    });
+  };
+
+  const addProject = () => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      projects: [...(prev.projects || []), { name: '', description: '', tech: '', link: '' }]
+    }) : null);
+  };
+
   const updateExperience = (index: number, field: string, value: any) => {
     if (!resumeData) return;
     setResumeData(prev => {
@@ -316,6 +333,27 @@ export default function SmartEditor() {
     setResumeData(prev => prev ? ({
       ...prev,
       education: [...(prev.education || []), { school: '', degree: '', dates: '' }]
+    }) : null);
+  };
+
+  const removeExperience = (index: number) => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      experience: prev.experience.filter((_, i) => i !== index)
+    }) : null);
+  };
+
+  const removeEducation = (index: number) => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }) : null);
+  };
+
+  const removeProject = (index: number) => {
+    setResumeData(prev => prev ? ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
     }) : null);
   };
 
@@ -571,12 +609,21 @@ export default function SmartEditor() {
                     data={resumeData?.experience} 
                     update={updateExperience}
                     add={addExperience}
+                    remove={removeExperience}
+                  />
+
+                  <ProjectsSection 
+                    data={resumeData?.projects}
+                    update={updateProject}
+                    add={addProject}
+                    remove={removeProject}
                   />
 
                   <EducationSection 
                     data={resumeData?.education} 
                     update={updateEducation}
                     add={addEducation}
+                    remove={removeEducation}
                   />
 
                   <SkillsSection 
@@ -792,7 +839,7 @@ const IdentitySection = memo(({ data, update }: any) => (
   </section>
 ));
 
-const EducationSection = memo(({ data, update, add }: any) => (
+const EducationSection = memo(({ data, update, add, remove }: any) => (
   <section className="space-y-6">
     <div className="flex items-center justify-between">
       <div className="space-y-1">
@@ -815,7 +862,7 @@ const EducationSection = memo(({ data, update, add }: any) => (
                <Input label="School / University" value={edu.school} onChange={(v: any) => update(i, 'school', v)} small />
                <Input label="Dates" value={edu.dates} onChange={(v: any) => update(i, 'dates', v)} small />
              </div>
-             <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
+             <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
                <Trash2 className="w-5 h-5" />
              </button>
            </div>
@@ -865,14 +912,16 @@ const SkillsSection = memo(({ data, update }: any) => {
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {data?.map((skill: string, i: number) => (
+          {data?.map((skill: any, i: number) => (
             <motion.div 
               key={i}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               className="group flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl hover:border-indigo-200 transition-all"
             >
-              <span className="text-xs font-black uppercase tracking-widest text-[var(--text-primary)]">{skill}</span>
+              <span className="text-xs font-black uppercase tracking-widest text-[var(--text-primary)]">
+                {typeof skill === 'string' ? skill : (skill?.category ? `${skill.category}: ${skill.items?.join(', ')}` : JSON.stringify(skill))}
+              </span>
               <button onClick={() => handleRemove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -923,7 +972,43 @@ const SummarySection = memo(({ value, onChange }: any) => {
   );
 });
 
-const ExperienceSection = memo(({ data, update, add }: any) => {
+const ProjectsSection = memo(({ data, update, add, remove }: any) => {
+  return (
+    <section className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Personal Projects</h2>
+          <p className="text-sm font-medium text-[var(--text-tertiary)]">Showcase your side projects and technical contributions.</p>
+        </div>
+        <button 
+          onClick={add}
+          className="p-3 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-black/5"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="grid gap-6">
+        {data?.map((project: any, i: number) => (
+          <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
+            <div className="flex justify-between items-start gap-4">
+               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <Input label="Project Name" value={project.name} onChange={(v: any) => update(i, 'name', v)} small />
+                 <Input label="Tech Stack" value={project.tech} onChange={(v: any) => update(i, 'tech', v)} placeholder="React, Node.js, etc." small />
+               </div>
+               <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
+                 <Trash2 className="w-5 h-5" />
+               </button>
+            </div>
+            <Input label="Description" value={project.description} onChange={(v: any) => update(i, 'description', v)} small />
+            <Input label="Project Link (Optional)" value={project.link} onChange={(v: any) => update(i, 'link', v)} small />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+});
+
+const ExperienceSection = memo(({ data, update, add, remove }: any) => {
   const [isOptimizing, setIsOptimizing] = useState<{index: number, lineIndex: number} | null>(null);
 
   const optimizeLine = async (index: number, lineIndex: number) => {
@@ -967,7 +1052,7 @@ const ExperienceSection = memo(({ data, update, add }: any) => {
                  <Input label="Company" value={exp.company} onChange={(v: any) => update(i, 'company', v)} small />
                  <Input label="Dates" value={exp.dates} onChange={(v: any) => update(i, 'dates', v)} small />
                </div>
-               <button className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
+               <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
                  <Trash2 className="w-5 h-5" />
                </button>
             </div>

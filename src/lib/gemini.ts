@@ -623,7 +623,7 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
       "experience": [ { "company": "...", "role": "...", "dates": "...", "location": "...", "bullets": ["...", "..."] } ],
       "projects": [ { "name": "...", "description": "...", "tech": "...", "link": "..." } ],
       "education": [ { "school": "...", "degree": "...", "year": "..." } ],
-      "skills": [ { "category": "...", "items": ["...", "..."] } ],
+      "skills": ["...", "..."],
       "certifications": ["...", "..."],
       "customSections": [ { "title": "...", "content": "..." } ]
     }`;
@@ -697,16 +697,9 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
                 required: ["school", "degree"]
               }
             },
-            skills: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  category: { type: Type.STRING },
-                  items: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["category", "items"]
-              }
+            skills: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING } 
             },
             certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
             customSections: {
