@@ -134,31 +134,31 @@ export default function AccountModal({
         "relative w-full bg-[var(--bg-primary)] flex flex-col",
         isTabMode 
           ? "w-full pb-32 rounded-[32px] md:rounded-[40px] shadow-sm border border-[var(--border-color)] overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
-          : "max-w-3xl rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-[var(--border-color)] max-h-[85vh]"
+          : "w-full sm:max-w-3xl sm:rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-[var(--border-color)] max-h-screen sm:max-h-[85vh] my-auto"
       )}>
         {/* Header - Only show in modal mode */}
         {!isTabMode && (
-          <div className="p-6 md:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)]">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none">
-                <User className="text-white w-7 h-7" />
+          <div className="p-4 sm:p-6 md:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] sticky top-0 z-10">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-indigo-600 rounded-xl sm:rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none shrink-0">
+                <User className="text-white w-5 h-5 sm:w-7 sm:h-7" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Account Profile</h2>
-                <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-[0.2em]">Manage your identity & history</p>
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-none">Account Profile</h2>
+                <p className="text-[8px] sm:text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-[0.2em] mt-1">Manage your identity & history</p>
               </div>
             </div>
             <button 
               onClick={onClose}
-              className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all active:scale-90"
+              className="p-2 sm:p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-all active:scale-90"
             >
-              <X className="w-6 h-6 text-[var(--text-tertiary)]" />
+              <X className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--text-tertiary)]" />
             </button>
           </div>
         )}
 
         <div className={cn(
-          "flex-grow p-6 md:p-12 space-y-8 md:space-y-12",
+          "flex-grow p-4 sm:p-6 md:p-12 space-y-6 sm:space-y-8 md:space-y-12",
           isTabMode ? "w-full" : "overflow-y-auto"
         )}>
           {/* Profile Section */}
@@ -443,49 +443,42 @@ export default function AccountModal({
       {/* Comparison Modal Overlay */}
       <AnimatePresence>
         {(isComparing || diffData) && (
-          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 md:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => { if (!isComparing) { setDiffData(null); setComparingResume(null); } }}
-              className="absolute inset-0 bg-gray-900/80 backdrop-blur-xl"
-            />
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto bg-gray-900/80 backdrop-blur-xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 40 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 40 }}
-              className="relative w-full max-w-2xl bg-[var(--bg-primary)] rounded-[48px] shadow-2xl border border-[var(--border-color)] overflow-hidden flex flex-col max-h-[85vh]"
+              className="relative w-full max-w-2xl bg-[var(--bg-primary)] sm:rounded-[48px] shadow-2xl border border-[var(--border-color)] overflow-hidden flex flex-col max-h-screen sm:max-h-[85vh] my-auto"
             >
               {/* Header */}
-              <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)] sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 dark:shadow-none">
+              <div className="p-4 sm:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-primary)] sticky top-0 z-10">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 rounded-[1rem] sm:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 dark:shadow-none shrink-0">
                     {isComparing ? (
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-spin" />
                     ) : (
-                      <Diff className="w-6 h-6 text-white" />
+                      <Diff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     )}
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tight leading-none">
-                      {isComparing ? 'Analyzing Differences...' : 'Morph Analysis'}
+                    <h3 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-none">
+                      {isComparing ? 'Analyzing...' : 'Morph Analysis'}
                     </h3>
-                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-2">
-                       Textual evolution and AI improvements
+                    <p className="text-[8px] sm:text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-1 sm:mt-2">
+                       AI textual evolution evolution
                     </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => { setDiffData(null); setComparingResume(null); }}
-                  className="p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-colors"
+                  className="p-2 sm:p-3 hover:bg-[var(--bg-secondary)] rounded-2xl transition-colors"
                 >
-                  <X className="w-6 h-6 text-[var(--text-tertiary)]" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--text-tertiary)]" />
                 </button>
               </div>
 
               {/* Body */}
-              <div className="p-8 overflow-y-auto prose dark:prose-invert max-w-none">
+              <div className="p-4 sm:p-8 overflow-y-auto prose dark:prose-invert max-w-none flex-grow">
                 {isComparing ? (
                   <div className="py-20 text-center space-y-6">
                     <div className="flex justify-center gap-2">
@@ -602,19 +595,12 @@ export default function AccountModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-          />
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto bg-black/60 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="flex flex-col w-full max-w-3xl"
+            className="flex flex-col w-full max-w-3xl my-auto"
           >
             {content}
           </motion.div>

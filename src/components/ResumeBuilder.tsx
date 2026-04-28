@@ -3,7 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, Printer, 
-  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin
+  Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
+  Sparkles, Rocket, Code, Settings, LogIn
 } from 'lucide-react';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import mammoth from 'mammoth';
@@ -25,9 +26,19 @@ interface FileData {
 interface ResumeBuilderProps {
   userData: any;
   onUpgrade: () => void;
+  user?: any;
+  onLogin?: () => void;
 }
 
-export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProps) {
+export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProps) {
+  const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
+    return localStorage.getItem('hasUsedFreeMorph') === 'true';
+  });
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [isGuestBooting, setIsGuestBooting] = useState(false);
+  const [guestLoadingStep, setGuestLoadingStep] = useState(0);
+  const [isSyncingModal, setIsSyncingModal] = useState(false);
+  const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
@@ -52,13 +63,12 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const [isMatching, setIsMatching] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
 
-  // New state for limits and feedback
+  // Consolidated states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
-  // New state for Smart Save Flow
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +82,13 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       setShowSurprise(true);
     }
   }, [userData?.showResetSurprise]);
+
+  useEffect(() => {
+    if (user && showLoginPrompt) {
+      setShowLoginPrompt(false);
+      setIsLoginPendingForDownload(false);
+    }
+  }, [user, showLoginPrompt]);
 
   const dismissResetSurprise = async () => {
     if (!auth.currentUser) return;
@@ -103,13 +120,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const onDropReference = async (acceptedFiles: File[]) => {
-    if (userData) {
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('morph')) return;
 
     const file = acceptedFiles[0];
     if (!file) return;
@@ -169,13 +180,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const onDropContent = async (acceptedFiles: File[]) => {
-    if (userData) {
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('morph')) return;
 
     const file = acceptedFiles[0];
     if (!file) return;
@@ -234,6 +239,10 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const saveResumeToHistory = async (html: string, name: string, replaceId?: string) => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
     if (!auth.currentUser || !userData) return;
     setIsSaving(true);
     
@@ -242,7 +251,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     
     try {
       const userRef = doc(db, 'users', auth.currentUser.uid);
-      let currentHistory = userData.resumeHistory || [];
+      let currentHistory = userData?.resumeHistory || [];
       
       const resumeId = replaceId || crypto.randomUUID();
       const storagePath = `resumes/${auth.currentUser.uid}/${resumeId}.html`;
@@ -285,6 +294,82 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
     }
   };
 
+  // --- Helper Functions ---
+
+  const checkUsageLimits = (actionType: 'morph' | 'check') => {
+    if (!userData) return true;
+
+    if (actionType === 'morph' && userData.morphCount === 1 && !userData.hasReviewed) {
+      setShowFeedbackModal(true);
+      return false;
+    }
+
+    const limit = userData?.planLimit || 2;
+    if (limit !== -1 && usedMorphs >= limit) {
+      onUpgrade();
+      return false;
+    }
+
+    return true;
+  };
+
+  const deductMorphCredit = async () => {
+    if (!auth.currentUser || !userData) return;
+    try {
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      const isPremium = userData?.plan && userData?.plan !== 'free';
+      await updateDoc(userRef, {
+        usedMorphs: increment(1),
+        freeMorphsUsed: !isPremium ? increment(1) : (userData?.freeMorphsUsed || 0),
+        premiumMorphsUsed: isPremium ? increment(1) : (userData?.premiumMorphsUsed || 0),
+        remainingMorphs: userData?.planLimit === -1 ? 999 : increment(-1),
+        morphCount: increment(1)
+      });
+    } catch (err) {
+      console.error("Failed to deduct credit:", err);
+    }
+  };
+
+  const handleAiError = (err: any, fallback: string) => {
+    console.error(err);
+    if (err.message === "API_KEY_MISSING") {
+      return "AI configuration is missing. Please contact support.";
+    }
+    if (err.message === "QUOTA_EXCEEDED") {
+      return "Daily AI limit reached. Please try again later.";
+    }
+    return fallback;
+  };
+
+  const applyGenerationResult = (result: any) => {
+    setGeneratedHtml(result.html);
+    setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
+    setAtsScore(result.atsScore);
+    setAtsFeedback(result.atsFeedback);
+    setMatchScore(result.matchScore);
+    setMissingKeywords(result.missingKeywords);
+    setLayoutAnalysis(result.layoutAnalysis);
+
+    if (!contentFile?.text && result.extractedText) {
+      setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
+    }
+
+    setPendingResume({ html: result.html, name: result.name });
+    setShowSaveModal(true);
+  };
+
+  const runGuestBooting = async () => {
+    if (user || hasUsedFreeMorph) return;
+    
+    setIsGuestBooting(true);
+    const messages = ["Initializing Morph Core...", "Injecting Neural Processing...", "Calibrating Style Engine v2.0...", "Establishing Guest Workspace...", "Ready to Morph."];
+    for (let i = 0; i < messages.length; i++) {
+      setGuestLoadingStep(i);
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsGuestBooting(false);
+  };
   const handleFeedbackSubmit = async () => {
     if (!auth.currentUser || rating === 0) return;
     
@@ -318,26 +403,25 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
   const handleGenerate = async () => {
     if (!referenceFile || !contentFile) return;
-    
-    // Check limits
-    if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
+
+    if (!user && hasUsedFreeMorph) {
+      setShowLoginPrompt(true);
+      return;
     }
+
+    await runGuestBooting();
+    if (!user && hasUsedFreeMorph) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    
+    if (!checkUsageLimits('morph')) return;
 
     setIsGenerating(true);
     setGenerationStatus('Cloning layout...');
     setError(null);
     
     try {
-      // Unified call: Merges layout analysis, text extraction, JD matching, and resume generation
       const result = await generateResume(
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
@@ -349,45 +433,21 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       );
 
       setGenerationStatus('Optimizing content...');
-      setGeneratedHtml(result.html);
-      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
-      setAtsScore(result.atsScore);
-      setAtsFeedback(result.atsFeedback);
-      setMatchScore(result.matchScore);
-      setMissingKeywords(result.missingKeywords);
-      setLayoutAnalysis(result.layoutAnalysis);
-      
-      // If content text was extracted by AI, update it locally to avoid re-extraction
-      if (!contentFile.text && result.extractedText) {
-        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
-      }
+      applyGenerationResult(result);
 
-      setGenerationStatus('Finalizing...');
-      // Trigger Smart Save Flow
-      setPendingResume({ html: result.html, name: result.name });
-      setShowSaveModal(true);
-
-      // Deduct morph
-      if (auth.currentUser) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const isPremium = userData.plan && userData.plan !== 'free';
-        await updateDoc(userRef, {
-          usedMorphs: increment(1),
-          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
-          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
-          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
-          morphCount: increment(1) // Keep for level calculation
-        });
+      if (!user) {
+        setHasUsedFreeMorph(true);
+        localStorage.setItem('hasUsedFreeMorph', 'true');
+        setTimeout(() => {
+          setShowLoginPrompt(true);
+          setIsSyncingModal(true);
+          setTimeout(() => setIsSyncingModal(false), 2000);
+        }, 1500);
+      } else {
+        await deductMorphCredit();
       }
     } catch (err: any) {
-      console.error(err);
-      if (err.message === "API_KEY_MISSING") {
-        setError("AI configuration is missing. Please contact support.");
-      } else if (err.message === "QUOTA_EXCEEDED") {
-        setError("Daily AI limit reached. Please try again later or use a different API key.");
-      } else {
-        setError("Failed to generate resume. Please try again.");
-      }
+      setError(handleAiError(err, "Failed to generate resume. Please try again."));
     } finally {
       setIsAnalyzing(false);
       setIsGenerating(false);
@@ -427,19 +487,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
   const handleOptimize = async () => {
     if (!referenceFile || !contentFile) return;
-    
-    // Check limits
-    if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('morph')) return;
 
     setIsGenerating(true);
     setGenerationStatus('Tailoring resume...');
@@ -455,45 +503,10 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { lengthMode }
       );
       setGenerationStatus('Perfecting layout...');
-      setGeneratedHtml(result.html);
-      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
-      setAtsScore(result.atsScore);
-      setAtsFeedback(result.atsFeedback);
-      setMatchScore(result.matchScore);
-      setMissingKeywords(result.missingKeywords);
-      setLayoutAnalysis(result.layoutAnalysis);
-
-      // Update content text if extracted
-      if (!contentFile.text && result.extractedText) {
-        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
-      }
-
-      setGenerationStatus('Finalizing...');
-      // Trigger Smart Save Flow
-      setPendingResume({ html: result.html, name: result.name });
-      setShowSaveModal(true);
-
-      // Deduct morph
-      if (auth.currentUser) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const isPremium = userData.plan && userData.plan !== 'free';
-        await updateDoc(userRef, {
-          usedMorphs: increment(1),
-          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
-          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
-          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
-          morphCount: increment(1) // Keep for level calculation
-        });
-      }
+      applyGenerationResult(result);
+      await deductMorphCredit();
     } catch (err: any) {
-      console.error(err);
-      if (err.message === "API_KEY_MISSING") {
-        setError("AI configuration is missing. Please contact support.");
-      } else if (err.message === "QUOTA_EXCEEDED") {
-        setError("Daily AI limit reached. Please try again later.");
-      } else {
-        setError("Failed to re-optimize resume. Please try again.");
-      }
+      setError(handleAiError(err, "Failed to re-optimize resume. Please try again."));
     } finally {
       setIsGenerating(false);
       setGenerationStatus('');
@@ -501,13 +514,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const handleCheckMatch = async () => {
-    if (userData) {
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('check')) return;
 
     if (!matchDescription) {
       setError("Please paste a job description first.");
@@ -526,12 +533,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       setMatchScore(result.score);
       setMissingKeywords(result.missing);
     } catch (err: any) {
-      console.error(err);
-      if (err.message === "QUOTA_EXCEEDED") {
-        setError("Daily AI limit reached. Please try again later.");
-      } else {
-        setError("Failed to analyze match. Please try again.");
-      }
+      setError(handleAiError(err, "Failed to analyze match. Please try again."));
     } finally {
       setIsMatching(false);
       setGenerationStatus('');
@@ -540,14 +542,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
   const handleMaximizeAts = async () => {
     if (!layoutAnalysis || !contentFile?.text) return;
-    
-    if (userData) {
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('morph')) return;
 
     setIsPlanning(true);
     setGenerationStatus('Developing ATS strategy...');
@@ -571,19 +566,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
 
   const confirmMaximizeAts = async () => {
     if (!referenceFile || !contentFile) return;
-    
-    // Check limits
-    if (userData) {
-      if (userData.morphCount === 1 && !userData.hasReviewed) {
-        setShowFeedbackModal(true);
-        return;
-      }
-      const limit = userData.planLimit || 2;
-      if (limit !== -1 && usedMorphs >= limit) {
-        onUpgrade();
-        return;
-      }
-    }
+    if (!checkUsageLimits('morph')) return;
 
     setShowPlanModal(false);
     setIsGenerating(true);
@@ -600,45 +583,10 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
         { lengthMode }
       );
       setGenerationStatus('Applying keywords...');
-      setGeneratedHtml(result.html);
-      setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
-      setAtsScore(result.atsScore);
-      setAtsFeedback(result.atsFeedback);
-      setMatchScore(result.matchScore);
-      setMissingKeywords(result.missingKeywords);
-      setLayoutAnalysis(result.layoutAnalysis);
-
-      // Update content text if extracted
-      if (!contentFile.text && result.extractedText) {
-        setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
-      }
-
-      setGenerationStatus('Finalizing...');
-      // Trigger Smart Save Flow
-      setPendingResume({ html: result.html, name: result.name });
-      setShowSaveModal(true);
-
-      // Deduct morph
-      if (auth.currentUser) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const isPremium = userData.plan && userData.plan !== 'free';
-        await updateDoc(userRef, {
-          usedMorphs: increment(1),
-          freeMorphsUsed: !isPremium ? increment(1) : (userData.freeMorphsUsed || 0),
-          premiumMorphsUsed: isPremium ? increment(1) : (userData.premiumMorphsUsed || 0),
-          remainingMorphs: userData.planLimit === -1 ? 999 : increment(-1),
-          morphCount: increment(1) // Keep for level calculation
-        });
-      }
+      applyGenerationResult(result);
+      await deductMorphCredit();
     } catch (err: any) {
-      console.error(err);
-      if (err.message === "API_KEY_MISSING") {
-        setError("AI configuration is missing. Please contact support.");
-      } else if (err.message === "QUOTA_EXCEEDED") {
-        setError("Daily AI limit reached. Please try again later.");
-      } else {
-        setError("An error occurred. Please try again.");
-      }
+      setError(handleAiError(err, "An error occurred. Please try again."));
     } finally {
       setIsGenerating(false);
       setGenerationStatus('');
@@ -691,6 +639,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const handleDownloadHTML = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
     if (!generatedHtml) return;
     const fullHtml = `
       <!DOCTYPE html>
@@ -728,6 +681,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const handleDownloadWord = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
     if (!generatedHtml) return;
     // Word can open HTML files if they have the right headers
     const fullHtml = `
@@ -769,6 +727,11 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
   };
 
   const handlePrintPDF = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
     if (iframeRef.current) {
       // Focus the iframe before printing
       iframeRef.current.contentWindow?.focus();
@@ -804,7 +767,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 shrink-0" />
                 <p className="text-sm font-black uppercase tracking-widest">
-                  Premium Revoked: {userData.revokeReason || 'Policy Violation'}
+                  Premium Revoked: {userData?.revokeReason || 'Policy Violation'}
                 </p>
               </div>
               <button 
@@ -830,7 +793,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               <div className="flex items-center gap-3">
                 <Zap className="w-5 h-5 shrink-0" />
                 <p className="text-sm font-black uppercase tracking-widest">
-                  {userData.adminMessage}
+                  {userData?.adminMessage}
                 </p>
               </div>
               <button 
@@ -1482,8 +1445,80 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                 "flex-1 p-0 bg-white relative",
                 isPreviewFull ? "h-auto" : "overflow-hidden"
               )}>
+                {/* Watermark for guests */}
+                {!user && generatedHtml && (
+                  <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none opacity-[0.05] rotate-[-15deg] select-none scale-150 overflow-hidden">
+                    <div className="flex flex-col items-center">
+                      <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
+                      <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
+                      <div className="mt-20 flex flex-col items-center">
+                        <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
+                        <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
-                  {isGenerating ? (
+                  {isGuestBooting ? (
+                    <motion.div
+                      key="guest-booting"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-[200] bg-indigo-600 flex flex-col items-center justify-center p-6 text-white"
+                    >
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
+                      
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full text-center"
+                      >
+                        <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center shadow-2xl relative overflow-hidden group">
+                          <RefreshCw className="w-10 h-10 text-white animate-spin-slow" />
+                          <motion.div 
+                            initial={{ top: '100%' }}
+                            animate={{ top: '-100%' }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                            className="absolute inset-0 bg-white/20"
+                          />
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="text-2xl font-black uppercase tracking-tighter italic">
+                            Morph Engine <br/>
+                            <span className="text-white/60 text-lg">Booting Intelligence...</span>
+                          </h3>
+                          
+                          <div className="h-1 w-48 bg-white/20 rounded-full mx-auto overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${((guestLoadingStep + 1) / 5) * 100}%` }}
+                              className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]"
+                            />
+                          </div>
+
+                          <AnimatePresence mode="wait">
+                            <motion.p
+                              key={guestLoadingStep}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="text-white/80 font-bold uppercase tracking-widest text-[8px]"
+                            >
+                              {[
+                                "Initializing Morph Core...",
+                                "Injecting Neural Processing...",
+                                "Calibrating Style Engine v2.0...",
+                                "Establishing Guest Workspace...",
+                                "Ready to Morph."
+                              ][guestLoadingStep]}
+                            </motion.p>
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  ) : isGenerating ? (
                     <motion.div 
                       key="loading"
                       initial={{ opacity: 0 }}
@@ -1559,12 +1594,28 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                                 body { padding: 1.5rem; }
                                 .resume-container { width: 800px; }
                               }
+                              .watermark {
+                                position: fixed;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%) rotate(-45deg);
+                                font-size: 120px;
+                                font-weight: 900;
+                                color: rgba(0, 0, 0, 0.05);
+                                white-space: nowrap;
+                                pointer-events: none;
+                                z-index: 1000;
+                                text-transform: uppercase;
+                                letter-spacing: 0.2em;
+                                user-select: none;
+                              }
                             </style>
                           </head>
                           <body>
                             <div class="resume-container">
                               ${generatedHtml}
                             </div>
+                            ${!user ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
                             <script>
                               function adjustScale() {
                                 const container = document.querySelector('.resume-container');
@@ -1831,53 +1882,43 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       {/* Smart Save Modal */}
       <AnimatePresence>
         {showSaveModal && pendingResume && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowSaveModal(false);
-                setPendingResume(null);
-              }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 overflow-y-auto bg-black/60 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-[var(--bg-primary)] rounded-[40px] shadow-2xl p-10 border border-[var(--border-color)] space-y-8"
+              className="relative w-full max-w-lg bg-[var(--bg-primary)] rounded-[2.5rem] shadow-2xl p-6 sm:p-10 border border-[var(--border-color)] space-y-6 sm:space-y-8 my-auto"
             >
               <div className="text-center space-y-4">
-                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-indigo-100 dark:shadow-none">
-                  <Download className="w-10 h-10 text-indigo-600" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center mx-auto shadow-lg shadow-indigo-100 dark:shadow-none">
+                  <Download className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-600" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">Save Resume?</h3>
-                  <p className="text-[var(--text-secondary)] font-medium">
-                    {userData.plan === 'premium' 
+                  <h3 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">Save Resume?</h3>
+                  <p className="text-sm sm:text-base text-[var(--text-secondary)] font-medium">
+                    {userData?.plan === 'premium' 
                       ? "You can save up to 2 morphed resumes in your history. Would you like to save this one?"
                       : "Free users can save 1 morphed resume. Would you like to save this one?"}
                   </p>
                 </div>
               </div>
 
-              {userData.resumeHistory?.length >= (userData.plan === 'premium' ? 2 : 1) ? (
+              {userData?.resumeHistory?.length >= (userData?.plan === 'premium' ? 2 : 1) ? (
                 <div className="space-y-4">
                   <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest text-center">Select a resume to replace</p>
                   <div className="grid gap-3">
-                    {userData.resumeHistory.map((resume: any) => (
+                    {userData?.resumeHistory.map((resume: any) => (
                       <button
                         key={resume.id}
                         onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name, resume.id)}
                         disabled={isSaving}
-                        className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl border border-[var(--border-color)] hover:border-indigo-200 transition-all group"
+                        className="flex items-center justify-between p-3 sm:p-4 bg-[var(--bg-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl sm:rounded-2xl border border-[var(--border-color)] hover:border-indigo-200 transition-all group text-left"
                       >
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-600" />
-                          <span className="text-sm font-bold text-[var(--text-primary)]">{resume.name}</span>
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <FileText className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-600 shrink-0" />
+                          <span className="text-sm font-bold text-[var(--text-primary)] truncate">{resume.name}</span>
                         </div>
-                        <RefreshCw className="w-4 h-4 text-[var(--border-color)] group-hover:text-indigo-400" />
+                        <RefreshCw className="w-4 h-4 text-[var(--border-color)] group-hover:text-indigo-400 shrink-0" />
                       </button>
                     ))}
                   </div>
@@ -1887,7 +1928,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   <button
                     onClick={() => saveResumeToHistory(pendingResume.html, pendingResume.name)}
                     disabled={isSaving}
-                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+                    className="w-full py-4 sm:py-5 bg-indigo-600 text-white rounded-xl sm:rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
                   >
                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                     Yes, Save it
@@ -1901,7 +1942,7 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   setPendingResume(null);
                 }}
                 disabled={isSaving}
-                className="w-full py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
+                className="w-full py-2 sm:py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
               >
                 No, Don't Save
               </button>
@@ -1913,26 +1954,19 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
       {/* LinkedIn Import Modal */}
       <AnimatePresence>
         {isImportingLinkedIn && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsImportingLinkedIn(false)}
-              className="absolute inset-0 bg-[var(--bg-primary)]/40 backdrop-blur-md"
-            />
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto bg-[var(--bg-primary)]/40 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-xl bg-[var(--bg-primary)] rounded-[48px] shadow-2xl overflow-hidden p-10 space-y-8 border border-[var(--border-color)]"
+              className="relative w-full max-w-xl bg-[var(--bg-primary)] rounded-[2rem] sm:rounded-[3rem] shadow-2xl overflow-hidden p-6 sm:p-10 space-y-6 sm:space-y-8 border border-[var(--border-color)] my-auto"
             >
               <div className="space-y-4">
-                <div className="w-16 h-16 bg-blue-600 rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-blue-100">
-                  <Linkedin className="w-8 h-8" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-600 rounded-[1rem] sm:rounded-[24px] flex items-center justify-center text-white shadow-xl shadow-blue-100 md:shadow-none">
+                  <Linkedin className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h2 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">LinkedIn Import</h2>
-                <p className="text-sm font-medium text-[var(--text-tertiary)]">Paste your profile data or PDF text to convert it into a baseline resume.</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">LinkedIn Import</h2>
+                <p className="text-xs sm:text-sm font-medium text-[var(--text-tertiary)]">Paste your profile data or PDF text to convert it into a baseline resume.</p>
               </div>
 
               <div className="space-y-6">
@@ -1940,20 +1974,20 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
                   value={linkedinText}
                   onChange={(e) => setLinkedinText(e.target.value)}
                   placeholder="Paste your 'About', 'Experience', and 'Skills' from LinkedIn profile..."
-                  className="w-full h-60 p-6 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[32px] text-[var(--text-primary)] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-[var(--bg-primary)] outline-none resize-none transition-all placeholder:text-[var(--text-tertiary)]"
+                  className="w-full h-40 sm:h-60 p-4 sm:p-6 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[1.5rem] sm:rounded-[32px] text-[var(--text-primary)] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-[var(--bg-primary)] outline-none resize-none transition-all placeholder:text-[var(--text-tertiary)]"
                 />
                 
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <button
                     onClick={() => setIsImportingLinkedIn(false)}
-                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+                    className="flex-1 py-3 sm:py-4 text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors order-2 sm:order-1"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleLinkedInImport}
                     disabled={!linkedinText}
-                    className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 group"
+                    className="flex-1 sm:flex-[2] py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 group order-1 sm:order-2"
                   >
                     <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
                     Process & Import
@@ -1962,6 +1996,106 @@ export default function ResumeBuilder({ userData, onUpgrade }: ResumeBuilderProp
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Redesigned Login Prompt Overlay */}
+      <AnimatePresence>
+        {showLoginPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className="bg-white dark:bg-slate-900 rounded-[1.5rem] sm:rounded-[2.5rem] md:rounded-[3rem] p-6 sm:p-10 md:p-12 lg:p-16 max-w-2xl w-full mx-auto shadow-[0_32px_120px_-15px_rgba(79,70,229,0.5)] relative overflow-hidden text-center my-auto"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-20" />
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full" />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full" />
+
+              <button 
+                onClick={() => setShowLoginPrompt(false)}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 md:top-8 md:right-8 p-2 sm:p-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all hover:rotate-90 z-20"
+              >
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              
+                <div className="relative z-10">
+                  {isSyncingModal ? (
+                    <div className="py-8 sm:py-12 space-y-6">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-600 rounded-2xl sm:rounded-3xl flex items-center justify-center mx-auto shadow-xl relative overflow-hidden">
+                        <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-white animate-spin" />
+                        <motion.div 
+                          className="absolute inset-0 bg-white/20"
+                          animate={{ top: ['100%', '-100%'] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg sm:text-xl font-black uppercase italic text-slate-800 dark:text-white">Processing Intelligence</h4>
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[8px] sm:text-[10px]">Syncing with Morph Cloud...</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-[2rem] sm:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl shadow-indigo-500/40 mb-6 sm:mb-8 md:mb-10 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+                        <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+                      </div>
+                      
+                      <div className="space-y-3 sm:space-y-4 mb-8 sm:mb-10 md:mb-12">
+                        <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-tight italic">
+                          {isLoginPendingForDownload ? "Ready to Download" : "Draft Complete"} <br/>
+                          <span className="text-indigo-600 not-italic">Claim Your Morph.</span>
+                        </h3>
+                        <p className="text-slate-500 dark:text-slate-400 font-medium text-base sm:text-lg leading-relaxed max-w-sm mx-auto">
+                          Log in now to remove watermarks, enable PDF downloads, and unlock advanced ATS optimization.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-8 sm:mb-10 md:mb-12 text-left">
+                        {[
+                          { icon: <Download className="w-4 h-4 sm:w-5 h-5" />, label: "PDF Download", color: "text-indigo-500", bg: "bg-indigo-500/10" },
+                          { icon: <Lock className="w-4 h-4 sm:w-5 h-5" />, label: "No Watermark", color: "text-purple-500", bg: "bg-purple-500/10" },
+                          { icon: <Settings className="w-4 h-4 sm:w-5 h-5" />, label: "Full Editing", color: "text-blue-500", bg: "bg-blue-500/10" },
+                          { icon: <Rocket className="w-4 h-4 sm:w-5 h-5" />, label: "Cloud Storage", color: "text-emerald-500", bg: "bg-emerald-500/10" }
+                        ].map((benefit, idx) => (
+                          <div key={idx} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-200 transition-all">
+                            <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl ${benefit.bg} ${benefit.color} group-hover:scale-110 transition-transform`}>
+                              {benefit.icon}
+                            </div>
+                            <span className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-200">{benefit.label}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          if (onLogin) {
+                            await onLogin();
+                            if (auth.currentUser) {
+                              setShowLoginPrompt(false);
+                              setIsLoginPendingForDownload(false);
+                            }
+                          }
+                        }}
+                        className="group relative w-full py-5 sm:py-6 bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] sm:rounded-[2rem] font-black text-sm sm:text-base uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-500/20 dark:shadow-white/10 flex items-center justify-center gap-3 overflow-hidden border border-slate-800 dark:border-slate-200"
+                      >
+                        <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                        <span className="relative z-10 flex items-center gap-2 sm:gap-3">
+                          <LogIn className="w-4 h-4 sm:w-5 h-5 group-hover:animate-pulse" />
+                          Continue with Google
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

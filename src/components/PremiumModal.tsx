@@ -79,8 +79,14 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
   };
 
   const handleWhatsApp = () => {
+    if (!user) {
+      // If no user, we might want to alert or just return.
+      // Given the context, the user should be logged in to request premium usually,
+      // but if the modal is open, we should at least not crash.
+      return;
+    }
     const plan = PLANS.find(p => p.id === selectedPlan);
-    const message = `Hi Admin, I'm interested in the ${plan?.name} (₹${plan?.price}).\nName: ${user.displayName}\nEmail: ${user.email}`;
+    const message = `Hi Admin, I'm interested in the ${plan?.name} (₹${plan?.price}).\nName: ${user.displayName || 'Guest'}\nEmail: ${user.email || 'N/A'}`;
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodedMessage}`, '_blank');
   };
@@ -88,42 +94,35 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-          />
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto bg-black/60 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-[var(--bg-primary)] rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-[90vh]"
+            className="relative w-full max-w-2xl bg-[var(--bg-primary)] sm:rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-screen sm:max-h-[90vh] my-auto"
           >
             {/* Header */}
-            <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-indigo-50/50 dark:from-indigo-900/10 to-[var(--bg-primary)]">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none">
-                  <Zap className="text-white w-6 h-6 fill-white" />
+            <div className="p-6 md:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-indigo-50/50 dark:from-indigo-900/10 to-[var(--bg-primary)] sticky top-0 z-10">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none shrink-0">
+                  <Zap className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Upgrade to Premium</h2>
-                  <p className="text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Unlock the full power of AI</p>
+                  <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight">Upgrade to Premium</h2>
+                  <p className="text-[8px] sm:text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest leading-none mt-1">Unlock the full power of AI</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-3 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors shadow-sm"
+                className="p-2 sm:p-3 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors shadow-sm"
               >
-                <X className="w-6 h-6 text-[var(--text-tertiary)]" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--text-tertiary)]" />
               </button>
             </div>
 
-            <div className="flex-grow overflow-y-auto p-8">
+            <div className="flex-grow overflow-y-auto p-6 sm:p-8">
               {!requestSubmitted ? (
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {PLANS.map((plan) => (
                       <button

@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,20 +9,17 @@ import mammoth from "mammoth";
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-// Most common way to import pdf-parse in ESM/Node
-let pdf: any;
-try {
-  pdf = require('pdf-parse');
-} catch (e) {
-  console.warn("Failed to require pdf-parse, PDF extraction might fail.");
-}
+const pdf = require('pdf-parse');
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 async function startServer() {
   const app = express();
@@ -31,77 +28,74 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // API routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Server is running" });
+  // API Status
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok", uptime: process.uptime() });
   });
 
-  app.post("/api/extract-text", upload.single("resume"), async (req, res) => {
+  // Resume Text Extraction API
+  app.post("/api/extract-text", upload.single("resume"), async (req: any, res: any) => {
     try {
       const file = req.file;
       if (!file) {
-        return res.status(400).json({ error: "No resume file uploaded" });
+        return res.status(400).json({ error: "No file uploaded" });
       }
 
-      console.log(`Extracting file: ${file.originalname} (${file.mimetype})`);
+      console.log(`Processing extraction: ${file.originalname} (${file.mimetype})`);
 
-      let resumeText = "";
-      
-      // 1. PDF Handling
-      if (file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith('.pdf')) {
+      let extractedText = "";
+      const fileName = file.originalname.toLowerCase();
+
+      // Case 1: PDF
+      if (file.mimetype === "application/pdf" || fileName.endsWith('.pdf')) {
         try {
-          if (pdf) {
-            const pdfParser = typeof pdf === 'function' ? pdf : pdf.default;
-            if (typeof pdfParser === 'function') {
-              const data = await pdfParser(file.buffer);
-              resumeText = data.text;
-              console.log("Local PDF extraction success");
-            }
-          }
+          const data = await pdf(file.buffer);
+          extractedText = data.text;
         } catch (pdfError) {
-          console.error("Local PDF Parsing Error:", pdfError);
+          console.error("PDF Parsing Error:", pdfError);
         }
       } 
-      // 2. DOCX Handling
+      // Case 2: DOCX
       else if (
         file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-        file.originalname.toLowerCase().endsWith('.docx')
+        fileName.endsWith('.docx')
       ) {
         try {
           const result = await mammoth.extractRawText({ buffer: file.buffer });
-          resumeText = result.value;
-          console.log("Local DOCX extraction success");
+          extractedText = result.value;
         } catch (docxError) {
           console.error("DOCX Parsing Error:", docxError);
         }
       }
-      // 3. Simple text-based formats (txt, html, json)
+      // Case 3: Text-based (txt, html, json, md)
       else if (
-        file.mimetype === "text/plain" || 
-        file.mimetype === "text/html" || 
+        file.mimetype.startsWith("text/") || 
         file.mimetype === "application/json" ||
-        file.originalname.toLowerCase().endsWith('.txt') ||
-        file.originalname.toLowerCase().endsWith('.html') ||
-        file.originalname.toLowerCase().endsWith('.json')
+        /\.(txt|html|htm|json|md)$/i.test(fileName)
       ) {
-        resumeText = file.buffer.toString("utf-8");
+        extractedText = file.buffer.toString("utf-8");
       }
 
-      if (!resumeText || resumeText.trim().length === 0) {
-        // Return empty text so frontend can handle fallback to AI
-        return res.json({ text: "" });
+      // Cleanup text (remove excessive whitespace)
+      const cleanText = extractedText.replace(/\s+/g, ' ').trim();
+
+      if (!cleanText) {
+        return res.json({ text: "", warning: "Extraction yielded empty result" });
       }
 
-      res.json({ text: resumeText });
+      console.log(`Extraction successful: ${cleanText.length} characters`);
+      res.json({ text: cleanText });
+
     } catch (error: any) {
-      console.error("Global Extraction Error:", error);
+      console.error("Server Extraction Error:", error);
       res.status(500).json({ 
-        error: error.message || "Failed to process resume file"
+        error: "Server failed to process document",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   });
 
-  // Vite middleware for development
+  // Vite Integration
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -111,14 +105,19 @@ async function startServer() {
   } else {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`\n🚀 Morph Engine Server booting...`);
+    console.log(`📌 Port: ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});

@@ -132,7 +132,7 @@ export default function CreatorWelcomeModal() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 sm:p-6 md:p-8">
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -145,54 +145,54 @@ export default function CreatorWelcomeModal() {
             initial={{ opacity: 0, scale: 0.9, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            className="relative w-full max-w-4xl max-h-[90vh] bg-[var(--bg-primary)] rounded-[32px] md:rounded-[48px] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)] border border-[var(--border-color)] overflow-hidden flex flex-col md:flex-row"
+            className="relative w-full max-w-4xl bg-[var(--bg-primary)] sm:rounded-[32px] md:rounded-[48px] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)] border border-[var(--border-color)] overflow-hidden flex flex-col md:flex-row max-h-screen sm:max-h-[90vh] my-auto"
           >
             {/* Left Sidebar (Desktop Only Branding) */}
-            <div className="hidden md:flex w-72 bg-indigo-600 dark:bg-indigo-950 p-10 flex-col items-center text-center text-white relative shrink-0">
+            <div className="hidden md:flex w-72 bg-indigo-600 dark:bg-indigo-950 p-6 md:p-10 flex-col items-center text-center text-white relative shrink-0">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl" />
               
               <div className="relative mb-6">
-                <div className="w-24 h-24 rounded-full border-4 border-white/20 p-1 overflow-hidden">
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white/20 p-1 overflow-hidden">
                   <img 
                     src="https://media.licdn.com/dms/image/v2/D5603AQF4O0y_H_L1_w/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1718227652758?e=1751328000&v=beta&t=7l3uAn6v3S7X-T-Z_jX_k7P1_-n5S_9G7l_8X-C_i6U" 
                     alt="Sankalp Suman" 
                     className="w-full h-full rounded-full object-cover"
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center border-2 border-indigo-600">
-                  <Sparkles className="w-4 h-4 text-white fill-white" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 md:w-8 md:h-8 bg-amber-500 rounded-full flex items-center justify-center border-2 border-indigo-600">
+                  <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-white fill-white" />
                 </div>
               </div>
               
-              <h3 className="text-xl font-black tracking-tight leading-none mb-2">Sankalp Suman</h3>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70 mb-8">Architect & Creator</p>
+              <h3 className="text-lg md:text-xl font-black tracking-tight leading-none mb-1 md:mb-2">Sankalp Suman</h3>
+              <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70 mb-6 md:mb-8">Architect & Creator</p>
               
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <a href="https://www.linkedin.com/in/sankalpsuman/" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
-                  <Linkedin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <div className="grid grid-cols-2 gap-2 md:gap-3 w-full">
+                <a href="https://www.linkedin.com/in/sankalpsuman/" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
+                  <Linkedin className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
                 </a>
-                <a href="https://github.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
-                  <Github className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <a href="https://github.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
+                  <Github className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
                 </a>
-                <a href="https://instagram.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
-                  <Instagram className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <a href="https://instagram.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
+                  <Instagram className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
                 </a>
-                <a href="mailto:sankalpsmn@gmail.com" className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-colors flex items-center justify-center group">
-                  <Mail className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <a href="mailto:sankalpsmn@gmail.com" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
+                  <Mail className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
                 </a>
               </div>
               
-              <div className="mt-auto pt-8 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-300">
-                <Globe className="w-3 h-3" />
+              <div className="mt-auto pt-6 md:pt-8 flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-indigo-300">
+                <Globe className="w-2.5 h-2.5 md:w-3 md:h-3" />
                 Sankalp Suman
               </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 p-6 sm:p-8 md:p-14 flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="flex-1 p-5 sm:p-8 md:p-14 flex flex-col overflow-y-auto custom-scrollbar">
               <button 
                 onClick={handleClose}
-                className="absolute top-6 right-6 p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-xl transition-all z-20"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-xl transition-all z-20"
               >
                 <X className="w-5 h-5" />
               </button>

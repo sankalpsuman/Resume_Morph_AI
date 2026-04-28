@@ -298,30 +298,23 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md"
-          />
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto bg-black/60 backdrop-blur-md">
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-6xl bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col h-[85vh] md:h-[90vh]"
+            className="relative w-full max-w-6xl bg-[var(--bg-primary)] sm:rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-screen sm:max-h-[90vh] my-auto"
           >
             {/* Header */}
-            <div className="p-4 md:p-8 border-b border-[var(--border-color)] flex flex-col gap-4 bg-[var(--bg-secondary)]/50">
+            <div className="p-4 sm:p-6 md:p-8 border-b border-[var(--border-color)] flex flex-col gap-4 bg-[var(--bg-secondary)]/50 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 md:gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none shrink-0">
                     <Shield className="text-white w-5 h-5 md:w-6 md:h-6" />
                   </div>
                   <div>
                     <h2 className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">Admin Dashboard</h2>
-                    <p className="hidden md:block text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Manage user plans & permissions</p>
+                    <p className="hidden sm:block text-[8px] md:text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-1">Manage user plans & permissions</p>
                   </div>
                 </div>
                 <button 

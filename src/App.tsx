@@ -14,11 +14,11 @@ import Login from './components/Login';
 import SmartEditor from './components/SmartEditor';
 import CoverLetterGenerator from './components/CoverLetterGenerator';
 import ApplyTracker from './components/ApplyTracker';
-import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy } from 'lucide-react';
+import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy, LogIn } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db, storage } from './firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth, db, storage, googleProvider } from './firebase';
+import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import AccountModal from './components/AccountModal';
@@ -45,42 +45,32 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isNotifying, setIsNotifying] = useState(false);
-  const [hasNotified, setHasNotified] = useState(false);
   const [pendingDeletions, setPendingDeletions] = useState<Record<string, NodeJS.Timeout>>({});
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') as 'light' | 'dark' || 'light';
-    }
-    return 'light';
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
   });
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
+  const [isOffline, setIsOffline] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
+  const [hasNotified, setHasNotified] = useState(false);
 
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
-      document.documentElement.classList.add('light'); // Ensure light mode is handled if needed
       document.documentElement.classList.remove('dark');
     }
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const [isOffline, setIsOffline] = useState(false);
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -170,7 +160,7 @@ export default function App() {
     };
     window.addEventListener('set-tab', handleSetTab);
     return () => window.removeEventListener('set-tab', handleSetTab);
-  }, []); // handleTabChange is stable if defined correctly or just use empty deps if it's in the same scope
+  }, []); 
 
   useEffect(() => {
     if (!userData || !user) return;
@@ -356,6 +346,21 @@ export default function App() {
     return { name: 'Novice', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' };
   };
 
+  const triggerLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result.user) {
+        setUser(result.user);
+      }
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.warn('Login popup closed by user');
+        return;
+      }
+      console.error('Login error:', error);
+    }
+  };
+
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     setIsMenuOpen(false);
@@ -364,6 +369,7 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Removed redundant theme effects (consolidated globally above)
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
@@ -372,12 +378,12 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return <Login />;
+  if (!user && activeTab !== 'builder') {
+    return <Login onTryGuest={() => setActiveTab('builder')} />;
   }
 
   const userLevel = getLevel(userData?.morphCount || 0);
-  const isAdmin = user.email === 'sankalpsmn@gmail.com';
+  const isAdmin = user?.email === 'sankalpsmn@gmail.com';
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2);
   const progress = Math.min((usedMorphs / planLimit) * 100, 100);
@@ -541,7 +547,7 @@ export default function App() {
 
               {/* Account / User Section */}
               <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-[var(--border-color)]">
-                {userData && (
+                {user ? (
                   <>
                     <div className="relative group">
                       <button 
@@ -551,7 +557,7 @@ export default function App() {
                       >
                         <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <img 
-                          src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || '')}&background=6366f1&color=fff`} 
+                          src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || '')}&background=6366f1&color=fff`} 
                           alt="Profile" 
                           className="w-8 h-8 md:w-9 md:h-9 rounded-lg object-cover relative z-10"
                           referrerPolicy="no-referrer"
@@ -575,6 +581,14 @@ export default function App() {
                       <Menu className="w-6 h-6" />
                     </button>
                   </>
+                ) : (
+                  <button
+                    onClick={triggerLogin}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-100"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Login</span>
+                  </button>
                 )}
               </div>
             </div>
@@ -677,7 +691,12 @@ export default function App() {
         !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32 md:pb-12"
       )}>
         <div className={cn("max-w-7xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
-          <ResumeBuilder userData={userData} onUpgrade={() => setShowUpgradeModal(true)} />
+          <ResumeBuilder 
+            userData={userData} 
+            onUpgrade={() => setShowUpgradeModal(true)} 
+            user={user}
+            onLogin={triggerLogin}
+          />
         </div>
 
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'ai-assistant' && "hidden")}>
@@ -693,7 +712,9 @@ export default function App() {
           <ApplyTracker />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'portfolio' && "hidden")}>
-          <PortfolioGenerator onFullscreenChange={setIsPortfolioFullscreen} />
+          <PortfolioGenerator 
+            onFullscreenChange={setIsPortfolioFullscreen} 
+          />
         </div>
         <div className={cn("max-w-7xl mx-auto px-0 sm:px-6 lg:px-8", activeTab !== 'guide' && "hidden")}>
           <UserGuide />

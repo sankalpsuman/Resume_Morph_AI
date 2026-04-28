@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, RefreshCw, ShieldCheck, Zap, Target, Star, MessageSquare, User, Info, Heart, Code, Layout, Sparkles, Globe } from 'lucide-react';
 import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { cn } from '../lib/utils';
-import { auth, db } from '../firebase';
+import { auth, db, googleProvider } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 
@@ -15,7 +15,11 @@ interface FeedbackItem {
   createdAt: any;
 }
 
-export default function Login() {
+interface LoginProps {
+  onTryGuest?: () => void;
+}
+
+export default function Login({ onTryGuest }: LoginProps) {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [showNewFeaturePopup, setShowNewFeaturePopup] = useState(false);
 
@@ -52,13 +56,12 @@ export default function Login() {
   const handleLogin = async () => {
     if (isLoggingIn) return;
     setIsLoggingIn('google');
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, googleProvider);
       // Profile creation is handled globally in App.tsx via onAuthStateChanged/onSnapshot
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        console.log('Login popup closed or cancelled');
+        console.warn('Login popup closed or cancelled');
       } else {
         console.error('Login failed:', error);
       }
@@ -200,6 +203,15 @@ export default function Login() {
                   )}
                   {isLoggingIn === 'google' ? 'Connecting...' : 'Continue with Google'}
                 </button>
+
+                <button 
+                  onClick={() => onTryGuest?.()}
+                  disabled={!!isLoggingIn}
+                  className="w-full flex items-center justify-center gap-3 md:gap-4 px-6 md:px-8 py-5 md:py-6 bg-white dark:bg-slate-800 text-slate-800 dark:text-white rounded-2xl md:rounded-3xl font-black text-xs md:text-sm uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 border-2 border-slate-200 dark:border-slate-700 group shadow-sm hover:border-indigo-300 dark:hover:border-indigo-500/50 disabled:opacity-50"
+                >
+                  <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-indigo-500 group-hover:scale-110 transition-transform" />
+                  Try Morph as Guest
+                </button>
               </div>
 
               <div className="pt-8 md:pt-10 border-t border-[var(--border-color)]">
@@ -330,7 +342,6 @@ export default function Login() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="py-12 border-t border-[var(--border-color)] text-center transition-colors duration-300">
         <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.3em]">
           &copy; 2026 Resume Morph. All Rights Reserved.

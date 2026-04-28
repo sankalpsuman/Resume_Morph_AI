@@ -77,11 +77,18 @@ interface GenerationStep {
 
 interface PortfolioGeneratorProps {
   onFullscreenChange?: (isFullscreen: boolean) => void;
+  user?: any;
+  onLogin?: () => void;
 }
 
-export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGeneratorProps) {
+export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }: PortfolioGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioContent | null>(null);
+  const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
+    return localStorage.getItem('hasUsedFreeMorph') === 'true';
+  });
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
   const [template, setTemplate] = useState<PortfolioTemplate>('minimal');
   const [isEditing, setIsEditing] = useState(false);
   const [previewScale, setPreviewScale] = useState(1);
@@ -96,7 +103,7 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   const [isRecruiterView, setIsRecruiterView] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [activeTab, setActiveTab] = useState<'design' | 'content' | 'export'>('design');
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'templates' | 'theme' | 'sections' | 'ai'>('templates');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'design' | 'pages'>('design');
   const [rightPanelTab, setRightPanelTab] = useState<'edit' | 'settings'>('edit');
   const [undoStack, setUndoStack] = useState<PortfolioContent[]>([]);
   const [redoStack, setRedoStack] = useState<PortfolioContent[]>([]);
@@ -613,6 +620,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   };
 
   const handleDownloadPDF = async () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
     const element = document.getElementById('portfolio-preview-content');
     if (!element || !portfolio) return;
 
@@ -667,6 +679,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   };
 
   const handlePrint = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
     setIsPrinting(true);
     // Small delay to ensure the notification is visible before the print dialog blocks the UI
     setTimeout(() => {
@@ -730,6 +747,11 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
       return;
     }
 
+    if (!user && hasUsedFreeMorph) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setDeployedUrl(null);
@@ -773,6 +795,16 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
       updateStepStatus('enhance', 'completed');
       updateStepStatus('generate', 'completed');
       
+      // Track free morph if guest
+      if (!user) {
+        setHasUsedFreeMorph(true);
+        localStorage.setItem('hasUsedFreeMorph', 'true');
+        // Show login prompt after a short delay so they see the result first
+        setTimeout(() => {
+          setShowLoginPrompt(true);
+        }, 1500);
+      }
+      
       // Trigger Congrats Modal
       window.dispatchEvent(new CustomEvent('feature-success', { detail: { feature: 'portfolio' } }));
       
@@ -797,6 +829,10 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
   };
 
   const handleDownloadSource = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      return;
+    }
     if (!portfolio) return;
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(portfolio, null, 2));
     const downloadAnchorNode = document.createElement('a');
@@ -1398,7 +1434,25 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto relative editor-canvas scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                    <div className="w-full min-h-full transition-all duration-500">
+                    <div id="portfolio-preview-content" className="w-full min-h-full transition-all duration-500 relative">
+                      {/* Watermark for guests */}
+                      {!user && portfolio && (
+                        <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none opacity-[0.03] rotate-[-15deg] select-none scale-150 overflow-hidden">
+                          <div className="flex flex-col items-center">
+                            <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
+                            <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
+                            <div className="mt-20 flex flex-col items-center">
+                              <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
+                              <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
+                            </div>
+                            <div className="mt-20 flex flex-col items-center">
+                              <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
+                              <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <PortfolioPreview 
                         content={portfolio} 
                         template={template} 
@@ -1572,6 +1626,79 @@ export default function PortfolioGenerator({ onFullscreenChange }: PortfolioGene
             </div>
           )}
         </AnimatePresence>
+
+        {/* Login Prompt Overlay */}
+        <AnimatePresence>
+          {showLoginPrompt && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-6"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 30 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 30 }}
+                className="bg-white dark:bg-slate-900 rounded-[3rem] p-12 md:p-16 max-w-2xl w-full shadow-[0_32px_120px_-15px_rgba(79,70,229,0.5)] relative overflow-hidden text-center"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-20" />
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full" />
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full" />
+
+                <button 
+                  onClick={() => setShowLoginPrompt(false)}
+                  className="absolute top-8 right-8 p-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all hover:rotate-90"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                
+                <div className="relative z-10">
+                  <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl shadow-indigo-500/40 mb-10 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <Sparkles className="w-12 h-12 text-white" />
+                  </div>
+                  
+                  <div className="space-y-4 mb-12">
+                    <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-tight italic">
+                      {isLoginPendingForDownload ? "Ready to Download" : "Free Try Used"} <br/>
+                      <span className="text-indigo-600 not-italic">Log in for Access</span>
+                    </h3>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-lg leading-relaxed max-w-sm mx-auto">
+                      Log in now to remove watermarks, enable PDF downloads, and unlock advanced customization.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
+                    {[
+                      { icon: <Download className="w-5 h-5" />, label: "PDF Download", color: "text-indigo-500", bg: "bg-indigo-500/10" },
+                      { icon: <Lock className="w-5 h-5" />, label: "No Watermark", color: "text-purple-500", bg: "bg-purple-500/10" },
+                      { icon: <Settings className="w-5 h-5" />, label: "Full Editing", color: "text-blue-500", bg: "bg-blue-500/10" },
+                      { icon: <Rocket className="w-5 h-5" />, label: "Cloud Storage", color: "text-emerald-500", bg: "bg-emerald-500/10" }
+                    ].map((benefit, idx) => (
+                      <div key={idx} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group hover:border-indigo-200 transition-all">
+                        <div className={`p-2 rounded-xl ${benefit.bg} ${benefit.color} group-hover:scale-110 transition-transform`}>
+                          {benefit.icon}
+                        </div>
+                        <span className="text-[13px] font-bold text-slate-700 dark:text-slate-200">{benefit.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button 
+                    onClick={() => onLogin?.()}
+                    className="group relative w-full py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black text-base uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                    <span className="relative z-10 flex items-center gap-3">
+                      <Rocket className="w-5 h-5 group-hover:animate-bounce" />
+                      Sign in with Google
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -1587,7 +1714,8 @@ function PortfolioPreview({
   onChange,
   themeColor,
   globalFontFamily,
-  baseFontSize
+  baseFontSize,
+  isGuest = false
 }: { 
   content: PortfolioContent; 
   template: PortfolioTemplate; 
@@ -1599,6 +1727,7 @@ function PortfolioPreview({
   themeColor: string;
   globalFontFamily: string;
   baseFontSize: number;
+  isGuest?: boolean;
 }) {
   const updateField = (path: string, value: any) => {
     const newContent = { ...content };
@@ -1683,7 +1812,7 @@ function PortfolioPreview({
 
         {/* Simplified professional toolbar */}
         <div className={cn(
-          "absolute -top-16 left-1/2 -translate-x-1/2 opacity-0 group-hover/edit:opacity-100 transition-all duration-300 pointer-events-auto z-[100] flex flex-col items-center gap-1 min-w-max",
+          "absolute -top-16 left-1/2 -translate-x-1/2 opacity-0 group-hover/edit:opacity-100 transition-all duration-300 pointer-events-auto z-[100] flex flex-col items-center gap-1 min-w-max font-sans tracking-normal leading-normal text-base italic-none",
           isSelected && "opacity-100 -top-20 scale-100",
           !isSelected && "scale-95"
         )}>
@@ -1693,8 +1822,8 @@ function PortfolioPreview({
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
               {/* Font Family Dropdown */}
               <div className="relative group/font">
-                <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-indigo-400 transition-all min-w-[130px] justify-between h-9 shadow-sm">
-                  <span className="text-[12px] font-semibold truncate text-slate-700 dark:text-slate-200">
+                <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-indigo-400 transition-all min-w-[140px] justify-between h-9 shadow-sm">
+                  <span className="text-[12px] font-semibold truncate text-slate-700 dark:text-slate-200" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {styleOverride.fontFamily?.split(',')[0]?.replace(/"/g, '') || 'Inter'}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -1705,6 +1834,7 @@ function PortfolioPreview({
                       key={f} 
                       onClick={(e) => { e.stopPropagation(); updateStyle('fontFamily', f === 'Playfair Display' ? '"Playfair Display", serif' : `"${f}", sans-serif`); }}
                       className="w-full px-3 py-2 text-left text-[12px] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg text-slate-700 dark:text-slate-200 transition-colors font-medium"
+                      style={{ fontFamily: f === 'Playfair Display' ? '"Playfair Display", serif' : `"${f}", sans-serif` }}
                     >
                       {f}
                     </button>
@@ -1721,16 +1851,17 @@ function PortfolioPreview({
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <div className="relative group/size">
-                  <button className="flex items-center gap-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors h-full">
-                    <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 min-w-[20px] text-center">{styleOverride.fontSize || 16}</span>
+                  <button className="flex items-center gap-1 px-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors h-full">
+                    <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 min-w-[24px] text-center" style={{ fontFamily: 'Inter, sans-serif' }}>{styleOverride.fontSize || 16}</span>
                     <ChevronDown className="w-2.5 h-2.5 text-slate-400" />
                   </button>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-16 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover/size:opacity-100 group-hover/size:visible transition-all z-[110] p-1 max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover/size:opacity-100 group-hover/size:visible transition-all z-[110] p-1 max-h-48 overflow-y-auto">
                     {[10, 12, 14, 16, 18, 20, 24, 32, 40, 48, 64, 96, 128].map(s => (
                       <button 
                         key={s} 
                         onClick={(e) => { e.stopPropagation(); updateStyle('fontSize', s); }}
-                        className="w-full text-center py-1 text-[11px] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded text-slate-700 dark:text-slate-200 transition-colors"
+                        className="w-full text-center py-1.5 text-[12px] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded text-slate-700 dark:text-slate-200 transition-colors font-bold"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         {s}
                       </button>

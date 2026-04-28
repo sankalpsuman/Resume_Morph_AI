@@ -383,31 +383,23 @@ export default function Feedback() {
         </motion.div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {deletingItem && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeletingItem(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-[32px] p-8 shadow-2xl space-y-6"
+              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-[32px] p-6 sm:p-8 shadow-2xl border border-[var(--border-color)] text-center my-auto"
             >
-              <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-red-500" />
               </div>
               <div className="text-center space-y-2">
                 <h3 className="text-xl font-black tracking-tight text-[var(--text-primary)]">Delete Feedback?</h3>
-                <p className="text-[var(--text-secondary)] font-medium">This action cannot be undone. Are you sure you want to remove this feedback?</p>
+                <p className="text-sm text-[var(--text-secondary)] font-medium">This action cannot be undone. Are you sure you want to remove this feedback?</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => setDeletingItem(null)}
                   className="flex-1 py-4 bg-[var(--bg-secondary)] text-[var(--text-tertiary)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--bg-primary)] transition-all"
