@@ -42,6 +42,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [isSyncingModal, setIsSyncingModal] = useState(false);
   const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
+  const planLimit = userData?.planLimit === -1 ? Infinity : (userData?.planLimit || PLANS[0].limit);
+  const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
@@ -550,22 +552,45 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const handleMaximizeAts = async () => {
-    if (!layoutAnalysis || !contentFile?.text) return;
     if (!checkUsageLimits('morph')) return;
-
     setIsPlanning(true);
     setGenerationStatus('Developing ATS strategy...');
     setError(null);
+
     try {
-      const plan = await getOptimizationPlan(contentFile.text, jobDescription);
+      let currentLayout = layoutAnalysis;
+      if (!currentLayout) {
+        if (referenceFile?.base64) {
+          currentLayout = await analyzeLayout(referenceFile.base64, referenceFile.type);
+        } else if (referenceFile?.text) {
+          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
+        }
+        if (currentLayout) setLayoutAnalysis(currentLayout);
+      }
+
+      let currentText = contentFile?.text;
+      if (!currentText && contentFile?.base64) {
+        currentText = await extractTextFromAny(contentFile.base64, contentFile.type);
+        if (currentText) {
+          setContentFile(prev => prev ? { ...prev, text: currentText } : null);
+        }
+      }
+
+      if (!currentLayout || !currentText) {
+        throw new Error("Missing structural analysis or content text. Please try generating a resume first.");
+      }
+
+      const plan = await getOptimizationPlan(currentText, jobDescription);
       setOptimizationPlan(plan);
       setShowPlanModal(true);
     } catch (err: any) {
-      console.error(err);
+      console.error("Maximize ATS error:", err);
       if (err.message === "QUOTA_EXCEEDED") {
         setError("Daily AI limit reached. Please try again later.");
+      } else if (err.message === "API_KEY_MISSING") {
+        setError("AI Engine is currently unavailable. Please check back later.");
       } else {
-        setError("Failed to generate optimization plan. Please try again.");
+        setError(err.message || "Failed to generate optimization plan. Please try again.");
       }
     } finally {
       setIsPlanning(false);
@@ -967,7 +992,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
                 <div className="flex items-center gap-3">
                   <span className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">
-                    {userData?.planLimit === -1 ? 'Unlimited' : `${usedMorphs} / ${userData?.planLimit || PLANS[0].limit}`}
+                    {planLimit === Infinity ? 'Unlimited' : `${usedMorphs} / ${planLimit}`}
                   </span>
                   <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
                     {(() => {
@@ -1006,19 +1031,19 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
                 <p className="text-[9px] md:text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
-                  {userData?.planLimit === -1 ? '∞' : Math.max(0, (userData?.planLimit || PLANS[0].limit) - usedMorphs)} Morphs Left
+                  {planLimit === Infinity ? '∞' : Math.max(0, (planLimit as number) - usedMorphs)} Morphs Left
                 </p>
               </div>
               <div className="w-full h-2.5 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((usedMorphs / (userData?.planLimit === -1 ? 100 : (userData?.planLimit || PLANS[0].limit))) * 100, 100)}%` }}
+                  animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
                   className="h-full bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
                 />
               </div>
             </div>
 
-            {userData?.planLimit !== -1 && usedMorphs >= (userData?.planLimit || PLANS[0].limit) && (
+            {planLimit !== Infinity && usedMorphs >= (planLimit as number) && (
               <button 
                 onClick={onUpgrade}
                 className="w-full lg:w-auto px-6 md:px-8 py-4 bg-indigo-600 text-white rounded-xl md:rounded-[20px] text-[10px] md:text-sm font-black uppercase tracking-widest md:tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"

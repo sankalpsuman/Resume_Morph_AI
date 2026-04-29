@@ -67,8 +67,8 @@ export default function AccountModal({
   const usedMorphs = userData.usedMorphs !== undefined ? userData.usedMorphs : (userData.morphCount || 0);
   const userLevel = getLevel(usedMorphs);
   const currentPlan = PLANS.find(p => p.id === (userData.plan || 'free')) || PLANS[0];
-  const planLimit = userData.planLimit === -1 ? 100 : (userData.planLimit || currentPlan.limit);
-  const progress = Math.min((usedMorphs / planLimit) * 100, 100);
+  const planLimit = userData.planLimit === -1 ? Infinity : (userData.planLimit || currentPlan.limit);
+  const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
 
   const joinedDate = userData.createdAt?.toDate 
     ? userData.createdAt.toDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -241,17 +241,17 @@ export default function AccountModal({
               <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Usage Progress</p>
-                  <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || currentPlan.limit)}</p>
+                  <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {planLimit === Infinity ? '∞' : planLimit}</p>
                 </div>
                 <div className="w-full h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
+                    animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
                     className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                   />
                 </div>
                 <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest mt-3">
-                  {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || currentPlan.limit) - usedMorphs)} morphs remaining`}
+                  {planLimit === Infinity ? 'Unlimited access enabled' : `${Math.max(0, (planLimit as number) - usedMorphs)} morphs remaining`}
                 </p>
                 
                 <div className="grid grid-cols-2 gap-2 pt-2">
@@ -266,7 +266,7 @@ export default function AccountModal({
                 </div>
 
                 <p className="text-[9px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-center">
-                  {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || currentPlan.limit) - usedMorphs)} morphs remaining`}
+                  {planLimit === Infinity ? 'Unlimited access enabled' : `${Math.max(0, (planLimit as number) - usedMorphs)} morphs remaining`}
                 </p>
                 {userData.lastResetAt && (
                   <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest text-center">

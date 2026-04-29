@@ -387,8 +387,8 @@ export default function App() {
   const userLevel = getLevel(userData?.morphCount || 0);
   const isAdmin = user?.email === 'sankalpsmn@gmail.com';
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
-  const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || PLANS[0].limit);
-  const progress = Math.min((usedMorphs / planLimit) * 100, 100);
+  const planLimit = userData?.planLimit === -1 ? Infinity : (userData?.planLimit || PLANS[0].limit);
+  const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
   const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
 
   return (

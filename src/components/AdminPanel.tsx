@@ -191,8 +191,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
       await updateDoc(doc(db, 'users', userId), {
         plan: 'free',
-        planLimit: 2,
-        remainingMorphs: Math.max(0, 2 - currentUsed),
+        planLimit: PLANS[0].limit,
+        remainingMorphs: Math.max(0, PLANS[0].limit - currentUsed),
         premiumExpiryDate: null,
         revokeReason: reason,
         showRevokeNotice: true

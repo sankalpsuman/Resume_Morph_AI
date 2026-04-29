@@ -114,9 +114,8 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                         <div className="mt-auto">
                           <p className="text-2xl font-black text-[var(--text-primary)]">₹{plan.price}</p>
                           <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
-                            {plan.morphs > 0 && `${plan.morphs} Morphs`}
-                            {plan.morphs > 0 && plan.portfolios > 0 && ' + '}
-                            {plan.portfolios > 0 && `${plan.portfolios} Portfolios`}
+                            {plan.morphs === -1 ? 'Unlimited' : `${plan.morphs} Morphs`}
+                            {plan.portfolios > 0 && ` + ${plan.portfolios} Portfolios`}
                           </p>
                         </div>
                         {selectedPlan === plan.id && (
