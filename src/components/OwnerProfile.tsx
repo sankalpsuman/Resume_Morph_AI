@@ -214,7 +214,7 @@ export default function OwnerProfile({ isOpen, onClose }: OwnerProfileProps) {
 
                   {/* Footer */}
                   <div className="text-center pt-12">
-                     <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Built for Excellence • Sankalp Suman • 2024</p>
+                     <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Built for Excellence • Sankalp Suman • 2026</p>
                   </div>
 
                 </div>
