@@ -83,20 +83,10 @@ export default function Login({ onTryGuest, theme, toggleTheme }: LoginProps) {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         onClick={toggleTheme}
-        className="fixed top-6 right-6 z-[80] p-4 rounded-full bg-[var(--bg-primary)] text-indigo-600 dark:text-indigo-400 hover:scale-110 active:scale-95 transition-all border-2 border-indigo-600 dark:border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.2)] dark:shadow-[0_0_20px_rgba(99,102,241,0.4)] flex items-center gap-3 font-black text-[10px] uppercase tracking-widest px-6"
+        className="fixed top-4 right-4 md:top-6 md:right-6 z-[80] p-2.5 rounded-xl bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:bg-[var(--border-color)] hover:text-indigo-600 transition-all active:scale-95 border border-[var(--border-color)] shadow-sm"
         title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
       >
-        {theme === 'light' ? (
-          <>
-            <Moon className="w-5 h-5" />
-            <span>Dark</span>
-          </>
-        ) : (
-          <>
-            <Sun className="w-5 h-5" />
-            <span>Light</span>
-          </>
-        )}
+        {theme === 'light' ? <Moon className="w-4 h-4 md:w-5 md:h-5" /> : <Sun className="w-4 h-4 md:w-5 md:h-5" />}
       </motion.button>
 
       {/* Project Intelligence Report Modal */}
@@ -237,22 +227,22 @@ export default function Login({ onTryGuest, theme, toggleTheme }: LoginProps) {
                   {isLoggingIn === 'google' ? 'Connecting...' : 'Continue with Google'}
                 </button>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <button 
                     onClick={() => setShowDeepDive(true)}
-                    className="w-full flex flex-col items-center justify-center gap-2 px-4 py-8 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border-2 border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-100 dark:shadow-none group relative overflow-hidden"
+                    className="w-full flex flex-col items-center justify-center gap-2 px-2 py-6 md:px-4 md:py-8 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl md:rounded-3xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] md:tracking-[0.2em] hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border-2 border-indigo-200 dark:border-indigo-800 shadow-lg shadow-indigo-100 dark:shadow-none group relative overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-indigo-600/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                    <Rocket className="w-8 h-8 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform relative z-10" />
+                    <Rocket className="w-6 h-6 md:w-8 md:h-8 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform relative z-10" />
                     <span className="relative z-10">Deep Dive</span>
                   </button>
 
                   <button 
                     onClick={() => setShowOwnerProfile(true)}
-                    className="w-full flex flex-col items-center justify-center gap-2 px-4 py-8 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all border-2 border-amber-100 dark:border-amber-800 shadow-lg shadow-amber-100 dark:shadow-none group relative overflow-hidden"
+                    className="w-full flex flex-col items-center justify-center gap-2 px-2 py-6 md:px-4 md:py-8 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-2xl md:rounded-3xl font-black text-[8px] md:text-[10px] uppercase tracking-[0.1em] md:tracking-[0.2em] hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all border-2 border-amber-100 dark:border-amber-800 shadow-lg shadow-amber-100 dark:shadow-none group relative overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-amber-600/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                    <UserCircle className="w-8 h-8 group-hover:scale-110 transition-transform relative z-10" />
+                    <UserCircle className="w-6 h-6 md:w-8 md:h-8 group-hover:scale-110 transition-transform relative z-10" />
                     <span className="relative z-10">Founder</span>
                   </button>
                 </div>
