@@ -18,8 +18,16 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
 
+  const freeClaimed = user?.metadata?.freeClaimed || false;
+  const currentPlanId = user?.plan || 'free';
+
   const handleRequest = async () => {
     if (!selectedPlan || !user) return;
+    
+    if (selectedPlan === 'free' && freeClaimed) {
+      alert("Free plan has already been claimed once.");
+      return;
+    }
     
     setIsSubmitting(true);
     const plan = PLANS.find(p => p.id === selectedPlan);
@@ -89,42 +97,56 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
             <div className="flex-grow overflow-y-auto p-6 sm:p-8">
               {!requestSubmitted ? (
                 <div className="space-y-6 sm:space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {PLANS.map((plan) => (
-                      <button
-                        key={plan.id}
-                        onClick={() => setSelectedPlan(plan.id)}
-                        className={cn(
-                          "relative p-6 rounded-[32px] border-2 transition-all duration-300 text-left flex flex-col h-full",
-                          selectedPlan === plan.id 
-                            ? "border-indigo-600 bg-indigo-50/30 dark:bg-indigo-900/20 shadow-xl shadow-indigo-100/50 dark:shadow-none" 
-                            : "border-[var(--border-color)] hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-[var(--bg-secondary)]/50"
-                        )}
-                      >
-                        {plan.popular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">
-                            Most Popular
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {PLANS.map((plan) => {
+                      const idDisabled = plan.id === 'free' && freeClaimed;
+                      const isCurrent = currentPlanId === plan.id;
+                      
+                      return (
+                        <button
+                          key={plan.id}
+                          onClick={() => !idDisabled && setSelectedPlan(plan.id)}
+                          className={cn(
+                            "relative p-6 rounded-[32px] border-2 transition-all duration-300 text-left flex flex-col h-full",
+                            selectedPlan === plan.id 
+                              ? "border-indigo-600 bg-indigo-50/30 dark:bg-indigo-900/20 shadow-xl shadow-indigo-100/50 dark:shadow-none" 
+                              : idDisabled
+                                ? "border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-900/40"
+                                : "border-[var(--border-color)] hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-[var(--bg-secondary)]/50",
+                            isCurrent && "ring-2 ring-indigo-600 ring-offset-2 dark:ring-offset-slate-950"
+                          )}
+                        >
+                          {plan.popular && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-600 text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                              Most Popular
+                            </div>
+                          )}
+                          <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 shadow-lg", plan.color)}>
+                            <plan.icon className="w-5 h-5 text-white" />
                           </div>
-                        )}
-                        <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center mb-4 shadow-lg", plan.color)}>
-                          <plan.icon className="w-5 h-5 text-white" />
-                        </div>
-                        <h3 className="font-black text-[var(--text-primary)] mb-1">{plan.name}</h3>
-                        <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-4">{plan.description}</p>
-                        <div className="mt-auto">
-                          <p className="text-2xl font-black text-[var(--text-primary)]">₹{plan.price}</p>
-                          <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
-                            {plan.morphs === -1 ? 'Unlimited' : `${plan.morphs} Morphs`}
-                            {plan.portfolios > 0 && ` + ${plan.portfolios} Portfolios`}
-                          </p>
-                        </div>
-                        {selectedPlan === plan.id && (
-                          <div className="absolute top-4 right-4 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                            <Check className="w-3 h-3 text-white" />
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="font-black text-[var(--text-primary)]">{plan.name}</h3>
+                            {isCurrent && <span className="text-[8px] font-black uppercase text-indigo-600">Current</span>}
+                            {idDisabled && <span className="text-[8px] font-black uppercase text-slate-400">Used Once</span>}
                           </div>
-                        )}
-                      </button>
-                    ))}
+                          <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mb-4">{plan.description}</p>
+                          <div className="mt-auto">
+                            <p className="text-2xl font-black text-[var(--text-primary)]">
+                              {plan.price === 0 ? 'Free' : `₹${plan.price}`}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
+                              {plan.morphs === -1 ? 'Unlimited' : `${plan.morphs} Morphs`}
+                              {plan.portfolios > 0 && ` + ${plan.portfolios} Portfolios`}
+                            </p>
+                          </div>
+                          {selectedPlan === plan.id && !idDisabled && (
+                            <div className="absolute top-4 right-4 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="p-6 bg-[var(--bg-secondary)] rounded-[32px] border border-[var(--border-color)]">
@@ -159,7 +181,7 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                     ) : (
                       <>
                         <Zap className="w-5 h-5 fill-white" />
-                        Request Access
+                        {selectedPlan === currentPlanId ? "Renew Access" : "Request Access"}
                       </>
                     )}
                   </button>

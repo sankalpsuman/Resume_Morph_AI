@@ -111,12 +111,21 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       const usedMorphs = targetUser?.usedMorphs || 0;
 
       // Update user
-      await updateDoc(doc(db, 'users', request.userId), {
+      const isFreePlan = plan.id === 'free';
+      const updateData: any = {
         plan: plan.id,
         planLimit: plan.limit,
-        remainingMorphs: plan.limit === -1 ? 999999 : Math.max(0, plan.limit - usedMorphs),
+        usedMorphs: 0, // Reset usage on new plan activation/repurchase
+        remainingMorphs: plan.limit === -1 ? 999999 : plan.limit,
         premiumExpiryDate: expiryDate ? Timestamp.fromDate(expiryDate) : null
-      });
+      };
+
+      if (isFreePlan) {
+        updateData['metadata.freeClaimed'] = true;
+        updateData['freeClaimed'] = true;
+      }
+
+      await updateDoc(doc(db, 'users', request.userId), updateData);
 
       // Update request status
       await updateDoc(doc(db, 'premium_requests', request.id), {
@@ -140,6 +149,26 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'Rejected' } : r));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `premium_requests/${requestId}`);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleResetFreePlan = async (userId: string) => {
+    setUpdating(userId);
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        'metadata.freeClaimed': false,
+        'freeClaimed': false // Just in case
+      });
+      
+      setUsers(prev => prev.map(u => u.id === userId ? { 
+        ...u, 
+        freeClaimed: false,
+        metadata: { ...(u as any).metadata, freeClaimed: false }
+      } : u));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
     } finally {
       setUpdating(null);
     }
@@ -525,7 +554,16 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   title="Reset Usage & Add 2 Credits"
                                 >
                                   <RefreshCw className={cn("w-3 h-3", updating === user.id && "animate-spin")} />
-                                  Reset
+                                  Reset Usage
+                                </button>
+                                <button
+                                  onClick={() => handleResetFreePlan(user.id)}
+                                  disabled={updating === user.id}
+                                  className="text-[9px] md:text-[10px] text-green-600 font-black uppercase tracking-widest flex items-center gap-1.5 hover:underline disabled:opacity-30"
+                                  title="Reset Free Plan Eligibility"
+                                >
+                                  <RotateCcw className={cn("w-3 h-3", updating === user.id && "animate-spin")} />
+                                  Reset Free
                                 </button>
                                 <button
                                   onClick={() => {

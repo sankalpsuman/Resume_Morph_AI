@@ -233,12 +233,17 @@ export default function App() {
         const expiry = userData.premiumExpiryDate.toDate();
         if (Date.now() > expiry.getTime()) {
           const userRef = doc(db, 'users', user.uid);
+          const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
+          const hasClaimedFree = userData.freeClaimed || userData.metadata?.freeClaimed || false;
+          
           await updateDoc(userRef, {
-            plan: PLANS[0].id,
-            planLimit: PLANS[0].limit,
-            usedMorphs: 0,
-            remainingMorphs: PLANS[0].limit,
-            premiumExpiryDate: null
+            plan: freePlan.id,
+            planLimit: freePlan.limit,
+            // If they already claimed free trial, set usage to limit so they can't use it again
+            usedMorphs: hasClaimedFree ? freePlan.limit : 0,
+            remainingMorphs: hasClaimedFree ? 0 : freePlan.limit,
+            premiumExpiryDate: null,
+            showExpiryNotice: true
           });
         }
       }

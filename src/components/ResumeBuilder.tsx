@@ -331,13 +331,22 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     try {
       const userRef = doc(db, 'users', auth.currentUser.uid);
       const isPremium = userData?.plan && userData?.plan !== 'free';
-      await updateDoc(userRef, {
+      
+      const updateData: any = {
         usedMorphs: increment(1),
         freeMorphsUsed: !isPremium ? increment(1) : (userData?.freeMorphsUsed || 0),
         premiumMorphsUsed: isPremium ? increment(1) : (userData?.premiumMorphsUsed || 0),
         remainingMorphs: userData?.planLimit === -1 ? 999 : increment(-1),
         morphCount: increment(1)
-      });
+      };
+
+      // Mark free plan as claimed if using it
+      if (!isPremium) {
+        updateData.freeClaimed = true;
+        updateData['metadata.freeClaimed'] = true;
+      }
+
+      await updateDoc(userRef, updateData);
     } catch (err) {
       console.error("Failed to deduct credit:", err);
     }

@@ -4,16 +4,31 @@ export const PLANS = [
   {
     id: 'free',
     name: 'Free',
-    limit: 2, // Resume Morphs
-    morphs: 2,
+    limit: 1, // Reduced for free trial
+    morphs: 1,
     portfolios: 0,
     historyLimit: 1,
     price: 0,
-    description: 'Basic access to Morph Engine',
+    description: 'One-time trial for new users',
     icon: Zap,
     color: 'from-slate-400 to-slate-500',
     bg: 'bg-slate-50',
     textColor: 'text-slate-600'
+  },
+  {
+    id: 'pulse',
+    name: 'Pulse',
+    limit: 3,
+    morphs: 3,
+    portfolios: 0,
+    historyLimit: 2,
+    price: 99,
+    description: 'Budget-friendly mini pack',
+    icon: Zap,
+    color: 'from-orange-400 to-rose-500',
+    bg: 'bg-orange-50',
+    textColor: 'text-orange-600',
+    popular: false
   },
   {
     id: 'starter',
