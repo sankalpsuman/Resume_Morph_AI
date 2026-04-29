@@ -201,8 +201,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       setUsers(prev => prev.map(u => u.id === userId ? { 
         ...u, 
         plan: 'free', 
-        planLimit: 2, 
-        remainingMorphs: Math.max(0, 2 - currentUsed), 
+        planLimit: PLANS[0].limit, 
+        remainingMorphs: Math.max(0, PLANS[0].limit - currentUsed), 
         premiumExpiryDate: null,
         revokeReason: reason,
         showRevokeNotice: true
@@ -521,10 +521,10 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                 <button
                                   onClick={() => handleResetUsage(user.id)}
                                   disabled={updating === user.id}
-                                  className="text-[8px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest flex items-center gap-1 hover:underline"
+                                  className="text-[9px] md:text-[10px] text-indigo-600 font-black uppercase tracking-widest flex items-center gap-1.5 hover:underline disabled:opacity-30"
                                   title="Reset Usage & Add 2 Credits"
                                 >
-                                  <RefreshCw className={cn("w-2.5 h-2.5 md:w-3 md:h-3", updating === user.id && "animate-spin")} />
+                                  <RefreshCw className={cn("w-3 h-3", updating === user.id && "animate-spin")} />
                                   Reset
                                 </button>
                                 <button

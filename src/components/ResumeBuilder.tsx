@@ -646,13 +646,30 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     }
   };
 
+  const [showShareToast, setShowShareToast] = useState(false);
+
   const handleShare = () => {
     if (!generatedHtml) return;
-    // In a real app we'd save to firebase and get a public ID
-    // For now, we'll copy the current app URL or a mock share URL
     const shareUrl = window.location.href;
-    navigator.clipboard.writeText(shareUrl);
-    alert("Share link copied! (Mock - would be a direct resume URL in production)");
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 3000);
+      }).catch(err => {
+        console.error('Clipboard error:', err);
+        // Fallback for non-secure or restricted contexts
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setShowShareToast(true);
+          setTimeout(() => setShowShareToast(false), 3000);
+        } catch (e) {}
+        document.body.removeChild(textArea);
+      });
+    }
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -1605,38 +1622,51 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                               body { 
                                 font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
                                 margin: 0; 
-                                padding: 3rem; 
-                                background: white; 
+                                padding: 0; 
+                                background: #f1f5f9; 
                                 color: #1a1a1a; 
-                                overflow-x: hidden;
+                                display: flex;
+                                justify-content: center;
+                                min-height: 100vh;
+                                -webkit-font-smoothing: antialiased;
                               }
-                              .resume-container { 
-                                max-width: 800px; 
-                                margin: 0 auto; 
+                              .resume-page { 
+                                background: white;
+                                width: 210mm;
+                                min-height: 297mm;
+                                padding: 0;
+                                margin: 2rem auto;
+                                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+                                position: relative;
+                                overflow: hidden;
                                 transform-origin: top center;
-                                transition: transform 0.2s ease;
-                              }
-                              @media (max-width: 800px) {
-                                body { padding: 1rem; }
-                                .resume-container {
-                                  transform: scale(var(--scale, 1));
-                                }
                               }
                               @media print {
-                                @page { margin: 0; size: auto; }
-                                body { margin: 1.6cm; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                                .resume-container { max-width: none; width: 100%; transform: none !important; }
+                                @page { margin: 0; size: A4; }
+                                body { margin: 0; padding: 0; background: white; }
+                                .resume-page { 
+                                  margin: 0; 
+                                  box-shadow: none; 
+                                  width: 100%;
+                                  height: 100%;
+                                  overflow: visible !important;
+                                  -webkit-print-color-adjust: exact; 
+                                  print-color-adjust: exact; 
+                                }
+                                .watermark { display: none !important; }
                               }
-                              @media screen and (max-width: 800px) {
-                                body { padding: 1.5rem; }
-                                .resume-container { width: 800px; }
+                              @media screen and (max-width: 210mm) {
+                                body { padding: 0; }
+                                .resume-page {
+                                  margin: 0;
+                                }
                               }
                               .watermark {
                                 position: fixed;
                                 top: 50%;
                                 left: 50%;
                                 transform: translate(-50%, -50%) rotate(-45deg);
-                                font-size: 120px;
+                                font-size: 80px;
                                 font-weight: 900;
                                 color: rgba(0, 0, 0, 0.05);
                                 white-space: nowrap;
@@ -1649,21 +1679,21 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                             </style>
                           </head>
                           <body>
-                            <div class="resume-container">
+                            <div class="resume-page">
                               ${generatedHtml}
                             </div>
                             ${!user ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
                             <script>
                               function adjustScale() {
-                                const container = document.querySelector('.resume-container');
-                                if (!container) return;
+                                const page = document.querySelector('.resume-page');
+                                if (!page) return;
                                 const width = window.innerWidth;
-                                const padding = width < 800 ? 48 : 96; // 1.5rem vs 3rem total padding
-                                if (width < 800) {
-                                  const scale = (width - padding) / 800;
-                                  container.style.transform = 'scale(' + scale + ')';
+                                const targetWidth = 210 * 3.7795275591; // 210mm in pixels at 96dpi (~794px)
+                                if (width < targetWidth + 40) {
+                                  const scale = (width - 40) / targetWidth;
+                                  page.style.transform = 'scale(' + Math.min(scale, 1) + ')';
                                 } else {
-                                  container.style.transform = 'none';
+                                  page.style.transform = 'none';
                                 }
                               }
                               window.addEventListener('resize', adjustScale);
@@ -2133,6 +2163,20 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   )}
                 </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showShareToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: -20, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 bg-gray-900 text-white rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10"
+          >
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Share link copied successfully!</span>
           </motion.div>
         )}
       </AnimatePresence>

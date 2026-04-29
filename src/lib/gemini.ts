@@ -1,21 +1,49 @@
 import { GoogleGenAI, GenerateContentResponse, Type, ThinkingLevel } from "@google/genai";
 import { TOON } from './toon';
+import mammoth from 'mammoth';
 
-// Gemini supported multimodal types
-const SUPPORTED_MIMES = [
+// Gemini supported multimodal types (Native support)
+const AI_SUPPORTED_MIMES = [
   'application/pdf', 
   'image/png', 
   'image/jpeg', 
   'image/webp', 
   'image/heic', 
-  'image/heif',
+  'image/heif'
+];
+
+// Types that require pre-processing (extraction) before sending to Gemini
+const PREPROCESS_MIMES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/msword'
 ];
 
+const SUPPORTED_MIMES = [...AI_SUPPORTED_MIMES, ...PREPROCESS_MIMES];
+
 function isSupportedMime(mime?: string) {
   if (!mime) return false;
   return SUPPORTED_MIMES.includes(mime.toLowerCase());
+}
+
+function isNativeAiSupport(mime?: string) {
+  if (!mime) return false;
+  return AI_SUPPORTED_MIMES.includes(mime.toLowerCase());
+}
+
+async function extractDocxText(base64: string): Promise<string> {
+  try {
+    const data = base64.split(',')[1] || base64;
+    const binaryString = atob(data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const result = await mammoth.extractRawText({ arrayBuffer: bytes.buffer });
+    return result.value || "";
+  } catch (error) {
+    console.error("Docx extraction error:", error);
+    return "";
+  }
 }
 
 // Helper to extract JSON from a string that might contain extra text
@@ -122,39 +150,48 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
-    const prompt = `SUPREME DESIGN AUDITOR & SPATIAL ARCHITECT.
+    // If it's a docx, we extract text and treat as raw text because Gemini doesn't support it as inlineData
+    let finalRawText = rawText || "";
+    let isNative = fileBase64 && mimeType && isNativeAiSupport(mimeType);
     
-    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Implementation Manifest" for a web clone.
+    if (fileBase64 && mimeType && !isNative && isSupportedMime(mimeType)) {
+      const extracted = await extractDocxText(fileBase64);
+      finalRawText = (finalRawText ? finalRawText + "\n\n" : "") + extracted;
+    }
+
+    const prompt = `FORENSIC ARCHITECT & PIXEL-PERFECT CLONER.
     
-    AUDIT REQUIREMENTS (Identify EXACT dimensions and colors):
-    1. SPATIAL GEOMETRY & GRID: 
-       - Identify the layout engine (e.g., "Full-height left sidebar at 30% width", "Header block at 200px height with overflow profile image").
-       - Calculate percentage-based zoning for all major sections.
-    2. THEMATIC ATMOSPHERE:
-       - Determine the exact HEX/RGB codes for ALL background layers, decorative borders, and text accents.
-       - Identify "Atmospheric Effects": Drop shadows (\`shadow-lg\`), rounded corners (\`rounded-[40px]\`), or background gradients.
-    3. TYPOGRAPHIC BLUEPRINT:
-       - Mirror the "Typographic Personality": Is it Bold Modern, Classical Serif, or Technical Mono?
-       - Define scale: Header size vs. Body size (e.g., "Main Header is 3xl, Section Header is xl with tracking-widest").
-    4. COMPONENT ARCHITECTURE:
-       - Detect specific "Design Elements": Bullet styles (checkboxes, arrows, dots), Divider styles (dot-dash, solid line thickness), and Icon placement.
-       - Identify "Infographic Widgets": Skill progress bars, level meters, or timeline dots.
-    5. DATA FLOW MAPPING:
-       - Specify where "Experience", "Skills", and "Contact" reside visually.
+    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Structural Blueprints".
     
-    OUTPUT: A technical "Visual DNA Spec" (Tailwind tokens + Structural logic) that guarantees a 1:1 design clone.`;
+    AUDIT REQUIREMENTS (EXACT MEASUREMENTS & COORDINATES):
+    1. SPATIAL GEOMETRY (The "Box Model"):
+       - Detect exact layout type: [Left-Sidebar | Right-Sidebar | Multi-Column Mesh | Bento Grid | Split Header].
+       - Identify Column Ratios: e.g., "Left Sidebar is exactly 32% of total width", "Header is exactly 240px height".
+       - Margin/Padding Rythm: Detect exact gutter sizes (e.g. "8px internal section spacing").
+    2. TYPOGRAPHIC BLUEPRINT (The "Visual Voice"):
+       - Pairings: Detect exact Font Families (Serif vs Sans) and their weights (Light, Regular, Medium, Black).
+       - Scale: Identify exact size ratios between H1, H2, and Body text.
+       - Attributes: Tracking (letter-spacing), Leading (line-height), and Case (All-caps? Small-caps?).
+    3. THEMATIC REPLICATION (The "Visual DNA"):
+       - Extract HEX codes for ALL layers: Background, Text levels, Dividers, Accent marks.
+       - Effects: Identify specific drop shadows, border-radius (e.g. rounded-[30px]), and opacity levels.
+    4. COMPONENT ARCHESS (The "Graphic Elements"):
+       - Shapes: Detect specific icons (Lucide/SVG), profile photo masks (Circle/Rounded Rect), and dividers.
+       - Infographic Styles: How are skills shown? (Progress bars, dots, levels, or plain text).
+    
+    OUTPUT: A technical "Layout Manifest" describing the physical structure. Detect if a profile photo is expected and its exact shape/position. Treat this as a 1:1 reconstructive blueprint.`;
 
     const contents: any[] = [];
-    if (fileBase64 && mimeType && isSupportedMime(mimeType)) {
+    if (fileBase64 && mimeType && isNative) {
       contents.push({
         parts: [
-          { inlineData: { data: fileBase64, mimeType } },
+          { inlineData: { data: fileBase64.split(',')[1] || fileBase64, mimeType } },
           { text: prompt }
         ]
       });
-    } else if (rawText) {
+    } else if (finalRawText) {
       contents.push({
-        parts: [{ text: prompt + "\n\nTEXT CONTENT FOR CONTEXT:\n" + rawText }]
+        parts: [{ text: prompt + "\n\nTEXT CONTENT FOR CONTEXT:\n" + finalRawText }]
       });
     } else {
       throw new Error("UNSUPPORTED_TYPE_AND_NO_TEXT");
@@ -174,14 +211,19 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
 }
 
 export async function extractTextFromAny(base64: string, mimeType: string) {
-  if (!isSupportedMime(mimeType)) {
+  if (isSupportedMime(mimeType) && !isNativeAiSupport(mimeType)) {
+    return await extractDocxText(base64);
+  }
+
+  if (!isNativeAiSupport(mimeType)) {
     throw new Error("UNSUPPORTED_MIME_FOR_AI_EXTRACTION");
   }
 
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     const prompt = "Extract all text content from this document exactly. Preserve logical order. No annotations.";
-    const part = { inlineData: { data: base64, mimeType } };
+    const cleanBase64 = base64.split(',')[1] || base64;
+    const part = { inlineData: { data: cleanBase64, mimeType } };
     const response = await ai.models.generateContent({
       model,
       contents: [{ parts: [part, { text: prompt }] }],
@@ -286,28 +328,32 @@ export async function generateResume(
     const refText = reference.text || "";
     const userText = content.text || "";
 
-    const prompt = `SUPREME DESIGN SYSTEM ENGINEER.
+    const prompt = `SUPREME VISUAL CLONE ENGINE.
     
-    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure with 100% fidelity using Tailwind CSS.
+    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure with 100% pixel-perfect fidelity using Tailwind CSS.
     
-    CORE COMMANDS (STRICT ENFORCEMENT):
-    1. LAYOUT CLONING: 
-       - You MUST build the exact same grid/flex structure as the reference. If there's a sidebar, replicate its relative width and background color exactly.
-       - Use arbitrary Tailwind values for pixel-perfection: \`bg-[#...] \`, \`w-[...%]\`, \`p-[...px]\`.
-    2. COMPONENT ARCHETYPES:
-       - Mirror the "Design Language" of dividers, buttons, and skill displays.
-       - If the reference uses "Infographic" styles (progress bars, rated dots, timelines), you MUST code them using div structures.
-       - REPLICATE shapes like circular profile pics or rounded section boxes.
-    3. DATA REMAPPING:
-       - Pour USER CONTENT into the reference's visual slots. If the reference shows "Experience" as a multi-line entry with a logo, format the user's data the same way.
-    4. ACCURACY & POLISH:
-       - match font-weights, tracking, and leading of the reference.
-       - Use Lucide icons or raw SVG for all icons/graphics.
-       - Ensure exact color-matching for every text and background element.
+    ZERO-ASSUMPTION POLICY:
+    - If the reference is Single-Column, the output MUST be Single-Column.
+    - If the reference has a sidebar, the output MUST have a matching sidebar.
+    - DO NOT add a photo unless the reference has one.
+    - DO NOT use generic margins. USE THE DNA MANIFEST for precise values.
     
-    OUTPUT: A single self-contained HTML structure with Tailwind classes. No <html> or <body> tags. High complexity is expected.
+    CORE CLONING COMMANDS:
+    1. STRUCTURAL MATCHING:
+       - Use the [DESIGN TOKENS MANIFEST] as a physical blueprint.
+       - Replicate the exact grid/flex proportions. Use arbitrary values like \`w-[320px]\` or \`w-[34%]\`.
+       - Use \`bg-[#...]\`, \`p-[...px]\`, \`rounded-[...px]\`, and \`tracking-[...em]\` for absolute precision.
+    2. TYPOGRAPHIC CLONING:
+       - Match font weights and letter spacing exactly from the reference.
+       - If the reference uses icons (Lucide), place them in the exact same slots.
+    3. COMPONENT FIDELITY:
+       - Replicate dividers (thickness/color), section headers (styles), and infographic widgets (bars/dots) identically.
+    4. CONTENT MAPPING:
+       - Pour USER CONTENT into the reference's exact visual slots. If content is too long, use responsive scaling or truncation that preserves design integrity.
     
-    ADVANCED GRAPHICS DIRECTIVE: If the reference uses overlapping elements, negative margins, or layered images, you MUST implement them. Use \`z-index\`, \`relative/absolute\`, and \`overflow-hidden\` to achieve the high-graphic look. Do NOT simplify the design.
+    OUTPUT: A single self-contained HTML structure with Tailwind classes. No <html> or <body> tags. Ensure the result is a 1:1 visual "Clone" of the template, just with updated data.
+    
+    HIGH-FIDELITY DIRECTIVE: Scale awareness is critical. Maintain the A4 vertical balance. If the reference uses overlapping elements or negative margins, REPLICATE THEM EXACTLY.
     
     ${optimizationPrompt}
     ${layoutSystemPrompt}
@@ -338,7 +384,7 @@ export async function generateResume(
     const parts: any[] = [];
 
     // Add Reference Info - ALWAYS include visual if available and supported
-    if (reference.base64 && reference.mimeType && isSupportedMime(reference.mimeType)) {
+    if (reference.base64 && reference.mimeType && isNativeAiSupport(reference.mimeType)) {
       parts.push({ 
         inlineData: { 
           data: reference.base64.split(',')[1] || reference.base64, 
@@ -346,6 +392,10 @@ export async function generateResume(
         } 
       });
       parts.push({ text: "### MASTER REFERENCE DOCUMENT (Visual & Layout Blueprint)" });
+    } else if (reference.base64 && reference.mimeType && isSupportedMime(reference.mimeType)) {
+      // Pre-process docx for reference too if needed
+      const extracted = await extractDocxText(reference.base64);
+      parts.push({ text: `### MASTER REFERENCE CONTENT (Extracted):\n${extracted}` });
     }
 
     if (existingLayout) {
@@ -355,7 +405,7 @@ export async function generateResume(
     }
 
     // Add User Content Info - include visual if supported for better data extraction
-    if (content.base64 && content.mimeType && isSupportedMime(content.mimeType)) {
+    if (content.base64 && content.mimeType && isNativeAiSupport(content.mimeType)) {
       parts.push({ 
         inlineData: { 
           data: content.base64.split(',')[1] || content.base64, 
@@ -363,6 +413,9 @@ export async function generateResume(
         } 
       });
       parts.push({ text: "### USER CONTENT SOURCE (Reference for data extraction)" });
+    } else if (content.base64 && content.mimeType && isSupportedMime(content.mimeType)) {
+      const extracted = await extractDocxText(content.base64);
+      parts.push({ text: `### USER CONTENT SOURCE (Extracted):\n${extracted}` });
     }
     
     if (userText) {
@@ -625,13 +678,16 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
     const model = "gemini-3-flash-preview";
     const parts: any[] = [];
     
-    if (file.base64 && isSupportedMime(file.mimeType)) {
+    if (file.base64 && isNativeAiSupport(file.mimeType)) {
       parts.push({
         inlineData: {
           data: file.base64.split(',')[1] || file.base64,
           mimeType: file.mimeType
         }
       });
+    } else if (file.base64 && isSupportedMime(file.mimeType)) {
+      const extracted = await extractDocxText(file.base64);
+      parts.push({ text: `RAW TEXT FROM DOCUMENT:\n${extracted}` });
     } else if (file.text) {
       parts.push({ text: `RAW TEXT:\n${file.text}` });
     }
