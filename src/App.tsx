@@ -379,7 +379,7 @@ export default function App() {
   }
 
   if (!user && activeTab !== 'builder') {
-    return <Login onTryGuest={() => setActiveTab('builder')} />;
+    return <Login onTryGuest={() => setActiveTab('builder')} theme={theme} toggleTheme={toggleTheme} />;
   }
 
   const userLevel = getLevel(userData?.morphCount || 0);
