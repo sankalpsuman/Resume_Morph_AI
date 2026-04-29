@@ -35,6 +35,8 @@ import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon } fr
 
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources';
 
+import { PLANS } from './constants';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('builder');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -108,9 +110,9 @@ export default function App() {
             usedMorphs: 0,
             freeMorphsUsed: 0,
             premiumMorphsUsed: 0,
-            remainingMorphs: 2,
-            plan: 'free',
-            planLimit: 2,
+            remainingMorphs: PLANS[0].limit,
+            plan: PLANS[0].id,
+            planLimit: PLANS[0].limit,
             hasReviewed: false,
             role: 'user',
             createdAt: serverTimestamp(),
@@ -232,10 +234,10 @@ export default function App() {
         if (Date.now() > expiry.getTime()) {
           const userRef = doc(db, 'users', user.uid);
           await updateDoc(userRef, {
-            plan: 'free',
-            planLimit: 2,
+            plan: PLANS[0].id,
+            planLimit: PLANS[0].limit,
             usedMorphs: 0,
-            remainingMorphs: 2,
+            remainingMorphs: PLANS[0].limit,
             premiumExpiryDate: null
           });
         }
@@ -385,7 +387,7 @@ export default function App() {
   const userLevel = getLevel(userData?.morphCount || 0);
   const isAdmin = user?.email === 'sankalpsmn@gmail.com';
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
-  const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2);
+  const planLimit = userData?.planLimit === -1 ? 100 : (userData?.planLimit || PLANS[0].limit);
   const progress = Math.min((usedMorphs / planLimit) * 100, 100);
   const memberSince = userData?.createdAt?.toDate?.().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) || 'Recently';
 

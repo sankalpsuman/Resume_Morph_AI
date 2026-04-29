@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, Reply, CheckCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { PLANS } from '../constants';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { compareResumes } from '../lib/gemini';
@@ -65,7 +66,8 @@ export default function AccountModal({
 
   const usedMorphs = userData.usedMorphs !== undefined ? userData.usedMorphs : (userData.morphCount || 0);
   const userLevel = getLevel(usedMorphs);
-  const planLimit = userData.planLimit === -1 ? 100 : (userData.planLimit || 2);
+  const currentPlan = PLANS.find(p => p.id === (userData.plan || 'free')) || PLANS[0];
+  const planLimit = userData.planLimit === -1 ? 100 : (userData.planLimit || currentPlan.limit);
   const progress = Math.min((usedMorphs / planLimit) * 100, 100);
 
   const joinedDate = userData.createdAt?.toDate 
@@ -199,7 +201,7 @@ export default function AccountModal({
 
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-3">
                     <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
-                      {userData.plan || 'Free'} Plan
+                      {currentPlan.name} Plan
                     </div>
                     {user.email === 'sankalpsmn@gmail.com' && (
                       <button
@@ -239,7 +241,7 @@ export default function AccountModal({
               <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Usage Progress</p>
-                  <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || 2)}</p>
+                  <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {userData.planLimit === -1 ? '∞' : (userData.planLimit || currentPlan.limit)}</p>
                 </div>
                 <div className="w-full h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                   <motion.div 
@@ -248,6 +250,9 @@ export default function AccountModal({
                     className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
                   />
                 </div>
+                <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest mt-3">
+                  {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || currentPlan.limit) - usedMorphs)} morphs remaining`}
+                </p>
                 
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <div className="p-3 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)]">
@@ -261,7 +266,7 @@ export default function AccountModal({
                 </div>
 
                 <p className="text-[9px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-center">
-                  {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || 2) - usedMorphs)} morphs remaining`}
+                  {userData.planLimit === -1 ? 'Unlimited access enabled' : `${Math.max(0, (userData.planLimit || currentPlan.limit) - usedMorphs)} morphs remaining`}
                 </p>
                 {userData.lastResetAt && (
                   <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-widest text-center">

@@ -16,6 +16,8 @@ import { ref, uploadString, deleteObject } from 'firebase/storage';
 import { uploadWithRetry } from '../lib/storage';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 
+import { PLANS } from '../constants';
+
 interface FileData {
   file: File;
   base64?: string;
@@ -311,7 +313,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       return false;
     }
 
-    const limit = userData?.planLimit || 2;
+    const limit = userData?.planLimit || PLANS[0].limit;
     if (limit !== -1 && usedMorphs >= limit) {
       onUpgrade();
       return false;
@@ -965,10 +967,13 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
                 <div className="flex items-center gap-3">
                   <span className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">
-                    {userData?.planLimit === -1 ? 'Unlimited' : `${usedMorphs} / ${userData?.planLimit || 2}`}
+                    {userData?.planLimit === -1 ? 'Unlimited' : `${usedMorphs} / ${userData?.planLimit || PLANS[0].limit}`}
                   </span>
                   <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
-                    {userData?.plan || 'Free'} Plan
+                    {(() => {
+                      const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
+                      return `${currentPlan.name} Plan`;
+                    })()}
                   </span>
                 </div>
               </div>
@@ -1001,19 +1006,19 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
                 <p className="text-[9px] md:text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
-                  {userData?.planLimit === -1 ? '∞' : Math.max(0, (userData?.planLimit || 2) - usedMorphs)} Morphs Left
+                  {userData?.planLimit === -1 ? '∞' : Math.max(0, (userData?.planLimit || PLANS[0].limit) - usedMorphs)} Morphs Left
                 </p>
               </div>
               <div className="w-full h-2.5 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((usedMorphs / (userData?.planLimit === -1 ? 100 : (userData?.planLimit || 2))) * 100, 100)}%` }}
+                  animate={{ width: `${Math.min((usedMorphs / (userData?.planLimit === -1 ? 100 : (userData?.planLimit || PLANS[0].limit))) * 100, 100)}%` }}
                   className="h-full bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
                 />
               </div>
             </div>
 
-            {userData?.planLimit !== -1 && usedMorphs >= (userData?.planLimit || 2) && (
+            {userData?.planLimit !== -1 && usedMorphs >= (userData?.planLimit || PLANS[0].limit) && (
               <button 
                 onClick={onUpgrade}
                 className="w-full lg:w-auto px-6 md:px-8 py-4 bg-indigo-600 text-white rounded-xl md:rounded-[20px] text-[10px] md:text-sm font-black uppercase tracking-widest md:tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
@@ -1058,7 +1063,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   label="Upload Reference Layout (PDF/Image)"
                   color="indigo"
                   disabled={(() => {
-                    const limit = userData?.planLimit || 2;
+                    const limit = userData?.planLimit || PLANS[0].limit;
                     return limit !== -1 && usedMorphs >= limit;
                   })()}
                 />
@@ -1217,14 +1222,14 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   label="Upload Your Content (Resume/Doc)"
                   color="indigo"
                   disabled={(() => {
-                    const limit = userData?.planLimit || 2;
+                    const limit = userData?.planLimit || PLANS[0].limit;
                     return limit !== -1 && usedMorphs >= limit;
                   })()}
                 />
 
                 {referenceFile && contentFile && !generatedHtml && (
                   (() => {
-                    const limit = userData?.planLimit || 2;
+                    const limit = userData?.planLimit || PLANS[0].limit;
                     const isOverLimit = limit !== -1 && usedMorphs >= limit;
                     return isOverLimit;
                   })() ? (
@@ -1903,14 +1908,15 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <div className="space-y-2">
                   <h3 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)] tracking-tight">Save Resume?</h3>
                   <p className="text-sm sm:text-base text-[var(--text-secondary)] font-medium">
-                    {userData?.plan === 'premium' 
-                      ? "You can save up to 2 morphed resumes in your history. Would you like to save this one?"
-                      : "Free users can save 1 morphed resume. Would you like to save this one?"}
+                    {(() => {
+                      const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
+                      return `Your ${currentPlan.name} plan allows up to ${currentPlan.historyLimit} saved resumes in your history.`;
+                    })()}
                   </p>
                 </div>
               </div>
 
-              {userData?.resumeHistory?.length >= (userData?.plan === 'premium' ? 2 : 1) ? (
+              {userData?.resumeHistory?.length >= (PLANS.find(p => p.id === (userData?.plan || 'free'))?.historyLimit || 1) ? (
                 <div className="space-y-4">
                   <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest text-center">Select a resume to replace</p>
                   <div className="grid gap-3">

@@ -11,41 +11,7 @@ interface PremiumModalProps {
   user: any;
 }
 
-const PLANS = [
-  {
-    id: 'portfolio_starter',
-    name: 'Portfolio Starter',
-    morphs: 0,
-    portfolios: 2,
-    price: 299,
-    description: 'Perfect for freshers',
-    icon: Star,
-    color: 'from-blue-500 to-indigo-500'
-  },
-  {
-    id: 'portfolio_pro',
-    name: 'Portfolio Pro',
-    morphs: 0,
-    portfolios: 5,
-    price: 999,
-    description: 'Best for professionals',
-    icon: Trophy,
-    color: 'from-indigo-500 to-purple-500',
-    popular: true
-  },
-  {
-    id: 'combo_pack',
-    name: 'Master Combo',
-    morphs: 15,
-    portfolios: 10,
-    price: 1499,
-    description: 'Morph Engine + Portfolio Gen',
-    icon: Sparkles,
-    color: 'from-purple-500 to-pink-500'
-  }
-];
-
-const ADMIN_WHATSAPP = "919540446448"; // Updated admin contact number
+import { PLANS, ADMIN_WHATSAPP } from '../constants';
 
 export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProps) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);

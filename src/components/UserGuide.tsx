@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { PLANS } from '../constants';
 import { 
   BookOpen, 
   Layout, 
@@ -118,39 +119,7 @@ export default function UserGuide() {
     }
   ];
 
-  const plans = [
-    {
-      id: "portfolio_starter",
-      name: "Portfolio Starter",
-      price: "₹299",
-      morphs: "2 Portfolios",
-      icon: Star,
-      color: "text-blue-500",
-      bg: "bg-blue-50",
-      desc: "Perfect for freshers"
-    },
-    {
-      id: "portfolio_pro",
-      name: "Portfolio Pro",
-      price: "₹999",
-      morphs: "5 Portfolios",
-      icon: Trophy,
-      color: "text-indigo-500",
-      bg: "bg-indigo-50",
-      desc: "Best for professionals",
-      popular: true
-    },
-    {
-      id: "combo_pack",
-      name: "Master Combo",
-      price: "₹1499",
-      morphs: "15 Morphs + 10 Portfolios",
-      icon: Sparkles,
-      color: "text-purple-500",
-      bg: "bg-purple-50",
-      desc: "Morph Engine + Portfolio Gen"
-    }
-  ];
+  const plans = PLANS.filter(p => p.id !== 'free');
 
   return (
     <div className="relative min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] selection:bg-indigo-500/30 font-sans transition-colors duration-300">
@@ -433,13 +402,19 @@ export default function UserGuide() {
               </div>
               <div className="flex-grow space-y-3 md:space-y-4 mb-8 md:mb-12">
                 <h3 className="text-2xl md:text-4xl font-black text-[var(--text-primary)] tracking-tight leading-tight md:leading-none">{plan.name}</h3>
-                <p className="text-[var(--text-secondary)] text-sm md:text-lg font-medium leading-relaxed">{plan.desc}</p>
+                <p className="text-[var(--text-secondary)] text-sm md:text-lg font-medium leading-relaxed">{plan.description}</p>
               </div>
               
               <div className="mb-8 md:mb-12">
                 <div className="flex items-baseline gap-2 md:gap-3">
-                  <span className="text-4xl md:text-6xl font-black text-[var(--text-primary)] tracking-tighter">{plan.price}</span>
-                  <span className="text-[10px] md:text-xs font-black text-[var(--text-secondary)] uppercase tracking-widest leading-none">/ {plan.morphs}</span>
+                  <span className="text-4xl md:text-6xl font-black text-[var(--text-primary)] tracking-tighter">₹{plan.price}</span>
+                  <span className="text-[10px] md:text-xs font-black text-[var(--text-secondary)] uppercase tracking-widest leading-none">/ {plan.morphs === -1 ? '∞' : plan.morphs} Morphs</span>
+                </div>
+                
+                <div className="flex items-center gap-2 mb-8">
+                  <div className="h-px flex-1 bg-[var(--border-color)]" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-indigo-500">{plan.portfolios} Portfolios Included</span>
+                  <div className="h-px flex-1 bg-[var(--border-color)]" />
                 </div>
               </div>
 

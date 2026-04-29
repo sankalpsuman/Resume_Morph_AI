@@ -41,12 +41,7 @@ interface PremiumRequest {
   timestamp: any;
 }
 
-const PLANS = [
-  { id: 'free', name: 'Free', limit: 2, price: 0, color: 'text-[var(--text-secondary)]', bg: 'bg-[var(--bg-secondary)]' },
-  { id: 'premium', name: 'Premium', limit: 7, price: 39, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-  { id: 'gold', name: 'Gold', limit: 12, price: 79, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
-  { id: 'unlimited', name: 'Unlimited', limit: -1, price: 499, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' }
-];
+import { PLANS } from '../constants';
 
 export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<'admin' | 'users' | 'requests'>('admin');
@@ -156,7 +151,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       const user = users.find(u => u.id === userId);
       if (!user) return;
       
-      const newLimit = (user.planLimit || 2) + 2;
+      const newLimit = (user.planLimit || PLANS[0].limit) + 2;
       const now = new Date();
       
       await updateDoc(doc(db, 'users', userId), {
@@ -484,7 +479,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                               <p className="text-[10px] md:text-[11px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest truncate">{user.email}</p>
                               <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
                                 <span className="text-[8px] md:text-[10px] bg-[var(--bg-secondary)] text-[var(--text-secondary)] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest">
-                                  {user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)}/{user.planLimit === -1 ? '∞' : (user.planLimit || 2)}
+                                  {user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)}/{user.planLimit === -1 ? '∞' : (user.planLimit || PLANS[0].limit)}
                                 </span>
                                 <span className={cn(
                                   "text-[8px] md:text-[10px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg font-black uppercase tracking-widest flex items-center gap-1",
