@@ -16,7 +16,7 @@ export default function CoverLetterGenerator({ resumeData }: { resumeData: any }
     if (!jobTitle) return;
     setIsGenerating(true);
     try {
-      const resumeText = JSON.stringify(resumeData);
+      const resumeText = typeof resumeData === 'string' ? resumeData : JSON.stringify(resumeData);
       const letter = await generateCoverLetter(resumeText, jobTitle, company, jobDescription);
       setGeneratedLetter(letter);
       

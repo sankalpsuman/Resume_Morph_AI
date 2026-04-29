@@ -7,6 +7,7 @@ import {
   Sparkles, Rocket, Code, Settings, LogIn
 } from 'lucide-react';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
+import { wrapResumeHtml } from '../lib/resumeTemplates';
 import mammoth from 'mammoth';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -43,6 +44,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const planLimit = userData?.planLimit === -1 ? Infinity : (userData?.planLimit || PLANS[0].limit);
+  const isLimitReached = planLimit !== Infinity && usedMorphs >= (planLimit as number);
   const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
@@ -272,8 +274,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         id: resumeId,
         name: name || 'Untitled Resume',
         timestamp: new Date().toISOString(),
-        html: html, // Keep HTML in Firestore for quick access
-        originalText: contentFile.text || '', // Save original text for diffing
+        html: wrapResumeHtml(html, { name: name || 'Untitled Resume', isGuest: false }), // Save exact snapshot
+        originalText: contentFile?.text || '', // Save original text for diffing
         storagePath: storagePath
       };
 
@@ -696,31 +698,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       return;
     }
     if (!generatedHtml) return;
-    const fullHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-            body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 2rem; background: white; }
-            .resume-container { max-width: 800px; margin: 0 auto; }
-            @media print {
-              @page { margin: 0; size: auto; }
-              body { margin: 1.6cm; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .resume-container { max-width: none; width: 100%; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="resume-container">
-            ${generatedHtml}
-          </div>
-        </body>
-      </html>
-    `;
+    const fullHtml = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false });
     const blob = new Blob([fullHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -738,31 +716,15 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       return;
     }
     if (!generatedHtml) return;
-    // Word can open HTML files if they have the right headers
-    const fullHtml = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-            xmlns:w='urn:schemas-microsoft-com:office:word' 
-            xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta charset='utf-8'>
-          <title>Resume</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-          <style>
-            body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 2rem; background: white; }
-            .resume-container { max-width: 800px; margin: 0 auto; }
-            /* Word-specific overrides for layout */
-            .grid { display: table !important; width: 100% !important; }
-            .col-span-1, .col-span-2, .col-span-3, .col-span-4, .col-span-5, .col-span-6, .col-span-7, .col-span-8, .col-span-9, .col-span-10, .col-span-11, .col-span-12 { display: table-cell !important; }
-          </style>
-        </head>
-        <body>
-          <div class="resume-container">
-            ${generatedHtml}
-          </div>
-        </body>
-      </html>
-    `;
+    
+    // Construct HTML with Word-specific fixes
+    const wrapped = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false });
+    // Inject Word-specific styles into the wrapped HTML
+    const fullHtml = wrapped.replace('</style>', `
+      /* Word-specific overrides for layout */
+      .grid { display: table !important; width: 100% !important; }
+      .col-span-1, .col-span-2, .col-span-3, .col-span-4, .col-span-5, .col-span-6, .col-span-7, .col-span-8, .col-span-9, .col-span-10, .col-span-11, .col-span-12 { display: table-cell !important; }
+    </style>`);
     
     const blob = new Blob(['\ufeff', fullHtml], {
         type: 'application/msword'
@@ -1000,18 +962,32 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       <main className="max-w-[1440px] mx-auto px-1 sm:px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
         <div className="mb-8 md:mb-12">
-          <div className="flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-3xl md:rounded-[32px] p-5 md:p-8 shadow-sm">
+          <div className={cn(
+            "flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-[var(--bg-primary)] border rounded-3xl md:rounded-[32px] p-5 md:p-8 shadow-sm transition-colors",
+            isLimitReached ? "border-rose-200 dark:border-rose-900/30" : "border-[var(--border-color)]"
+          )}>
             <div className="flex items-center gap-4 md:gap-5 w-full lg:w-auto">
-              <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[22px] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-100 dark:shadow-none shrink-0">
+              <div className={cn(
+                "w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[22px] flex items-center justify-center shadow-xl transition-all shrink-0",
+                isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
+              )}>
                 <Zap className="w-6 h-6 md:w-7 md:h-7 text-white fill-white" />
               </div>
               <div className="flex-grow">
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">
+                  <span className={cn(
+                    "text-xl md:text-2xl font-black tracking-tight",
+                    isLimitReached ? "text-rose-600" : "text-[var(--text-primary)]"
+                  )}>
                     {planLimit === Infinity ? 'Unlimited' : `${usedMorphs} / ${planLimit}`}
                   </span>
-                  <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/30">
+                  <span className={cn(
+                    "px-2 py-0.5 md:px-3 md:py-1 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border transition-colors",
+                    isLimitReached 
+                      ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" 
+                      : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30"
+                  )}>
                     {(() => {
                       const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
                       return `${currentPlan.name} Plan`;
@@ -1047,7 +1023,10 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             <div className="w-full lg:flex-grow lg:max-w-md">
               <div className="flex items-center justify-between mb-2 md:mb-3">
                 <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
-                <p className="text-[9px] md:text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">
+                <p className={cn(
+                  "text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]",
+                  isLimitReached ? "text-rose-600" : "text-indigo-600"
+                )}>
                   {planLimit === Infinity ? '∞' : Math.max(0, (planLimit as number) - usedMorphs)} Morphs Left
                 </p>
               </div>
@@ -1055,7 +1034,12 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
-                  className="h-full bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  className={cn(
+                    "h-full rounded-full transition-colors",
+                    isLimitReached 
+                      ? "bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]" 
+                      : "bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+                  )}
                 />
               </div>
             </div>
@@ -1610,99 +1594,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                         "w-full border-none",
                         isPreviewFull ? "min-h-[1200px]" : "h-[500px] md:h-[784px]"
                       )}
-                      srcDoc={`
-                        <!DOCTYPE html>
-                        <html>
-                          <head>
-                            <meta charset="UTF-8">
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                            <script src="https://cdn.tailwindcss.com"></script>
-                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-                            <style>
-                              body { 
-                                font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
-                                margin: 0; 
-                                padding: 0; 
-                                background: #f1f5f9; 
-                                color: #1a1a1a; 
-                                display: flex;
-                                justify-content: center;
-                                min-height: 100vh;
-                                -webkit-font-smoothing: antialiased;
-                              }
-                              .resume-page { 
-                                background: white;
-                                width: 210mm;
-                                min-height: 297mm;
-                                padding: 0;
-                                margin: 2rem auto;
-                                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-                                position: relative;
-                                overflow: hidden;
-                                transform-origin: top center;
-                              }
-                              @media print {
-                                @page { margin: 0; size: A4; }
-                                body { margin: 0; padding: 0; background: white; }
-                                .resume-page { 
-                                  margin: 0; 
-                                  box-shadow: none; 
-                                  width: 100%;
-                                  height: 100%;
-                                  overflow: visible !important;
-                                  -webkit-print-color-adjust: exact; 
-                                  print-color-adjust: exact; 
-                                }
-                                .watermark { display: none !important; }
-                              }
-                              @media screen and (max-width: 210mm) {
-                                body { padding: 0; }
-                                .resume-page {
-                                  margin: 0;
-                                }
-                              }
-                              .watermark {
-                                position: fixed;
-                                top: 50%;
-                                left: 50%;
-                                transform: translate(-50%, -50%) rotate(-45deg);
-                                font-size: 80px;
-                                font-weight: 900;
-                                color: rgba(0, 0, 0, 0.05);
-                                white-space: nowrap;
-                                pointer-events: none;
-                                z-index: 1000;
-                                text-transform: uppercase;
-                                letter-spacing: 0.2em;
-                                user-select: none;
-                              }
-                            </style>
-                          </head>
-                          <body>
-                            <div class="resume-page">
-                              ${generatedHtml}
-                            </div>
-                            ${!user ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
-                            <script>
-                              function adjustScale() {
-                                const page = document.querySelector('.resume-page');
-                                if (!page) return;
-                                const width = window.innerWidth;
-                                const targetWidth = 210 * 3.7795275591; // 210mm in pixels at 96dpi (~794px)
-                                if (width < targetWidth + 40) {
-                                  const scale = (width - 40) / targetWidth;
-                                  page.style.transform = 'scale(' + Math.min(scale, 1) + ')';
-                                } else {
-                                  page.style.transform = 'none';
-                                }
-                              }
-                              window.addEventListener('resize', adjustScale);
-                              window.addEventListener('load', adjustScale);
-                              setTimeout(adjustScale, 100);
-                            </script>
-                          </body>
-                        </html>
-                      `}
+                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user })}
                     />
                   ) : (
                     <motion.div 

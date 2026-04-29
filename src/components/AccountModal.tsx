@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, Reply, CheckCircle } from 'lucide-react';
+import { 
+  X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, 
+  Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, 
+  Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Printer 
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS } from '../constants';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { compareResumes } from '../lib/gemini';
-import { Loader2, Diff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface AccountModalProps {
@@ -91,6 +94,38 @@ export default function AccountModal({
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadWord = (resume: any) => {
+    if (!resume.html) return;
+    // Apply Word-specific fixes
+    const fullHtml = resume.html.replace('</style>', `
+      /* Word-specific overrides for layout */
+      .grid { display: table !important; width: 100% !important; }
+      .col-span-1, .col-span-2, .col-span-3, .col-span-4, .col-span-5, .col-span-6, .col-span-7, .col-span-8, .col-span-9, .col-span-10, .col-span-11, .col-span-12 { display: table-cell !important; }
+    </style>`);
+    
+    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${resume.name.replace(/\s+/g, '_')}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const [printIframe, setPrintIframe] = useState<string | null>(null);
+
+  const handlePrintPDF = (resume: any) => {
+    if (!resume.html) return;
+    setPrintIframe(resume.html);
+    setTimeout(() => {
+      const iframe = document.getElementById('print-iframe') as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }
+    }, 500);
+  };
+
   const handlePreview = (resume: any) => {
     if (!resume.html) return;
     try {
@@ -113,9 +148,9 @@ export default function AccountModal({
     setComparingResume(resume);
     try {
       // Create a plain text version for AI comparison
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = resume.html;
-      const cleanText = tempDiv.innerText || tempDiv.textContent || "";
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(resume.html, 'text/html');
+      const cleanText = doc.body.innerText || doc.body.textContent || "";
       
       // Use original text if available, otherwise fallback to generic label
       const originalText = resume.originalText || "Original Content (Not Available)";
@@ -331,21 +366,37 @@ export default function AccountModal({
                       </button>
                       <button 
                         onClick={() => handlePreview(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-[var(--bg-primary)] text-[var(--text-secondary)] font-black text-[10px] uppercase tracking-widest rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-indigo-200 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95"
+                        className="p-3 text-[var(--text-tertiary)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all"
+                        title="Preview"
                       >
-                        <Eye className="w-4 h-4" />
-                        Preview
+                        <Eye className="w-5 h-5" />
                       </button>
+                      <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
                       <button 
                         onClick={() => handleDownload(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-500/20 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
+                        className="p-3 text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-2xl transition-all"
+                        title="Download HTML"
                       >
-                        <Download className="w-4 h-4" />
-                        Download
+                        <FileCode className="w-5 h-5" />
                       </button>
                       <button 
+                        onClick={() => handleDownloadWord(resume)}
+                        className="p-3 text-[var(--text-tertiary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-2xl transition-all"
+                        title="Download Word"
+                      >
+                        <FileType className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => handlePrintPDF(resume)}
+                        className="p-3 text-[var(--text-tertiary)] hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-2xl transition-all"
+                        title="Print PDF"
+                      >
+                        <Printer className="w-5 h-5" />
+                      </button>
+                      <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
+                      <button 
                         onClick={() => setDeleteConfirm(resume.id)}
-                        className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all active:scale-90"
+                        className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
                         title="Delete Resume"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -592,6 +643,14 @@ export default function AccountModal({
           </div>
         )}
       </AnimatePresence>
+      
+      {/* Hidden iframe for printing history items */}
+      <iframe 
+        id="print-iframe"
+        srcDoc={printIframe || ''}
+        style={{ display: 'none' }}
+        title="Print Iframe"
+      />
     </>
   );
 
