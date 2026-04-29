@@ -1,4 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse, Type, ThinkingLevel } from "@google/genai";
+import { TOON } from './toon';
 
 // Gemini supported multimodal types
 const SUPPORTED_MIMES = [
@@ -193,9 +194,19 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
+    // Auto-detect JSON and convert to TOON to save tokens
+    let content = userContent;
+    if (userContent.trim().startsWith('{')) {
+      try {
+        content = TOON.stringify(JSON.parse(userContent), 'RESUME');
+      } catch (e) { /* ignore and use original */ }
+    }
+
     const prompt = `Expert ATS Strategist.
     
-    CONTENT: ${userContent}
+    ${TOON.getSystemInstruction()}
+    
+    CONTENT (TOON): ${content}
     TARGET: ${jobDescription || "Standard High-Level Professional"}
     
     TASK: Propose specific changes to make this resume 100% ATS friendly.
@@ -271,6 +282,10 @@ export async function generateResume(
           ? "\n\nTHEME: High-level executive summary style. Focus on leadership and strategic impact."
           : "";
 
+    // Use full JSON for layout morphing to preserve maximum structural fidelity as requested
+    const refText = reference.text || "";
+    const userText = content.text || "";
+
     const prompt = `SUPREME DESIGN SYSTEM ENGINEER.
     
     GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure with 100% fidelity using Tailwind CSS.
@@ -335,8 +350,8 @@ export async function generateResume(
 
     if (existingLayout) {
       parts.push({ text: `### DESIGN TOKENS MANIFEST (Already Analyzed):\n${existingLayout}` });
-    } else if (reference.text) {
-      parts.push({ text: `### REFERENCE CONTENT STRUCTURE:\n${reference.text}` });
+    } else if (refText) {
+      parts.push({ text: `### REFERENCE CONTENT STRUCTURE:\n${refText}` });
     }
 
     // Add User Content Info - include visual if supported for better data extraction
@@ -350,8 +365,8 @@ export async function generateResume(
       parts.push({ text: "### USER CONTENT SOURCE (Reference for data extraction)" });
     }
     
-    if (content.text) {
-      parts.push({ text: `### USER RAW TEXT CONTENT (The facts to insert):\n${content.text}` });
+    if (userText) {
+      parts.push({ text: `### USER RAW TEXT CONTENT (The facts to insert):\n${userText}` });
     }
 
     // Add JD
@@ -415,9 +430,19 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
+    // Auto-detect JSON and convert to TOON
+    let content = resumeText;
+    if (resumeText.trim().startsWith('{')) {
+      try {
+        content = TOON.stringify(JSON.parse(resumeText), 'RESUME');
+      } catch (e) { /* ignore */ }
+    }
+
     const prompt = `Expert ATS Matcher.
     
-    RESUME: ${resumeText}
+    ${TOON.getSystemInstruction()}
+    
+    RESUME (TOON): ${content}
     JOB DESCRIPTION: ${jobDescription}
     
     TASK:
@@ -466,10 +491,15 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
+    const resumeToon = resumeText.startsWith('{') ? TOON.stringify(JSON.parse(resumeText), 'RESUME') : resumeText;
+    const githubToon = githubData ? TOON.stringify(githubData, 'GITHUB') : "";
+
     const prompt = `SUPREME PORTFOLIO ARCHITECT & BRAND STRATEGIST.
     
-    RESUME DATA: ${resumeText}
-    ${githubData ? `GITHUB REPOSITORIES: ${JSON.stringify(githubData)}` : ""}
+    ${TOON.getSystemInstruction()}
+    
+    RESUME DATA (TOON): ${resumeToon}
+    ${githubToon ? `GITHUB REPOSITORIES (TOON): ${githubToon}` : ""}
     
     TASK: Architect a world-class personal brand identity and website content based on the provided resume.
     
@@ -608,25 +638,27 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
 
     const prompt = `EXPERT RESUME CONTENT EXTRACTOR.
     
-    TASK: Extract EVERY detail from this resume into a clean, structured JSON format.
+    ${TOON.getSystemInstruction()}
+    
+    TASK: Extract EVERY detail from this resume into TOON format. 
     
     EXTRACTION RULES:
     1. Do not omit any professional data.
     2. Split names, titles, and contact info clearly.
     3. Categorize experience and projects with dates, company names, and bullet points.
     4. Group skills into categories if possible.
+    5. Output ONLY the TOON string starting with [RESUME] and ending with [/RESUME].
     
-    JSON STRUCTURE:
-    {
-      "personalInfo": { "name": "...", "title": "...", "email": "...", "phone": "...", "location": "...", "links": { "linkedin": "...", "github": "...", "portfolio": "..." } },
-      "summary": "...",
-      "experience": [ { "company": "...", "role": "...", "dates": "...", "location": "...", "bullets": ["...", "..."] } ],
-      "projects": [ { "name": "...", "description": "...", "tech": "...", "link": "..." } ],
-      "education": [ { "school": "...", "degree": "...", "year": "..." } ],
-      "skills": ["...", "..."],
-      "certifications": ["...", "..."],
-      "customSections": [ { "title": "...", "content": "..." } ]
-    }`;
+    TOON STRUCTURE:
+    [RESUME]
+      [PI]n:...|ti:...|e:...|p:...|l:...|links:[ITEM]linkedin:...[/ITEM][/PI]
+      [SUM]...[/SUM]
+      [EXP][ITEM]c:...|r:...|d:...|l:...|b:bullet1~bullet2[/ITEM][/EXP]
+      [PROJ][ITEM]n:...|desc:...|t:...|lnk:...[/ITEM][/PROJ]
+      [EDU][ITEM]s:...|deg:...|y:...[/ITEM][/EDU]
+      [SK]skill1~skill2[/SK]
+      [CERT]cert1~cert2[/CERT]
+    [/RESUME]`;
 
     parts.push({ text: prompt });
 
@@ -634,97 +666,49 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
       model,
       contents: [{ parts }],
       config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            personalInfo: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                title: { type: Type.STRING },
-                email: { type: Type.STRING },
-                phone: { type: Type.STRING },
-                location: { type: Type.STRING },
-                links: {
-                  type: Type.OBJECT,
-                  properties: {
-                    linkedin: { type: Type.STRING },
-                    github: { type: Type.STRING },
-                    portfolio: { type: Type.STRING }
-                  }
-                }
-              },
-              required: ["name", "email"]
-            },
-            summary: { type: Type.STRING },
-            experience: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  company: { type: Type.STRING },
-                  role: { type: Type.STRING },
-                  dates: { type: Type.STRING },
-                  location: { type: Type.STRING },
-                  bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["company", "role", "bullets"]
-              }
-            },
-            projects: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  description: { type: Type.STRING },
-                  tech: { type: Type.STRING },
-                  link: { type: Type.STRING }
-                },
-                required: ["name", "description"]
-              }
-            },
-            education: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  school: { type: Type.STRING },
-                  degree: { type: Type.STRING },
-                  year: { type: Type.STRING }
-                },
-                required: ["school", "degree"]
-              }
-            },
-            skills: { 
-              type: Type.ARRAY, 
-              items: { type: Type.STRING } 
-            },
-            certifications: { type: Type.ARRAY, items: { type: Type.STRING } },
-            customSections: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING },
-                  content: { type: Type.STRING }
-                }
-              }
-            }
-          },
-          required: ["personalInfo", "summary", "experience", "skills"]
-        },
         temperature: 0.1,
       }
     });
 
     try {
-      const respText = response.text || "{}";
-      return JSON.parse(extractJson(respText));
+      const respText = response.text || "";
+      // Re-extract if there's markdown or extra text
+      const toonMatch = respText.match(/\[RESUME\][\s\S]*?\[\/RESUME\]/);
+      const toonContent = toonMatch ? toonMatch[0] : respText;
+      
+      const parsed = TOON.parse(toonContent);
+      
+      // Ensure the structure matches what the app expects
+      if (parsed && typeof parsed === 'object') {
+        if (!parsed.personalInfo && parsed.pi) parsed.personalInfo = parsed.pi;
+        if (!parsed.skills && parsed.sk) parsed.skills = parsed.sk;
+        if (!parsed.summary && parsed.sum) parsed.summary = parsed.sum;
+        if (!parsed.experience && parsed.exp) parsed.experience = parsed.exp;
+        if (!parsed.projects && parsed.proj) parsed.projects = parsed.proj;
+        if (!parsed.education && parsed.edu) parsed.education = parsed.edu;
+        if (!parsed.certifications && parsed.cert) parsed.certifications = parsed.cert;
+      }
+
+      // Semantic validation
+      if (TOON.validateResumeData(parsed)) {
+        console.log('Successfully parsed TOON:', parsed);
+        return parsed;
+      }
+      
+      throw new Error("Invalid TOON structure");
     } catch (e) {
-      console.error("Failed to parse resume into JSON", e);
-      throw new Error("Failed to process resume data structure.");
+      console.warn("TOON parsing failed or invalid, attempting JSON fallback", e);
+      try {
+        const jsonText = extractJson(response.text || "{}");
+        const jsonParsed = JSON.parse(jsonText);
+        if (TOON.validateResumeData(jsonParsed)) {
+          return jsonParsed;
+        }
+        throw new Error("JSON also invalid");
+      } catch (jsonErr) {
+        console.error("All parsing attempts failed", jsonErr);
+        throw new Error("Failed to process resume data structure.");
+      }
     }
   });
 }
@@ -733,9 +717,18 @@ export async function generateCoverLetter(resumeText: string, jobTitle: string, 
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
     
+    let content = resumeText;
+    if (resumeText.trim().startsWith('{')) {
+      try {
+        content = TOON.stringify(JSON.parse(resumeText), 'RESUME');
+      } catch (e) { /* ignore */ }
+    }
+
     const prompt = `Expert Career Coach & Copywriter.
     
-    RESUME: ${resumeText}
+    ${TOON.getSystemInstruction()}
+    
+    RESUME (TOON): ${content}
     JOB: ${jobTitle} ${company ? `at ${company}` : ""}
     ${jobDescription ? `JOB DESCRIPTION: ${jobDescription}` : ""}
     
@@ -808,12 +801,15 @@ export async function generateResumeFromData(
       parts.push({ text: "### REFERENCE VISUAL BLUEPRINT (Layout Source of Truth)" });
     }
 
+    const dataJson = JSON.stringify(data);
+    const stylesJson = JSON.stringify(styles);
+
     const prompt = `SUPREME FRONT-END DESIGN ENGINEER.
     
     TASK: Code a pixel-perfect, interactive RESUME using the visual blueprint and the provided JSON data.
     
-    DATA SOURCE: ${JSON.stringify(data)}
-    STYLE PREFERENCES: ${JSON.stringify(styles)}
+    DATA SOURCE: ${dataJson}
+    STYLE PREFERENCES: ${stylesJson}
     STRUCTURAL BLUEPRINT: ${referenceLayout || "Standard Professional"}
     
     CODING RULES:
@@ -825,7 +821,7 @@ export async function generateResumeFromData(
     3. DATA BINDING: 
        - Add 'data-resume-field' to every element that displays data from the JSON.
        - Add a 'data-section-name' attribute to the container DIV of every major section (e.g., 'Summary', 'Experience', 'Projects', 'Education', 'Skills', 'Certifications').
-       - Use dot notation for paths (e.g., 'personalInfo.name', 'experience.0.company').
+       - Use dot notation for mapping (e.g., 'personalInfo.name', 'experience.0.company').
     4. CUSTOMIZATION: Apply the Style Preferences provided.
     5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills. Use SVG/Lucide icons.
     6. RESPONSIVENESS: Ensure it looks perfect on A4 size.
@@ -858,14 +854,30 @@ export async function compareResumes(oldResume: string, newResume: string): Prom
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
 
+    let oldC = oldResume;
+    if (oldResume.trim().startsWith('{')) {
+      try {
+        oldC = TOON.stringify(JSON.parse(oldResume), 'OLD_RESUME');
+      } catch (e) { /* ignore */ }
+    }
+
+    let newC = newResume;
+    if (newResume.trim().startsWith('{')) {
+      try {
+        newC = TOON.stringify(JSON.parse(newResume), 'NEW_RESUME');
+      } catch (e) { /* ignore */ }
+    }
+
     const prompt = `You are a career change analyst. Compare these two versions of a resume and summarize the key textual differences and improvements. 
     Focus on how the AI "Morphed" or improved the content.
     
-    OLD VERSION (RAW):
-    ${oldResume.substring(0, 5000)}
+    ${TOON.getSystemInstruction()}
     
-    NEW VERSION (GENERATED):
-    ${newResume.substring(0, 5000)}
+    OLD VERSION (TOON):
+    ${oldC.substring(0, 5000)}
+    
+    NEW VERSION (TOON):
+    ${newC.substring(0, 5000)}
     
     Format the output in clear Markdown:
     - ### Summary of Changes
