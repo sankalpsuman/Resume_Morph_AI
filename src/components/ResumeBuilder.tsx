@@ -4,8 +4,10 @@ import {
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, 
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
-  Sparkles, Rocket, Code, Settings, LogIn
+  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import { wrapResumeHtml } from '../lib/resumeTemplates';
 import mammoth from 'mammoth';
@@ -63,6 +65,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [matchDescription, setMatchDescription] = useState('');
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
@@ -748,6 +751,138 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setShowDownloadMenu(false);
   };
 
+  const captureResume = async (): Promise<HTMLCanvasElement | null> => {
+    if (!generatedHtml) return null;
+    setIsExporting(true);
+    
+    return new Promise((resolve) => {
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '794px';
+      container.style.backgroundColor = 'white';
+      container.style.zIndex = '-1000';
+      document.body.appendChild(container);
+
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '794px';
+      iframe.style.height = '1123px';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      container.appendChild(iframe);
+
+      const fullHtml = wrapResumeHtml(generatedHtml, { 
+        name: resumeMetadata?.name, 
+        isGuest: !user, 
+        previewMode: false 
+      });
+      
+      iframe.srcdoc = fullHtml;
+
+      iframe.onload = async () => {
+        // Wait for styles and fonts to stabilize
+        await new Promise(r => setTimeout(r, 2000));
+        
+        try {
+          const body = iframe.contentDocument?.body;
+          if (!body) throw new Error("Iframe body not found");
+
+          const canvas = await html2canvas(body, {
+            scale: 2, 
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            width: 794,
+            height: 1123,
+            logging: false
+          });
+          
+          document.body.removeChild(container);
+          setIsExporting(false);
+          resolve(canvas);
+        } catch (err) {
+          console.error("Capture failed:", err);
+          if (document.body.contains(container)) {
+            document.body.removeChild(container);
+          }
+          setIsExporting(false);
+          resolve(null);
+        }
+      };
+    });
+  };
+
+  const handleDownloadImage = async (format: 'png' | 'jpeg') => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
+    const canvas = await captureResume();
+    if (!canvas) return;
+
+    const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+    const quality = format === 'jpeg' ? 0.95 : undefined;
+    const dataUrl = canvas.toDataURL(mimeType, quality);
+    
+    const link = document.createElement('a');
+    link.download = getFileName(format);
+    link.href = dataUrl;
+    link.click();
+    setShowDownloadMenu(false);
+  };
+
+  const handleShareWhatsApp = async () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
+    const canvas = await captureResume();
+    if (!canvas) return;
+
+    try {
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      // A4 in pt: ~595x842
+      pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89);
+      const pdfBlob = pdf.output('blob');
+      const filename = getFileName('pdf');
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      const shareMessage = "Hi, check out my professional resume generated with Morph Engine! 🚀";
+
+      // Try native share first (best for WhatsApp on mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: 'My Resume',
+          text: shareMessage
+        });
+      } else {
+        // Fallback: Download and open WhatsApp link
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Open WhatsApp
+        setTimeout(() => {
+          const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+          window.open(waUrl, '_blank');
+          URL.revokeObjectURL(pdfUrl);
+        }, 1200);
+      }
+    } catch (err) {
+      console.error("WhatsApp share failed:", err);
+    }
+    setShowDownloadMenu(false);
+  };
+
   const reset = () => {
     setReferenceFile(null);
     setContentFile(null);
@@ -872,59 +1007,94 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         
         <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
           {generatedHtml && (
-            <div className="relative flex-grow sm:flex-grow-0">
+            <div className="flex items-center gap-2 md:gap-3">
               <button 
-                onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                title="Export Resume: Download as PDF, Word, or HTML"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl md:rounded-2xl text-[10px] md:text-sm font-black hover:opacity-90 hover:shadow-2xl transition-all active:scale-95 shadow-xl shadow-gray-200 dark:shadow-none uppercase tracking-widest sm:normal-case sm:tracking-normal"
+                onClick={handleShareWhatsApp}
+                disabled={isExporting}
+                className="flex items-center justify-center gap-2 px-3 md:px-5 py-2 bg-[#25D366] text-white rounded-lg md:rounded-xl text-[9px] md:text-xs font-black hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-green-100 dark:shadow-none uppercase tracking-widest disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span>Export</span>
-                <span className="hidden sm:inline">Resume</span>
-                <Hand className={cn("w-3.5 h-3.5 md:w-4 md:h-4 transition-transform", showDownloadMenu && "rotate-12")} />
+                {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                <span className="hidden sm:inline">WhatsApp</span>
               </button>
 
-              <AnimatePresence>
-                {showDownloadMenu && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10" 
-                      onClick={() => setShowDownloadMenu(false)} 
-                    />
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-64 bg-[var(--bg-primary)] rounded-[24px] shadow-2xl border border-[var(--border-color)] p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
-                    >
-                      <button 
-                        onClick={handleDownloadHTML}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
+              <div className="relative">
+                <button 
+                  onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                  disabled={isExporting}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 px-3 md:px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-lg md:rounded-xl text-[9px] md:text-xs font-black hover:opacity-90 transition-all active:scale-95 shadow-xl disabled:opacity-50"
+                >
+                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  <span>Download</span>
+                  <Hand className={cn("w-3.5 h-3.5 transition-transform", showDownloadMenu && "rotate-12")} />
+                </button>
+
+                <AnimatePresence>
+                  {showDownloadMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setShowDownloadMenu(false)} 
+                      />
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-64 bg-[var(--bg-primary)] rounded-[24px] shadow-2xl border border-[var(--border-color)] p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
-                          <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[var(--text-primary)]">Download HTML</span>
-                          <span className="text-[10px] text-[var(--text-tertiary)]">Perfect for web viewing</span>
-                        </div>
-                      </button>
-                      <button 
-                        onClick={handleDownloadWord}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-                          <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[var(--text-primary)]">Download Word</span>
-                          <span className="text-[10px] text-[var(--text-tertiary)]">Editable .doc format</span>
-                        </div>
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                        <button 
+                          onClick={() => handleDownloadImage('png')}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center group-hover:bg-indigo-500 transition-colors">
+                            <ImageIcon className="w-4 h-4 text-indigo-600 group-hover:text-white" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[var(--text-primary)]">Download PNG</span>
+                            <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold tracking-widest">High Res</span>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => handleDownloadImage('jpeg')}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center group-hover:bg-pink-500 transition-colors">
+                            <ImageIcon className="w-4 h-4 text-pink-600 group-hover:text-white" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[var(--text-primary)]">Download JPEG</span>
+                            <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold tracking-widest">Optimized</span>
+                          </div>
+                        </button>
+                        <div className="h-px bg-[var(--border-color)] my-1 mx-2" />
+                        <button 
+                          onClick={handleDownloadHTML}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
+                            <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[var(--text-primary)]">Download HTML</span>
+                            <span className="text-[10px] text-[var(--text-tertiary)]">Perfect for web viewing</span>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={handleDownloadWord}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
+                            <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[var(--text-primary)]">Download Word</span>
+                            <span className="text-[10px] text-[var(--text-tertiary)]">Editable .doc format</span>
+                          </div>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           )}
           
@@ -1681,13 +1851,22 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             exit={{ y: 100 }}
             className="fixed bottom-0 left-0 right-0 z-[150] md:hidden p-4 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-t border-[var(--border-color)] shadow-2xl"
           >
-            <div className="flex gap-3">
+            <div className="flex gap-2">
+              <button 
+                onClick={handleShareWhatsApp}
+                disabled={isExporting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl disabled:opacity-50"
+              >
+                {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+                WhatsApp
+              </button>
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+                disabled={isExporting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl disabled:opacity-50"
               >
-                <Download className="w-5 h-5" />
-                Export Resume
+                {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                Download
                 <Hand className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-12")} />
               </button>
             </div>
@@ -1701,6 +1880,31 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   className="absolute bottom-full left-4 right-4 mb-4 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
                 >
                   <div className="grid grid-cols-1 gap-2">
+                    <button 
+                      onClick={() => { handleDownloadImage('png'); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
+                        <ImageIcon className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[var(--text-primary)]">Download PNG</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">High Res Image</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => { handleDownloadImage('jpeg'); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center">
+                        <ImageIcon className="w-5 h-5 text-pink-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[var(--text-primary)]">Download JPEG</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Optimized Image</span>
+                      </div>
+                    </button>
+                    <div className="h-px bg-[var(--border-color)] my-1 mx-2" />
                     <button 
                       onClick={() => { handleDownloadHTML(); setShowDownloadMenu(false); }}
                       className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
