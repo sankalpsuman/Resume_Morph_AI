@@ -35,7 +35,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       margin: 0 auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       transform-origin: top center;
       transition: opacity 0.3s ease;
     }

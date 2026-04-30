@@ -375,6 +375,10 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setMissingKeywords(result.missingKeywords);
     setLayoutAnalysis(result.layoutAnalysis);
 
+    if (result.integrityMetrics && result.integrityMetrics.omittedFields?.length > 0) {
+      console.warn("⚠️ Morph Engine Warning: Some data could not be mapped perfectly:", result.integrityMetrics.omittedFields);
+    }
+
     if (!contentFile?.text && result.extractedText) {
       setContentFile(prev => prev ? { ...prev, text: result.extractedText } : null);
     }
@@ -934,10 +938,16 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       return;
     }
     setShowDownloadMenu(false);
-    const canvas = await captureResume();
-    if (!canvas) return;
+    setIsExporting(true);
 
     try {
+      const canvas = await captureResume();
+      if (!canvas) {
+        setIsExporting(false);
+        return;
+      }
+
+      // Generate PDF for sharing/backup
       const pdf = new jsPDF('p', 'pt', 'a4');
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       // A4 in pt: ~595x842
@@ -946,46 +956,61 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const filename = getFileName('pdf');
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
-      const shareMessage = "Hi, check out my professional resume generated with Morph Engine! 🚀";
+      const shareUrl = window.location.href;
+      const shareText = "Hi, check out my professional resume generated with Morph Engine! 🚀";
 
-      // Try native share first (best for WhatsApp on mobile)
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+      // 1. PRIMARY METHOD (BEST UX): Use Native Share API
+      // This is the cleanest implementation for mobile devices
+      if (navigator.share) {
         try {
-          await navigator.share({
-            files: [pdfFile],
-            title: 'My Resume',
-            text: shareMessage
-          });
+          const shareData: any = {
+            title: "My Resume",
+            text: shareText,
+            url: shareUrl
+          };
+
+          // Try to include the actual file if browser supports it
+          if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+            shareData.files = [pdfFile];
+          }
+
+          await navigator.share(shareData);
+          setIsExporting(false);
           return;
-        } catch (shareErr) {
-          // If user cancels or it fails, fall back to link
-          console.warn("Native share cancelled or failed:", shareErr);
+        } catch (shareErr: any) {
+          // If user cancelled, just stop
+          if (shareErr.name === 'AbortError') {
+            setIsExporting(false);
+            return;
+          }
+          console.warn("Native share failed, following fallback:", shareErr);
         }
       }
 
-      // Fallback: Download and open WhatsApp link
+      // 2. SECONDARY FALLBACK: Direct WhatsApp Deep Link
+      // We also trigger a download so the user has the file ready to attach manually
       const pdfUrl = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = filename;
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        link.target = '_blank';
-      }
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
-      // WhatsApp redirection - using location.href avoids popup blockers more reliably than window.open
-      const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+      // WhatsApp redirection using wa.me as it avoids common redirect issues on iOS/Android
+      const message = encodeURIComponent(shareText + " " + shareUrl);
+      const waUrl = `https://wa.me/?text=${message}`;
       
-      // Short delay to ensure download starts
+      // Delay to ensure download starts before context switch
       setTimeout(() => {
-        window.open(waUrl, '_blank');
+        window.open(waUrl, "_blank");
         URL.revokeObjectURL(pdfUrl);
-      }, 1000);
+        setIsExporting(false);
+      }, 800);
       
     } catch (err) {
       console.error("WhatsApp share failed:", err);
+      setIsExporting(false);
     }
   };
 

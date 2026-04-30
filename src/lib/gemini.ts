@@ -328,37 +328,33 @@ export async function generateResume(
     const refText = reference.text || "";
     const userText = content.text || "";
 
-    const prompt = `SUPREME VISUAL CLONE ENGINE.
+    const prompt = `SUPREME UNIVERSAL MORPH ENGINE & DATA INTEGRITY GUARDIAN.
     
-    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure with 100% pixel-perfect fidelity using Tailwind CSS.
+    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure while ensuring 100% DATA PARITY between the USER CONTENT and the output. Content must NEVER be removed.
     
-    ZERO-ASSUMPTION POLICY:
-    - If the reference is Single-Column, the output MUST be Single-Column.
-    - If the reference has a sidebar, the output MUST have a matching sidebar.
-    - DO NOT add a photo unless the reference has one.
-    - DO NOT use generic margins. USE THE DNA MANIFEST for precise values.
+    ZERO-LOSS DIRECTIVE:
+    1. DATA PARITY LOCK: Every single section, bullet point, skill, and piece of metadata from the USER CONTENT must be present in the output HTML.
+    2. ADAPTIVE SECTIONING: If the USER CONTENT has a section (e.g. "Projects", "Certifications", "Volunteering") that is NOT present in the REFERENCE layout, you MUST dynamically create a new section for it. 
+       - Style these new sections to match the existing section headers in the template.
+       - Place them logically (usually after Education or Experience).
+    3. NO TRUNCATION: If the user content is longer than the reference template's placeholder, EXPAND the layout. 
+       - Multi-column layouts should overflow into the next logical column or expand vertically.
+       - NEVER use overflow:hidden or fixed-height containers that clip text.
     
     CORE CLONING COMMANDS:
     1. STRUCTURAL MATCHING:
-       - Use the [DESIGN TOKENS MANIFEST] as a physical blueprint.
-       - Replicate the exact grid/flex proportions. Use arbitrary values like \`w-[320px]\` or \`w-[34%]\`.
-       - Use \`bg-[#...]\`, \`p-[...px]\`, \`rounded-[...px]\`, and \`tracking-[...em]\` for absolute precision.
-    2. TYPOGRAPHIC CLONING:
-       - Match font weights and letter spacing exactly from the reference.
-       - If the reference uses icons (Lucide), place them in the exact same slots.
-    3. COMPONENT FIDELITY:
-       - Replicate dividers (thickness/color), section headers (styles), and infographic widgets (bars/dots) identically.
-    4. CONTENT MAPPING:
-       - Pour USER CONTENT into the reference's exact visual slots. If content is too long, use responsive scaling or truncation that preserves design integrity.
-    5. LAYOUT SAFETY (ANTI-OVERLAP):
-       - NEVER use negative margins on section headings or dividers.
-       - Ensure all section headers (H2, H3) have explicit spacing from the content above and below.
-       - Dividers MUST be placed AFTER the heading text, never absolute-positioned over it.
-       - Use clean block layouts; avoid complex relative-absolute positioning that can break during PDF export.
+       - Replicate the exact grid/flex proportions from the DESIGN TOKENS MANIFEST.
+       - Use Tailwind classes for all layout: \`grid-cols-[...]\`, \`w-[...]\`, \`bg-[#...]\`.
+    2. COMPONENT FIDELITY:
+       - Replicate dividers, headers, and infographic widgets identically.
+    3. INTELLIGENT MAPPING:
+       - Detect input structures (tables, lists, grouped data) and preserve their hierarchy.
+       - Professional rewrite: Use the JOB DESCRIPTION to align keywords while keeping 100% of the factual content.
     
-    OUTPUT: A single self-contained HTML structure with Tailwind classes. No <html> or <body> tags. Ensure the result is a 1:1 visual "Clone" of the template, just with updated data.
+    VALIDATION REQUIREMENT:
+    - Compare field count: User Input Sections vs Output Sections. Match MUST be 1:1.
     
-    HIGH-FIDELITY DIRECTIVE: Scale awareness is critical. Maintain the A4 vertical balance. Ensure section headings are perfectly clean and horizontal lines appear neatly below them with no overlap.
+    OUTPUT: A single self-contained HTML structure with Tailwind classes.
     
     ${optimizationPrompt}
     ${layoutSystemPrompt}
@@ -367,9 +363,7 @@ export async function generateResume(
     
     TECHNICAL OUTPUT:
     - Return valid JSON.
-    - The "html" string MUST be a self-contained Tailwind-styled structure.
-    - Do NOT include <html> or <body> tags, just the inner content.
-    - Ensure all absolute/fixed positioning is avoided; use relative layout flows.
+    - JSON PROPERTY "html" MUST contain the full, adaptive, non-truncated resume structure.
     
     JSON STRUCTURE:
     {
@@ -382,7 +376,12 @@ export async function generateResume(
       "matchScore": ...,
       "missingKeywords": [],
       "layoutAnalysis": "...",
-      "extractedText": "..."
+      "extractedText": "...",
+      "integrityMetrics": {
+        "sourceFieldCount": ...,
+        "renderedFieldCount": ...,
+        "omittedFields": []
+      }
     }`;
 
     const contents: any[] = [];
@@ -455,9 +454,18 @@ export async function generateResume(
               items: { type: Type.STRING }
             },
             layoutAnalysis: { type: Type.STRING },
-            extractedText: { type: Type.STRING }
+            extractedText: { type: Type.STRING },
+            integrityMetrics: {
+              type: Type.OBJECT,
+              properties: {
+                sourceFieldCount: { type: Type.NUMBER },
+                renderedFieldCount: { type: Type.NUMBER },
+                omittedFields: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["sourceFieldCount", "renderedFieldCount", "omittedFields"]
+            }
           },
-          required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText"]
+          required: ["html", "name", "yoe", "profile", "atsScore", "atsFeedback", "matchScore", "missingKeywords", "layoutAnalysis", "extractedText", "integrityMetrics"]
         },
         temperature: 0.1,
       }
@@ -465,7 +473,14 @@ export async function generateResume(
 
     try {
       const text = extractJson(response.text || "");
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      
+      // Validation Layer
+      if (parsed.integrityMetrics && parsed.integrityMetrics.omittedFields?.length > 0) {
+        console.warn("Data Loss Detected in AI Morph:", parsed.integrityMetrics.omittedFields);
+      }
+      
+      return parsed;
     } catch (e) {
       console.error("Failed to parse AI response as JSON", e);
       return { 
@@ -478,7 +493,8 @@ export async function generateResume(
         matchScore: 0,
         missingKeywords: [],
         layoutAnalysis: "Error parsing layout",
-        extractedText: ""
+        extractedText: "",
+        integrityMetrics: { sourceFieldCount: 0, renderedFieldCount: 0, omittedFields: [] }
       };
     }
   });
@@ -697,28 +713,30 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
       parts.push({ text: `RAW TEXT:\n${file.text}` });
     }
 
-    const prompt = `EXPERT RESUME CONTENT EXTRACTOR.
+    const prompt = `EXPERT UNIVERSAL RESUME CONTENT EXTRACTOR.
     
     ${TOON.getSystemInstruction()}
     
-    TASK: Extract EVERY detail from this resume into TOON format. 
+    TASK: Extract EVERY single detail from this resume into TOON format. 
     
-    EXTRACTION RULES:
-    1. Do not omit any professional data.
-    2. Split names, titles, and contact info clearly.
-    3. Categorize experience and projects with dates, company names, and bullet points.
-    4. Group skills into categories if possible.
+    EXTRACTION RULES (ZERO DATA LOSS):
+    1. OMISSION IS FORBIDDEN: Do not skip any text, section, or meta-data.
+    2. STRUCTURE DETECTION: If the resume uses tables, grouped sets, or unique labels, capture them accurately.
+    3. DYNAMIC SECTIONS: If you find data that doesn't fit standard tags (Personal Info, Experience, Education, Skills), put it into [CS] (Custom Sections).
+       - Format: [CS][ITEM]title:Section Title|its:item1~item2[/ITEM][/CS]
+    4. DETAILED EXTRACTION: Capture dates precisely, full company names, all bullet points, and all skill categories.
     5. Output ONLY the TOON string starting with [RESUME] and ending with [/RESUME].
     
     TOON STRUCTURE:
     [RESUME]
-      [PI]n:...|ti:...|e:...|p:...|l:...|links:[ITEM]linkedin:...[/ITEM][/PI]
+      [PI]n:...|ti:...|e:...|p:...|l:...|links:[ITEM]label:...|val:...[/ITEM][/PI]
       [SUM]...[/SUM]
       [EXP][ITEM]c:...|r:...|d:...|l:...|b:bullet1~bullet2[/ITEM][/EXP]
       [PROJ][ITEM]n:...|desc:...|t:...|lnk:...[/ITEM][/PROJ]
-      [EDU][ITEM]s:...|deg:...|y:...[/ITEM][/EDU]
-      [SK]skill1~skill2[/SK]
+      [EDU][ITEM]s:...|deg:...|y:...|gpa:...[/ITEM][/EDU]
+      [SK]category1:s1,s2~category2:s3,s4[/SK]
       [CERT]cert1~cert2[/CERT]
+      [CS][ITEM]ti:Section Name|b:item1~item2[/ITEM][/CS]
     [/RESUME]`;
 
     parts.push({ text: prompt });

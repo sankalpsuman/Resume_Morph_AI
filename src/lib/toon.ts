@@ -97,8 +97,17 @@ TOKEN-ORIENTED OBJECT NOTATION (TOON) SPECIFICATION:
       responsibilities: 'resp',
       achievements: 'ach',
       keyword: 'kw',
+      volunteering: 'vol',
+      languages: 'lang',
+      interests: 'int',
+      publications: 'pub',
+      references: 'ref',
+      awards: 'aw',
+      objective: 'obj',
+      work: 'exp',
+      personal: 'pi',
     };
-    return map[key] || key;
+    return map[key.toLowerCase()] || map[key] || key;
   },
 
   /**
@@ -141,6 +150,13 @@ TOKEN-ORIENTED OBJECT NOTATION (TOON) SPECIFICATION:
       resp: 'responsibilities',
       ach: 'achievements',
       kw: 'keyword',
+      vol: 'volunteering',
+      lang: 'languages',
+      int: 'interests',
+      pub: 'publications',
+      ref: 'references',
+      aw: 'awards',
+      obj: 'objective',
     };
     return map[key.toLowerCase()] || key;
   },
