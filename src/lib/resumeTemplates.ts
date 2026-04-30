@@ -3,8 +3,8 @@
  * Utility to wrap a generated resume HTML fragment into a full, self-contained HTML document.
  * This ensures that the resume looks the same in preview, saved history, and downloads.
  */
-export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean } = {}) {
-  const { name = 'Resume', isGuest = false } = options;
+export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean, previewMode?: boolean } = {}) {
+  const { name = 'Resume', isGuest = false, previewMode = false } = options;
   
   return `
 <!DOCTYPE html>
@@ -32,31 +32,50 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       width: 210mm;
       min-height: 297mm;
       padding: 0;
-      margin: 2rem auto;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+      margin: 0 auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
       transform-origin: top center;
+      transition: opacity 0.3s ease;
     }
+    /* New Scaling approach ONLY for preview */
+    .preview-mode .preview-wrapper {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: transparent;
+    }
+    .preview-mode .preview-scale {
+      transform-origin: top center;
+      will-change: transform;
+      width: 794px;
+      height: 1123px;
+    }
+    .preview-mode .resume-page {
+      margin: 0;
+      box-shadow: none;
+      width: 794px;
+      height: 1123px;
+    }
+
     @media print {
       @page { margin: 0; size: A4; }
       body { margin: 0; padding: 0; background: white; }
       .resume-page { 
         margin: 0; 
         box-shadow: none; 
-        width: 100%;
-        height: 100%;
+        width: 210mm;
+        height: 297mm;
         overflow: visible !important;
+        transform: none !important;
         -webkit-print-color-adjust: exact; 
         print-color-adjust: exact; 
       }
       .watermark { display: none !important; }
-    }
-    @media screen and (max-width: 210mm) {
-      body { padding: 0; }
-      .resume-page {
-        margin: 0;
-      }
     }
     .watermark {
       position: fixed;
@@ -72,30 +91,58 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       font-family: sans-serif;
       text-transform: uppercase;
     }
+    /* Default wrapper for non-preview */
+    .scale-wrapper {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow: auto;
+      background: #f8fafc;
+    }
   </style>
 </head>
-<body>
-  <div class="resume-page">
-    ${contentHtml}
-  </div>
+<body class="${previewMode ? 'preview-mode' : ''}">
+  ${previewMode ? `
+    <div class="preview-wrapper">
+      <div class="preview-scale" id="scaling-container">
+        <div class="resume-page">
+          ${contentHtml}
+        </div>
+      </div>
+    </div>
+  ` : `
+    <div class="scale-wrapper">
+      <div class="resume-page">
+        ${contentHtml}
+      </div>
+    </div>
+  `}
   ${isGuest ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
   <script>
     function adjustScale() {
-      const page = document.querySelector('.resume-page');
-      if (!page) return;
-      const width = window.innerWidth;
-      const targetWidth = 210 * 3.7795275591; // 210mm in pixels at 96dpi (~794px)
-      if (width < targetWidth + 40) {
-        const scale = (width - 40) / targetWidth;
-        page.style.transform = 'scale(' + Math.min(scale, 1) + ')';
-      } else {
-        page.style.transform = 'none';
-      }
+      if (!document.body.classList.contains('preview-mode')) return;
+
+      const element = document.getElementById('scaling-container');
+      if (!element) return;
+      
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
+      
+      // Base resume size MUST remain: 794x1123
+      const scale = Math.min(containerWidth / 794, containerHeight / 1123);
+      
+      element.style.transform = 'scale(' + scale + ')';
     }
-    window.addEventListener('resize', adjustScale);
-    window.addEventListener('load', adjustScale);
-    // Initial call
-    adjustScale();
+    
+    if (document.body.classList.contains('preview-mode')) {
+      window.addEventListener('resize', adjustScale);
+      window.addEventListener('load', () => setTimeout(adjustScale, 50));
+      
+      // Initial call
+      adjustScale();
+    }
   </script>
 </body>
 </html>

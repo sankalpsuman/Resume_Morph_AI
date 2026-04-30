@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
-  RefreshCw, FileCode, FileType, Printer, 
+  RefreshCw, FileCode, FileType, 
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn
 } from 'lucide-react';
@@ -748,20 +748,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setShowDownloadMenu(false);
   };
 
-  const handlePrintPDF = () => {
-    if (!user) {
-      setShowLoginPrompt(true);
-      setIsLoginPendingForDownload(true);
-      return;
-    }
-    if (iframeRef.current) {
-      // Focus the iframe before printing
-      iframeRef.current.contentWindow?.focus();
-      iframeRef.current.contentWindow?.print();
-    }
-    setShowDownloadMenu(false);
-  };
-
   const reset = () => {
     setReferenceFile(null);
     setContentFile(null);
@@ -933,19 +919,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                         <div className="flex flex-col">
                           <span className="font-bold text-[var(--text-primary)]">Download Word</span>
                           <span className="text-[10px] text-[var(--text-tertiary)]">Editable .doc format</span>
-                        </div>
-                      </button>
-                      <div className="h-px bg-[var(--border-color)] my-2 mx-2" />
-                      <button 
-                        onClick={handlePrintPDF}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center group-hover:bg-purple-500 transition-colors">
-                          <Printer className="w-4 h-4 text-purple-600 group-hover:text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[var(--text-primary)]">Save as PDF</span>
-                          <span className="text-[10px] text-[var(--text-tertiary)]">High-fidelity print</span>
                         </div>
                       </button>
                     </motion.div>
@@ -1404,7 +1377,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           )}>
             <div className={cn(
               "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[40px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
-              isPreviewFull ? "min-h-screen w-full max-w-5xl mx-auto" : "min-h-[500px] md:min-h-[850px]"
+              isPreviewFull ? "min-h-[calc(100vh-80px)] w-full max-w-5xl mx-auto" : "h-[600px] md:h-[850px] lg:h-[900px]"
             )}>
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)]">
                 <div className="flex items-center gap-3 md:gap-6">
@@ -1600,10 +1573,12 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       initial={{ opacity: 0, scale: 0.98 }}
                       animate={{ opacity: 1, scale: 1 }}
                       className={cn(
-                        "w-full border-none",
-                        isPreviewFull ? "min-h-[1200px]" : "h-[500px] md:h-[784px]"
+                        "w-full border-none transition-all duration-300",
+                        isPreviewFull 
+                          ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
+                          : "h-[500px] md:h-[784px] lg:h-[850px]"
                       )}
-                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user })}
+                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true })}
                     />
                   ) : (
                     <motion.div 
@@ -1748,18 +1723,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       <div className="flex flex-col">
                         <span className="font-bold text-[var(--text-primary)]">Word</span>
                         <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Editable .doc</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => { handlePrintPDF(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                        <Printer className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">PDF</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Print ready</span>
                       </div>
                     </button>
                   </div>

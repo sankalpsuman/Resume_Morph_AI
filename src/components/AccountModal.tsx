@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, 
   Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, 
-  Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Printer 
+  Reply, CheckCircle, Loader2, Diff, FileCode, FileType 
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS } from '../constants';
@@ -110,20 +110,6 @@ export default function AccountModal({
     a.download = `${resume.name.replace(/\s+/g, '_')}.doc`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const [printIframe, setPrintIframe] = useState<string | null>(null);
-
-  const handlePrintPDF = (resume: any) => {
-    if (!resume.html) return;
-    setPrintIframe(resume.html);
-    setTimeout(() => {
-      const iframe = document.getElementById('print-iframe') as HTMLIFrameElement;
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      }
-    }, 500);
   };
 
   const handlePreview = (resume: any) => {
@@ -386,13 +372,6 @@ export default function AccountModal({
                       >
                         <FileType className="w-5 h-5" />
                       </button>
-                      <button 
-                        onClick={() => handlePrintPDF(resume)}
-                        className="p-3 text-[var(--text-tertiary)] hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-2xl transition-all"
-                        title="Print PDF"
-                      >
-                        <Printer className="w-5 h-5" />
-                      </button>
                       <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
                       <button 
                         onClick={() => setDeleteConfirm(resume.id)}
@@ -607,7 +586,7 @@ export default function AccountModal({
               </div>
               <h3 className="text-xl font-black text-[var(--text-primary)] mb-2">Delete Resume?</h3>
               <p className="text-sm text-[var(--text-tertiary)] font-medium mb-8">
-                This action is permanent and cannot be undone. Your saved resume will be cleared from our database.
+                Confirming will remove this resume from your history. You will have a 5-second window to undo this action.
               </p>
               <div className="flex gap-3">
                 <button
@@ -643,14 +622,6 @@ export default function AccountModal({
           </div>
         )}
       </AnimatePresence>
-      
-      {/* Hidden iframe for printing history items */}
-      <iframe 
-        id="print-iframe"
-        srcDoc={printIframe || ''}
-        style={{ display: 'none' }}
-        title="Print Iframe"
-      />
     </>
   );
 
