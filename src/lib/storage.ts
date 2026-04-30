@@ -20,10 +20,13 @@ export async function uploadWithRetry(
       const isRetryable = error.code === 'storage/retry-limit-exceeded' || 
                          error.code === 'storage/unknown' || 
                          error.code === 'storage/server-file-wrong-size' ||
-                         error.message?.includes('retry');
+                         error.code === 'storage/cannot-slice-blob' ||
+                         error.message?.toLowerCase().includes('retry') ||
+                         error.message?.toLowerCase().includes('network');
       
       if (!isRetryable || attempt > maxRetries) {
-        console.error(`Storage upload failed after ${attempt} attempts:`, error);
+        const dataSize = data ? (typeof data === 'string' ? data.length : 'unknown') : 0;
+        console.error(`Storage upload failed after ${attempt} attempts (Size: ${dataSize} bytes):`, error);
         throw error;
       }
       

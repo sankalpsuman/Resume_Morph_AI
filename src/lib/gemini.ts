@@ -350,10 +350,15 @@ export async function generateResume(
        - Replicate dividers (thickness/color), section headers (styles), and infographic widgets (bars/dots) identically.
     4. CONTENT MAPPING:
        - Pour USER CONTENT into the reference's exact visual slots. If content is too long, use responsive scaling or truncation that preserves design integrity.
+    5. LAYOUT SAFETY (ANTI-OVERLAP):
+       - NEVER use negative margins on section headings or dividers.
+       - Ensure all section headers (H2, H3) have explicit spacing from the content above and below.
+       - Dividers MUST be placed AFTER the heading text, never absolute-positioned over it.
+       - Use clean block layouts; avoid complex relative-absolute positioning that can break during PDF export.
     
     OUTPUT: A single self-contained HTML structure with Tailwind classes. No <html> or <body> tags. Ensure the result is a 1:1 visual "Clone" of the template, just with updated data.
     
-    HIGH-FIDELITY DIRECTIVE: Scale awareness is critical. Maintain the A4 vertical balance. If the reference uses overlapping elements or negative margins, REPLICATE THEM EXACTLY.
+    HIGH-FIDELITY DIRECTIVE: Scale awareness is critical. Maintain the A4 vertical balance. Ensure section headings are perfectly clean and horizontal lines appear neatly below them with no overlap.
     
     ${optimizationPrompt}
     ${layoutSystemPrompt}

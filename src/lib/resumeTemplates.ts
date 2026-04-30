@@ -101,9 +101,44 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       overflow: auto;
       background: #f8fafc;
     }
+
+    /* Export-Only Overlap Fixes */
+    .export-mode h2, 
+    .export-mode h3, 
+    .export-mode .section-title {
+      position: relative !important;
+      display: inline-block !important; /* inline-block allows the ::after underline to match text width */
+      margin-bottom: 6px !important;
+      text-decoration: none !important;
+      border-bottom: none !important; /* Remove conflicting borders */
+    }
+
+    .export-mode h2::after,
+    .export-mode h3::after,
+    .export-mode .section-title::after {
+      content: "" !important;
+      position: absolute !important;
+      left: 0 !important;
+      bottom: -4px !important;
+      width: 100% !important;
+      height: 1px !important;
+      background: black !important;
+    }
+
+    .export-mode h2:first-of-type, 
+    .export-mode .section-title:first-of-type {
+      margin-top: 0 !important;
+    }
+
+    /* Ensure icons don't cause alignment issues that might lead to overlap */
+    i[data-lucide], svg {
+      vertical-align: middle;
+      margin-right: 6px;
+      display: inline-block;
+    }
   </style>
 </head>
-<body class="${previewMode ? 'preview-mode' : ''}">
+<body class="${previewMode ? 'preview-mode' : 'export-mode'}">
   ${previewMode ? `
     <div class="preview-wrapper">
       <div class="preview-scale" id="scaling-container">

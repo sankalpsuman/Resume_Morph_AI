@@ -28,11 +28,11 @@ export const db = initializeFirestore(app, {
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
-// Increase global storage timeout/retry to handle flaky connections, 
-// though we usually want it to fail faster in this environment if it's blocking.
-// But the SDK default is 10 mins, which might be why it hangs.
-storage.maxOperationRetryTime = 30000; // 30 seconds
-storage.maxUploadRetryTime = 60000; // 60 seconds
+// Increase global storage timeout/retry to handle flaky connections.
+// The SDK default is 10 mins (600,000ms), but we previously set it to 30s which might be too aggressive.
+// Setting it to 3 minutes (180,000ms) provides a better balance.
+storage.maxOperationRetryTime = 180000; 
+storage.maxUploadRetryTime = 180000; 
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
