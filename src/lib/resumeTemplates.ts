@@ -102,27 +102,20 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       background: #f8fafc;
     }
 
+    /* Global Heading & Divider Styles - Default styles should be minimal to avoid breaking morphed layouts */
+    h2, h3, .section-title {
+      position: relative;
+      text-decoration: none;
+    }
+
     /* Export-Only Overlap Fixes */
     .export-mode h2, 
     .export-mode h3, 
     .export-mode .section-title {
-      position: relative !important;
-      display: inline-block !important; /* inline-block allows the ::after underline to match text width */
-      margin-bottom: 6px !important;
-      text-decoration: none !important;
-      border-bottom: none !important; /* Remove conflicting borders */
-    }
-
-    .export-mode h2::after,
-    .export-mode h3::after,
-    .export-mode .section-title::after {
-      content: "" !important;
-      position: absolute !important;
-      left: 0 !important;
-      bottom: -4px !important;
-      width: 100% !important;
-      height: 1px !important;
-      background: black !important;
+      display: block !important;
+      padding-bottom: 6px !important;
+      margin-bottom: 12px !important;
+      margin-top: 24px !important;
     }
 
     .export-mode h2:first-of-type, 
@@ -130,7 +123,32 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       margin-top: 0 !important;
     }
 
-    /* Ensure icons don't cause alignment issues that might lead to overlap */
+    /* Standard dividers */
+    .section-divider, hr {
+      display: block;
+      margin-top: 4px;
+      margin-bottom: 16px;
+      height: 1px;
+      border: 0;
+      background-color: #e2e8f0;
+      clear: both;
+      position: relative;
+    }
+
+    /* Helper for border-bottom usage in export */
+    .export-mode [class*="border-b"], 
+    .export-mode [style*="border-bottom"] {
+      padding-bottom: 6px !important;
+    }
+
+    /* Prevent rendering artifacts */
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      box-sizing: border-box;
+    }
+
+    /* Ensure icons don't cause alignment issues */
     i[data-lucide], svg {
       vertical-align: middle;
       margin-right: 6px;
@@ -138,7 +156,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     }
   </style>
 </head>
-<body class="${previewMode ? 'preview-mode' : 'export-mode'}">
+<body class="${previewMode ? 'preview-mode' : ''}">
   ${previewMode ? `
     <div class="preview-wrapper">
       <div class="preview-scale" id="scaling-container">

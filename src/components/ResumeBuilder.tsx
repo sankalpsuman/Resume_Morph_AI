@@ -721,6 +721,27 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setShowDownloadMenu(false);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
+    setShowDownloadMenu(false);
+    const canvas = await captureResume();
+    if (!canvas) return;
+
+    try {
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      // High resolution placement
+      pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89, undefined, 'FAST');
+      pdf.save(getFileName('pdf'));
+    } catch (err) {
+      console.error("PDF download failed:", err);
+    }
+  };
+
   const handleDownloadWord = () => {
     if (!user) {
       setShowLoginPrompt(true);
@@ -787,6 +808,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
           if (!doc) throw new Error("Iframe document not accessible");
 
+          // Ensure and wait for fonts to be ready in the iframe context
+          if (iframe.contentWindow?.document.fonts) {
+            await iframe.contentWindow.document.fonts.ready;
+          }
+
           // Wait for all images to load within the iframe
           const images = Array.from(doc.querySelectorAll('img'));
           await Promise.all(images.map(img => {
@@ -797,14 +823,14 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             });
           }));
 
-          // Extra buffer for fonts/styles rendered via JS or slow CDN
-          await new Promise(r => setTimeout(r, 1000));
+          // Extra buffer for rendering stabilization
+          await new Promise(r => setTimeout(r, 800));
           
           const body = doc.body;
           if (!body) throw new Error("Iframe body not found");
 
           const canvas = await html2canvas(body, {
-            scale: 2, 
+            scale: 3, // High-performance 3x scale
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -812,10 +838,44 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             height: 1123,
             logging: false,
             onclone: (clonedDoc) => {
-              // Ensure elements are visible for capture
               const clonedBody = clonedDoc.body;
               if (clonedBody) {
+                clonedBody.classList.add('export-mode');
                 clonedBody.style.overflow = 'visible';
+                clonedBody.style.width = '794px';
+                clonedBody.style.height = 'auto';
+                clonedBody.style.background = 'white';
+                
+                // CRITICAL: Remove scaling transform to capture original dimensions
+                const scaler = clonedDoc.getElementById('scaling-container');
+                if (scaler) {
+                  scaler.style.transform = 'none';
+                  scaler.style.margin = '0';
+                  scaler.style.width = '794px';
+                  scaler.style.height = 'auto';
+                  scaler.style.left = '0';
+                  scaler.style.top = '0';
+                }
+
+                // Ensure the resume-page within the clone is properly handled
+                const resumePage = clonedDoc.querySelector('.resume-page') as HTMLElement;
+                if (resumePage) {
+                  resumePage.style.width = '794px';
+                  resumePage.style.height = 'auto';
+                  resumePage.style.minHeight = 'auto';
+                  resumePage.style.boxShadow = 'none';
+                  resumePage.style.margin = '0';
+                }
+
+                // Ensure no fixed scaling wrapper restricts the content
+                const wrapper = clonedDoc.querySelector('.preview-wrapper');
+                if (wrapper) {
+                  (wrapper as HTMLElement).style.width = '794px';
+                  (wrapper as HTMLElement).style.height = 'auto';
+                  (wrapper as HTMLElement).style.display = 'block';
+                  (wrapper as HTMLElement).style.padding = '0';
+                  (wrapper as HTMLElement).style.margin = '0';
+                }
               }
             }
           });
@@ -826,7 +886,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           setIsExporting(false);
           resolve(canvas);
         } catch (err) {
-          console.error("Capture failed:", err);
+          console.error("Capture capture failed:", err);
           if (document.body.contains(container)) {
             document.body.removeChild(container);
           }
@@ -1926,6 +1986,18 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   className="absolute bottom-full left-4 right-4 mb-4 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
                 >
                   <div className="grid grid-cols-1 gap-2">
+                    <button 
+                      onClick={() => { handleDownloadPDF(); setShowDownloadMenu(false); }}
+                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-red-600" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[var(--text-primary)]">Download PDF</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Pixel Perfect A4</span>
+                      </div>
+                    </button>
                     <button 
                       onClick={() => { handleDownloadImage('png'); setShowDownloadMenu(false); }}
                       className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
