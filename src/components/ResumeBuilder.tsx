@@ -13,8 +13,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { auth, db, storage } from '../firebase';
 import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment } from 'firebase/firestore';
-import { ref, uploadString, deleteObject } from 'firebase/storage';
-import { uploadWithRetry } from '../lib/storage';
+import { ref, uploadString } from 'firebase/storage';
+import { uploadWithRetry, deleteWithRetry } from '../lib/storage';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 
 import { PLANS } from '../constants';

@@ -20,7 +20,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, storage, googleProvider } from './firebase';
 import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
+import { ref } from 'firebase/storage';
+import { deleteWithRetry } from './lib/storage';
 import AccountModal from './components/AccountModal';
 import AdminPanel from './components/AdminPanel';
 import UserGuide from './components/UserGuide';
@@ -177,7 +178,7 @@ export default function App() {
           for (const resume of userData.resumeHistory) {
             if (resume.storagePath) {
               const resumeRef = ref(storage, resume.storagePath);
-              await deleteObject(resumeRef).catch(() => {});
+              await deleteWithRetry(resumeRef).catch(() => {});
             }
           }
           
@@ -287,7 +288,7 @@ export default function App() {
 
         if (resumeToDelete?.storagePath) {
           const storageRef = ref(storage, resumeToDelete.storagePath);
-          deletePromises.push(deleteObject(storageRef).catch(err => console.error("Storage delete failed:", err)));
+          deletePromises.push(deleteWithRetry(storageRef).catch(err => console.error("Storage delete failed (final):", err)));
         }
 
         await Promise.all(deletePromises);
