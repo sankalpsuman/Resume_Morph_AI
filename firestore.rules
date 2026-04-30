@@ -100,7 +100,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
       allow update: if isAuthenticated() && (
         (isOwner(userId) && 
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'premiumExpiryDate', 'createdAt', 'userId']) &&
+         (
+           // Standard profile updates
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'plan', 'planLimit', 'premiumExpiryDate', 'createdAt', 'userId']) ||
+           // Self-revert to free plan on expiry or revocation
+           (request.resource.data.plan == 'free' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan', 'planLimit', 'remainingMorphs', 'premiumExpiryDate', 'adminMessage', 'revokeReason']))
+         ) &&
          isValidUser(request.resource.data)) ||
         isAdmin()
       );

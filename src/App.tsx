@@ -98,10 +98,39 @@ export default function App() {
     const userRef = doc(db, 'users', user.uid);
     const unsubscribeUser = onSnapshot(userRef, async (docSnap) => {
       if (docSnap.exists()) {
-        setUserData(docSnap.data());
-      } else {
-        // Create initial user profile if it doesn't exist
+        const data = docSnap.data();
+        setUserData(data);
+
+        // Integrated Expiry Check
+        if (data.plan !== 'free' && data.premiumExpiryDate) {
+          try {
+            const expiry = data.premiumExpiryDate.toDate();
+            // Add a 5-minute grace period to prevent clock-sync issues
+            if (Date.now() > (expiry.getTime() + 300000)) {
+              const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
+              const hasClaimedFree = data.freeClaimed || data.metadata?.freeClaimed || false;
+              const currentUsed = data.usedMorphs !== undefined ? data.usedMorphs : (data.morphCount || 0);
+
+              console.log(`Plan expired for user ${user.uid}. Reverting to free.`);
+              await updateDoc(userRef, {
+                plan: freePlan.id,
+                planLimit: freePlan.limit,
+                remainingMorphs: Math.max(0, freePlan.limit - currentUsed),
+                premiumExpiryDate: null,
+                showExpiryNotice: true,
+                adminMessage: "Your premium access has expired. Please renew to continue with full benefits."
+              });
+            }
+          } catch (err) {
+            console.error("Expiry check failed:", err);
+          }
+        }
+      } else if (!(docSnap as any).metadata.fromCache) {
+        // ONLY initialize if we are sure the document doesn't exist on the server.
+        // This prevents overwriting premium data if the first snapshot returns from cache
+        // and mistakenly claims the document doesn't exist.
         try {
+          console.log(`Initializing user profile for first-time login: ${user.uid}`);
           const initialData = {
             userId: user.uid,
             email: user.email,
@@ -119,9 +148,12 @@ export default function App() {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             lastActivityAt: serverTimestamp(),
-            resumeHistory: []
+            resumeHistory: [],
+            freeClaimed: false,
+            metadata: { freeClaimed: false }
           };
-          await setDoc(userRef, initialData);
+          // Using merge: true just in case another client or tool created the doc simultaneously
+          await setDoc(userRef, initialData, { merge: true });
           setUserData(initialData);
         } catch (err) {
           console.error("Failed to initialize user data:", err);
@@ -225,33 +257,6 @@ export default function App() {
       setIsNotifying(false);
     }
   };
-
-  useEffect(() => {
-    if (!userData || !user) return;
-
-    const checkExpiry = async () => {
-      if (userData.plan !== 'free' && userData.premiumExpiryDate) {
-        const expiry = userData.premiumExpiryDate.toDate();
-        if (Date.now() > expiry.getTime()) {
-          const userRef = doc(db, 'users', user.uid);
-          const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
-          const hasClaimedFree = userData.freeClaimed || userData.metadata?.freeClaimed || false;
-          
-          await updateDoc(userRef, {
-            plan: freePlan.id,
-            planLimit: freePlan.limit,
-            // If they already claimed free trial, set usage to limit so they can't use it again
-            usedMorphs: hasClaimedFree ? freePlan.limit : 0,
-            remainingMorphs: hasClaimedFree ? 0 : freePlan.limit,
-            premiumExpiryDate: null,
-            showExpiryNotice: true
-          });
-        }
-      }
-    };
-
-    checkExpiry();
-  }, [userData?.premiumExpiryDate, user?.uid]);
 
   const handleLogout = () => {
     signOut(auth);

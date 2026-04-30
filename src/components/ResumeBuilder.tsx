@@ -757,12 +757,14 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     
     return new Promise((resolve) => {
       const container = document.createElement('div');
+      container.id = 'export-container-hidden';
       container.style.position = 'fixed';
       container.style.left = '-9999px';
       container.style.top = '0';
       container.style.width = '794px';
       container.style.backgroundColor = 'white';
       container.style.zIndex = '-1000';
+      container.style.pointerEvents = 'none';
       document.body.appendChild(container);
 
       const iframe = document.createElement('iframe');
@@ -781,11 +783,24 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       iframe.srcdoc = fullHtml;
 
       iframe.onload = async () => {
-        // Wait for styles and fonts to stabilize
-        await new Promise(r => setTimeout(r, 2000));
-        
         try {
-          const body = iframe.contentDocument?.body;
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (!doc) throw new Error("Iframe document not accessible");
+
+          // Wait for all images to load within the iframe
+          const images = Array.from(doc.querySelectorAll('img'));
+          await Promise.all(images.map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolveImg => {
+              img.onload = resolveImg;
+              img.onerror = resolveImg;
+            });
+          }));
+
+          // Extra buffer for fonts/styles rendered via JS or slow CDN
+          await new Promise(r => setTimeout(r, 1000));
+          
+          const body = doc.body;
           if (!body) throw new Error("Iframe body not found");
 
           const canvas = await html2canvas(body, {
@@ -795,10 +810,19 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             backgroundColor: '#ffffff',
             width: 794,
             height: 1123,
-            logging: false
+            logging: false,
+            onclone: (clonedDoc) => {
+              // Ensure elements are visible for capture
+              const clonedBody = clonedDoc.body;
+              if (clonedBody) {
+                clonedBody.style.overflow = 'visible';
+              }
+            }
           });
           
-          document.body.removeChild(container);
+          if (document.body.contains(container)) {
+            document.body.removeChild(container);
+          }
           setIsExporting(false);
           resolve(canvas);
         } catch (err) {
@@ -822,15 +846,25 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     const canvas = await captureResume();
     if (!canvas) return;
 
-    const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-    const quality = format === 'jpeg' ? 0.95 : undefined;
-    const dataUrl = canvas.toDataURL(mimeType, quality);
-    
-    const link = document.createElement('a');
-    link.download = getFileName(format);
-    link.href = dataUrl;
-    link.click();
-    setShowDownloadMenu(false);
+    try {
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      const quality = format === 'jpeg' ? 0.95 : undefined;
+      const dataUrl = canvas.toDataURL(mimeType, quality);
+      
+      const link = document.createElement('a');
+      link.download = getFileName(format);
+      link.href = dataUrl;
+      // In Safari iOS, we might need target="_blank"
+      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        link.target = '_blank';
+      }
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setShowDownloadMenu(false);
+    } catch (err) {
+      console.error("Image download failed:", err);
+    }
   };
 
   const handleShareWhatsApp = async () => {
@@ -839,6 +873,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       setIsLoginPendingForDownload(true);
       return;
     }
+    setShowDownloadMenu(false);
     const canvas = await captureResume();
     if (!canvas) return;
 
@@ -855,32 +890,43 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
 
       // Try native share first (best for WhatsApp on mobile)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          files: [pdfFile],
-          title: 'My Resume',
-          text: shareMessage
-        });
-      } else {
-        // Fallback: Download and open WhatsApp link
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Open WhatsApp
-        setTimeout(() => {
-          const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
-          window.open(waUrl, '_blank');
-          URL.revokeObjectURL(pdfUrl);
-        }, 1200);
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: 'My Resume',
+            text: shareMessage
+          });
+          return;
+        } catch (shareErr) {
+          // If user cancels or it fails, fall back to link
+          console.warn("Native share cancelled or failed:", shareErr);
+        }
       }
+
+      // Fallback: Download and open WhatsApp link
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = filename;
+      if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        link.target = '_blank';
+      }
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // WhatsApp redirection - using location.href avoids popup blockers more reliably than window.open
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+      
+      // Short delay to ensure download starts
+      setTimeout(() => {
+        window.open(waUrl, '_blank');
+        URL.revokeObjectURL(pdfUrl);
+      }, 1000);
+      
     } catch (err) {
       console.error("WhatsApp share failed:", err);
     }
-    setShowDownloadMenu(false);
   };
 
   const reset = () => {
