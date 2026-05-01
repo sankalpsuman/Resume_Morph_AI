@@ -100,38 +100,47 @@ export default function App() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setUserData(data);
+        console.log(`[Subscription] Profile loaded for ${user.uid}. Plan: ${data.plan}`);
 
-        // Integrated Expiry Check
-        if (data.plan !== 'free' && data.premiumExpiryDate) {
+        // Integrated Expiry Check - Only for plans that actually expire
+        if (data.plan && data.plan !== 'free' && data.premiumExpiryDate) {
           try {
-            const expiry = data.premiumExpiryDate.toDate();
-            // Add a 5-minute grace period to prevent clock-sync issues
-            if (Date.now() > (expiry.getTime() + 300000)) {
-              const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
-              const hasClaimedFree = data.freeClaimed || data.metadata?.freeClaimed || false;
-              const currentUsed = data.usedMorphs !== undefined ? data.usedMorphs : (data.morphCount || 0);
+            // Ensure we're dealing with a Firestore Timestamp
+            const expiry = data.premiumExpiryDate.toDate ? data.premiumExpiryDate.toDate() : new Date(data.premiumExpiryDate);
+            
+            // Validate the date is actually a valid Date object
+            if (expiry instanceof Date && !isNaN(expiry.getTime())) {
+              // Add a generous 15-minute grace period to prevent clock-sync issues
+              const isExpired = Date.now() > (expiry.getTime() + 900000);
+              console.log(`[Subscription] Expiry check: ${expiry.toLocaleString()}. Expired: ${isExpired}`);
 
-              console.log(`Plan expired for user ${user.uid}. Reverting to free.`);
-              await updateDoc(userRef, {
-                plan: freePlan.id,
-                planLimit: freePlan.limit,
-                remainingMorphs: Math.max(0, freePlan.limit - currentUsed),
-                premiumExpiryDate: null,
-                showExpiryNotice: true,
-                adminMessage: "Your premium access has expired. Please renew to continue with full benefits."
-              });
+              if (isExpired) {
+                const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
+                const currentUsed = data.usedMorphs !== undefined ? data.usedMorphs : (data.morphCount || 0);
+
+                console.warn(`[Subscription] Plan expired for user ${user.uid} (${data.plan}). Reverting to free.`);
+                await updateDoc(userRef, {
+                  plan: freePlan.id,
+                  planLimit: freePlan.limit,
+                  remainingMorphs: Math.max(0, freePlan.limit - currentUsed),
+                  premiumExpiryDate: null,
+                  showExpiryNotice: true,
+                  adminMessage: "Your premium access has expired. Please renew to continue with full benefits."
+                });
+              }
             }
           } catch (err) {
-            console.error("Expiry check failed:", err);
+            console.error("[Subscription] Expiry check failed to process date:", err);
           }
         }
-      } else if (!(docSnap as any).metadata.fromCache) {
-        // ONLY initialize if we are sure the document doesn't exist on the server.
-        // This prevents overwriting premium data if the first snapshot returns from cache
-        // and mistakenly claims the document doesn't exist.
+      } else {
+        // ONLY initialize if the server explicitly confirms the document does not exist.
+        // We use a direct getDoc to verify the state before creating a new profile.
         try {
-          console.log(`Initializing user profile for first-time login: ${user.uid}`);
-          const initialData = {
+          const freshSnap = await getDoc(userRef);
+          if (!freshSnap.exists()) {
+            console.log(`[Subscription] Initializing NEW user profile: ${user.uid}`);
+            const initialData = {
             userId: user.uid,
             email: user.email,
             name: user.displayName || 'Morph User',
@@ -152,10 +161,13 @@ export default function App() {
             freeClaimed: false,
             metadata: { freeClaimed: false }
           };
-          // Using merge: true just in case another client or tool created the doc simultaneously
-          await setDoc(userRef, initialData, { merge: true });
+          
+          // Use setDoc with EXISTS check or just be careful.
+          // Since docSnap.exists() was false, it's safe to create.
+          await setDoc(userRef, initialData);
           setUserData(initialData);
-        } catch (err) {
+        }
+      } catch (err) {
           console.error("Failed to initialize user data:", err);
           handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
         }
@@ -701,7 +713,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className={cn(
         "flex-grow relative w-full",
-        !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32 md:pb-12"
+        !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32"
       )}>
         <div className={cn("max-w-7xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder 
@@ -716,7 +728,7 @@ export default function App() {
           <ResumeAIAssistant />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'smart-editor' && "hidden")}>
-          <SmartEditor />
+          <SmartEditor userData={userData} />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'cover-letter' && "hidden")}>
           <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.originalText || ""} />

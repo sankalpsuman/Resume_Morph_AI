@@ -72,7 +72,9 @@ interface CustomMessage {
   timestamp: number;
 }
 
-export default function SmartEditor() {
+export default function SmartEditor({ userData }: { userData: any }) {
+  const isPremium = userData?.plan && userData.plan !== 'free';
+  
   const [step, setStep] = useState<'import' | 'studio'>('import');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,8 +311,8 @@ export default function SmartEditor() {
         resumeData, 
         styles, 
         referenceFile?.blueprint || null,
-        null, // Don't send base64 repeatedly to avoid large payload errors (gRPC ProxyUnaryCall)
-        null
+        referenceFile?.base64 || null,
+        referenceFile?.mime || null
       );
       setGeneratedHtml(result.html);
     } catch (err) {
@@ -343,10 +345,27 @@ export default function SmartEditor() {
 
           const imgData = event.data.imgData;
           const pdf = new jsPDF('p', 'mm', 'a4');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (event.data.height * pdfWidth) / event.data.width;
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
           
-          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          const imgWidth = pageWidth;
+          const imgHeight = (event.data.height * imgWidth) / event.data.width;
+          
+          let heightLeft = imgHeight;
+          let position = 0;
+          
+          // First page
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+          heightLeft -= pageHeight;
+          
+          // Subsequent pages if content overflows
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+            heightLeft -= pageHeight;
+          }
+          
           pdf.save(`${resumeData?.personalInfo.name || 'resume'}_premium.pdf`);
           setLoading(false);
         }
@@ -615,28 +634,14 @@ export default function SmartEditor() {
             <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-indigo-600")} />
           </button>
           <div className="h-6 w-px bg-[var(--border-color)] mx-1" />
-          <button 
-            onClick={downloadPdf}
-            disabled={loading}
-            title="Download PDF"
-            className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={shareToWhatsApp}
-            title="Share on WhatsApp"
-            className="p-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-500/20"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
+          {/* Actions moved to unified sticky bottom bar */}
         </div>
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* Mobile Toggle Bar */}
-        <div className="lg:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-[60] p-1.5 gap-1">
+        <div className="lg:hidden fixed bottom-28 left-1/2 -translate-x-1/2 flex items-center bg-[var(--bg-primary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-2xl shadow-2xl z-[60] p-1.5 gap-1">
           <button 
             onClick={() => setMobileMode('edit')}
             className={cn(
@@ -885,16 +890,29 @@ export default function SmartEditor() {
                               background-color: white;
                               width: 794px;
                               min-height: 1123px;
-                              padding: 50px 55px;
-                              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                              margin: 0 auto;
+                              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
                               font-family: var(--font-family);
                               line-height: var(--line-height);
                               font-size: var(--font-size);
                               color: var(--text-main);
                               box-sizing: border-box;
                               position: relative;
+                              overflow: visible;
                             }
-                            /* Base cleanup to prevent layout artifacts without breaking AI intent */
+                            .resume-footer {
+                              font-size: 10px; 
+                              color: #94a3b8; 
+                              text-align: center; 
+                              margin-top: 30px; 
+                              padding-bottom: 20px;
+                              font-family: 'Inter', sans-serif;
+                              width: 100%;
+                              border-top: 1px solid #f1f5f9;
+                              padding-top: 15px;
+                              display: block !important;
+                            }
+                            /* Table stability without artifacts */
                             table {
                               border-collapse: collapse !important;
                             }
@@ -903,16 +921,6 @@ export default function SmartEditor() {
                             }
                             .new-content { animation: highlight 1s ease-out; }
                             @keyframes highlight { from { background-color: #fef08a; } to { background-color: transparent; } }
-
-                            /* Export Mode Isolation - Perfect Match */
-                            .export-mode {
-                              box-shadow: none !important;
-                              margin: 0 !important;
-                              background: white !important;
-                            }
-                            .export-mode .no-export {
-                              display: none !important;
-                            }
                           </style>
                           <script>
                             function resolvePath(obj, path) {
@@ -958,8 +966,8 @@ export default function SmartEditor() {
 
                               if (event.data.type === 'CAPTURE_CANVAS') {
                                 try {
+                                  // For capturing, we target the main resume container
                                   const root = document.getElementById('resume-root');
-                                  root.classList.add('export-mode');
                                   
                                   // Wait for images to load
                                   const images = Array.from(root.querySelectorAll('img'));
@@ -970,18 +978,48 @@ export default function SmartEditor() {
 
                                   await document.fonts.ready;
                                   
+                                  // Delay to ensure fonts and layout are settled
+                                  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                                  await new Promise(r => setTimeout(r, 400));
+
                                   const canvas = await html2canvas(root, {
-                                    scale: 2,
+                                    scale: 3, 
                                     useCORS: true,
                                     allowTaint: true,
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: "#ffffff",
                                     logging: false,
                                     width: 794,
-                                    height: root.scrollHeight
+                                    height: root.offsetHeight, 
+                                    scrollX: 0,
+                                    scrollY: 0,
+                                    windowWidth: 794,
+                                    imageTimeout: 15000,
+                                    removeContainer: true,
+                                    onclone: (clonedDoc) => {
+                                      const clonedRoot = clonedDoc.getElementById('resume-root');
+                                      if (clonedRoot) {
+                                        clonedRoot.style.margin = '0';
+                                        clonedRoot.style.padding = '0';
+                                        clonedRoot.style.boxShadow = 'none';
+                                        clonedRoot.style.width = '794px';
+                                        clonedRoot.style.position = 'static';
+                                        clonedRoot.style.transform = 'none';
+                                        clonedRoot.style.minHeight = 'auto'; // Prevent extra white space if short
+                                      }
+                                      
+                                      const clonedBody = clonedDoc.body;
+                                      if (clonedBody) {
+                                        clonedBody.style.margin = '0';
+                                        clonedBody.style.padding = '0';
+                                        clonedBody.style.background = 'white';
+                                        clonedBody.style.display = 'block';
+                                      }
+
+                                      // Hard removal of non-export elements
+                                      clonedDoc.querySelectorAll('.no-export, .ui-controls').forEach(el => el.remove());
+                                    }
                                   });
 
-                                  root.classList.remove('export-mode');
-                                  
                                   window.parent.postMessage({
                                     type: 'CANVAS_RESPONSE',
                                     requestId: event.data.requestId,
@@ -1003,6 +1041,11 @@ export default function SmartEditor() {
                         <body>
                           <div id="resume-root">
                             ${generatedHtml}
+                            ${!isPremium ? `
+                              <div class="resume-footer">
+                                Created by <a href="https://resume-morph.com" style="color: #6366f1; text-decoration: none; font-weight: 700;">Resume Morph</a> (Sankalp Suman)
+                              </div>
+                            ` : ''}
                           </div>
                         </body>
                       </html>
@@ -1018,6 +1061,36 @@ export default function SmartEditor() {
           </div>
         </main>
       </div>
+      {/* Unified Action Bar */}
+      <AnimatePresence>
+        {!loading && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-[150] p-4 md:p-6 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-t border-[var(--border-color)] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+          >
+            <div className="max-w-3xl mx-auto flex items-center gap-3 md:gap-4">
+              <button 
+                onClick={shareToWhatsApp}
+                title="Share on WhatsApp"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span>WhatsApp</span>
+              </button>
+              <button 
+                onClick={downloadPdf}
+                disabled={loading}
+                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-50"
+              >
+                <Download className="w-5 h-5" />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

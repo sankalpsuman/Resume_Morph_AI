@@ -4,7 +4,7 @@ import {
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, 
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
-  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon
+  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -737,10 +737,28 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     if (!canvas) return;
 
     try {
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      // High resolution placement
-      pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89, undefined, 'FAST');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // First page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight;
+
+      // Consecutive pages
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight;
+      }
+      
       pdf.save(getFileName('pdf'));
     } catch (err) {
       console.error("PDF download failed:", err);
@@ -834,19 +852,20 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           
           const body = doc.body;
           if (!body) throw new Error("Iframe body not found");
+          const resumePage = doc.querySelector('.resume-page') as HTMLElement;
+          const captureTarget = resumePage || body;
 
-          const canvas = await html2canvas(body, {
+          const canvas = await html2canvas(captureTarget, {
             scale: 3, // High-performance 3x scale
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
             width: 794,
-            height: 1123,
+            height: captureTarget.offsetHeight,
             logging: false,
             onclone: (clonedDoc) => {
               const clonedBody = clonedDoc.body;
               if (clonedBody) {
-                clonedBody.classList.add('export-mode');
                 clonedBody.style.overflow = 'visible';
                 clonedBody.style.width = '794px';
                 clonedBody.style.height = 'auto';
@@ -866,12 +885,13 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 // Ensure the resume-page within the clone is properly handled
                 const resumePage = clonedDoc.querySelector('.resume-page') as HTMLElement;
                 if (resumePage) {
-                  resumePage.classList.add('export-mode');
                   resumePage.style.width = '794px';
                   resumePage.style.height = 'auto';
                   resumePage.style.minHeight = 'auto';
                   resumePage.style.boxShadow = 'none';
                   resumePage.style.margin = '0';
+                  resumePage.style.border = 'none';
+                  resumePage.style.padding = '0';
                 }
 
                 // Ensure no fixed scaling wrapper restricts the content
@@ -1140,97 +1160,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         </div>
         
         <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
-          {generatedHtml && (
-            <div className="flex items-center gap-2 md:gap-3">
-              <button 
-                onClick={handleShareWhatsApp}
-                disabled={isExporting}
-                className="flex items-center justify-center gap-2 px-3 md:px-5 py-2 bg-[#25D366] text-white rounded-lg md:rounded-xl text-[9px] md:text-xs font-black hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-green-100 dark:shadow-none uppercase tracking-widest disabled:opacity-50"
-              >
-                {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">WhatsApp</span>
-              </button>
-
-              <div className="relative">
-                <button 
-                  onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                  disabled={isExporting}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 px-3 md:px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-lg md:rounded-xl text-[9px] md:text-xs font-black hover:opacity-90 transition-all active:scale-95 shadow-xl disabled:opacity-50"
-                >
-                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  <span>Download</span>
-                  <Hand className={cn("w-3.5 h-3.5 transition-transform", showDownloadMenu && "rotate-12")} />
-                </button>
-
-                <AnimatePresence>
-                  {showDownloadMenu && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10" 
-                        onClick={() => setShowDownloadMenu(false)} 
-                      />
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-3 w-64 bg-[var(--bg-primary)] rounded-[24px] shadow-2xl border border-[var(--border-color)] p-2 z-20 overflow-y-auto max-h-[80vh] scrollbar-hide"
-                      >
-                        <button 
-                          onClick={() => handleDownloadImage('png')}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center group-hover:bg-indigo-500 transition-colors">
-                            <ImageIcon className="w-4 h-4 text-indigo-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[var(--text-primary)]">Download PNG</span>
-                            <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold tracking-widest">High Res</span>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={() => handleDownloadImage('jpeg')}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center group-hover:bg-pink-500 transition-colors">
-                            <ImageIcon className="w-4 h-4 text-pink-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[var(--text-primary)]">Download JPEG</span>
-                            <span className="text-[10px] text-[var(--text-tertiary)] uppercase font-bold tracking-widest">Optimized</span>
-                          </div>
-                        </button>
-                        <div className="h-px bg-[var(--border-color)] my-1 mx-2" />
-                        <button 
-                          onClick={handleDownloadHTML}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center group-hover:bg-orange-500 transition-colors">
-                            <FileCode className="w-4 h-4 text-orange-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[var(--text-primary)]">Download HTML</span>
-                            <span className="text-[10px] text-[var(--text-tertiary)]">Perfect for web viewing</span>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={handleDownloadWord}
-                          className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-xl flex items-center gap-3 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-500 transition-colors">
-                            <FileType className="w-4 h-4 text-blue-600 group-hover:text-white" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[var(--text-primary)]">Download Word</span>
-                            <span className="text-[10px] text-[var(--text-tertiary)]">Editable .doc format</span>
-                          </div>
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          )}
+          {/* Action buttons unified into sticky bottom bar at viewport bottom */}
           
           {(referenceFile || contentFile) && (
             <button 
@@ -1983,25 +1913,28 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             initial={{ y: 100 }}
             animate={{ y: 0 }}
             exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-[150] md:hidden p-4 bg-[var(--bg-primary)]/80 backdrop-blur-lg border-t border-[var(--border-color)] shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-[150] p-4 md:p-6 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-t border-[var(--border-color)] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
           >
-            <div className="flex gap-2">
+            <div className="max-w-3xl mx-auto flex items-center gap-3 md:gap-4 font-sans">
               <button 
                 onClick={handleShareWhatsApp}
                 disabled={isExporting}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5 disabled:opacity-50"
               >
                 {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
-                WhatsApp
+                <span>WhatsApp</span>
               </button>
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                 disabled={isExporting}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-4 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95 shadow-xl disabled:opacity-50"
+                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-50 relative group"
               >
                 {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                Download
-                <Hand className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-12")} />
+                <span>Download Resume</span>
+                <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
+                
+                {/* Menu Highlight */}
+                {showDownloadMenu && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-ping" />}
               </button>
             </div>
             

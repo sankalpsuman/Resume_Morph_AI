@@ -958,7 +958,7 @@ export async function generateResumeFromData(
     STRUCTURAL BLUEPRINT: ${referenceLayout || "Standard Professional"}
     
     CODING RULES:
-    1. STYLE: Use Tailwind CSS with absolute fidelity to the Reference Visual.
+    1. STYLE: Use Tailwind CSS. THE STRUCTURAL BLUEPRINT IS THE MASTER. Replicate its visual structure (columns, placement, margin, padding) with 100% fidelity.
     2. THEMING: You MUST use CSS variables for dynamic styles:
        - Use 'var(--primary-color)' for all accent colors (icons, headers, borders).
        - Use 'var(--text-main)' for primary text.
@@ -966,20 +966,16 @@ export async function generateResumeFromData(
     3. DATA BINDING (CRITICAL - 100% DATA PRESERVATION): 
        - INJECT 100% OF THE DATA FROM THE SOURCE. DO NOT SUMMARIZE, MERGE, OR OMIT ANY TEXT. EVERY BULLET POINT MUST BE RENDERED.
        - Add 'data-resume-field' to every element that displays data from the JSON.
-       - Add a 'data-section-name' attribute to the container DIV of every major section (e.g., 'Summary', 'Experience', 'Projects', 'Education', 'Skills', 'Certifications').
-       - Use dot notation for mapping (e.g., 'personalInfo.name', 'experience.0.company').
+       - Add a 'data-section-name' attribute to the container DIV of every major section.
     4. CUSTOMIZATION: Apply the Style Preferences provided.
     5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills. Use SVG/Lucide icons.
      6. RESPONSIVENESS (A4 PRECISION): 
         - Design for a fixed 794px wide canvas (A4 at 96dpi).
-        - Use EXACT margins: padding-top: 50px, padding-bottom: 50px, padding-left: 55px, padding-right: 55px.
-        - VERTICAL EXPANSION: The layout MUST expand vertically to accommodate ALL data. Never use fixed heights (e.g. h-96) or overflow:hidden. If the content exceeds 1123px, just let it continue; the export engine handles scrollHeight.
-        - Ensure section spacing (margin-bottom) is consistently 1.5rem to 2rem.
-        - Use clean, standard borders (1px) for dividers.
-        - Ensure all columns, gutters, and font sizes are proportional to this space.
-        - Use 'w-full' for full-width sections and relative percentages for columns.
+        - Use EXACT internal padding: padding: 50px 55px.
+        - VERTICAL EXPANSION: Content MUST NOT wrap or truncate. Expand vertically.
+        - RELATIVE PRECISION: Use percentage widths for columns (e.g., w-[30%] and w-[70%]) to match the blueprint exactly.
     
-    DATA LOSS IS FORBIDDEN: Fail if you cannot map even one bullet point from the source JSON.
+    NO DATA LOSS: Outputting a summary instead of full text is a failure.
     
     OUTPUT: Return ONLY a valid JSON object with the "html" key containing the Tailwind structure.`;
 

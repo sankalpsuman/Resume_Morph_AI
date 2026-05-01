@@ -49,8 +49,8 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     }
     .resume-page { 
       background: white;
-      width: 210mm;
-      min-height: 297mm;
+      width: 794px;
+      min-height: 1123px;
       padding: 0;
       margin: 0 auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -88,8 +88,8 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       .resume-page { 
         margin: 0; 
         box-shadow: none; 
-        width: 210mm;
-        height: 297mm;
+        width: 794px;
+        height: 1123px;
         overflow: visible !important;
         transform: none !important;
         -webkit-print-color-adjust: exact; 
@@ -135,37 +135,19 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     }
 
     /* 
-     * EXPORT MODE FIXES
-     * Specifically targeting rendering differences in html2canvas / PDF engines
+     * EXPORT MODE ISOLATION
+     * We REMOVE all intrusive borders and paddings to ensure 100% WYSIWYG.
+     * The AI-generated content should define its own layout entirely.
      */
-    .resume-page.export-mode .section-title,
-    .export-mode .section-title,
-    .export-mode h1,
-    .export-mode h2,
-    .export-mode h3 {
-      border-bottom: 1px solid #000 !important;
-      padding-bottom: 6px !important; /* Extra padding to prevent descender cutting */
-      margin-bottom: 12px !important;
-      position: static !important;
-      display: block !important;
-      text-rendering: optimizeLegibility !important;
+    .export-mode .resume-page {
+      box-shadow: none !important;
+      margin: 0 !important;
+      border: none !important;
     }
-
-    .export-mode .section-title::after,
-    .export-mode h1::after,
-    .export-mode h2::after,
-    .export-mode h3::after {
-      display: none !important;
-      content: none !important;
-    }
-
-    .export-mode hr, 
-    .export-mode .section-divider {
-      margin-top: 10px !important;
-      margin-bottom: 10px !important;
-      background-color: #000 !important;
-      height: 1px !important;
-      border: 0 !important;
+    
+    .export-mode body {
+      background: white !important;
+      padding: 0 !important;
     }
   </style>
 </head>
