@@ -48,6 +48,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const planLimit = userData?.planLimit === -1 ? Infinity : (userData?.planLimit || PLANS[0].limit);
   const isLimitReached = planLimit !== Infinity && usedMorphs >= (planLimit as number);
   const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
+  const isPremium = (userData?.plan && userData?.plan !== 'free') || !!userData?.premiumExpiryDate;
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
@@ -277,7 +278,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         id: resumeId,
         name: name || 'Untitled Resume',
         timestamp: new Date().toISOString(),
-        html: wrapResumeHtml(html, { name: name || 'Untitled Resume', isGuest: false }), // Save exact snapshot
+        html: wrapResumeHtml(html, { name: name || 'Untitled Resume', isGuest: false, isPremium }), // Save exact snapshot
         originalText: contentFile?.text || '', // Save original text for diffing
         storagePath: storagePath
       };
@@ -714,7 +715,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       return;
     }
     if (!generatedHtml) return;
-    const fullHtml = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false });
+    const fullHtml = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
     const blob = new Blob([fullHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -755,7 +756,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     if (!generatedHtml) return;
     
     // Construct HTML with Word-specific fixes
-    const wrapped = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false });
+    const wrapped = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
     // Inject Word-specific styles into the wrapped HTML
     const fullHtml = wrapped.replace('</style>', `
       /* Word-specific overrides for layout */
@@ -802,7 +803,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const fullHtml = wrapResumeHtml(generatedHtml, { 
         name: resumeMetadata?.name, 
         isGuest: !user, 
-        previewMode: false 
+        previewMode: false,
+        isPremium
       });
       
       iframe.srcdoc = fullHtml;
@@ -864,6 +866,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 // Ensure the resume-page within the clone is properly handled
                 const resumePage = clonedDoc.querySelector('.resume-page') as HTMLElement;
                 if (resumePage) {
+                  resumePage.classList.add('export-mode');
                   resumePage.style.width = '794px';
                   resumePage.style.height = 'auto';
                   resumePage.style.minHeight = 'auto';
@@ -1879,7 +1882,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                           ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
                           : "h-[500px] md:h-[784px] lg:h-[850px]"
                       )}
-                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true })}
+                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true, isPremium })}
                     />
                   ) : (
                     <motion.div 

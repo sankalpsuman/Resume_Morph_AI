@@ -35,7 +35,11 @@ const STATUS_COLORS: Record<Status, { bg: string, text: string, dot: string }> =
   'Wishlist': { bg: 'bg-gray-50 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', dot: 'bg-gray-500' }
 };
 
-export default function ApplyTracker() {
+interface ApplyTrackerProps {
+  user: any;
+}
+
+export default function ApplyTracker({ user }: ApplyTrackerProps) {
   const [apps, setApps] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -54,11 +58,16 @@ export default function ApplyTracker() {
   });
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!user) {
+      setApps([]);
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true);
     const q = query(
       collection(db, 'applications'),
-      where('uid', '==', auth.currentUser.uid),
+      where('uid', '==', user.uid),
       orderBy('createdAt', 'desc')
     );
 
@@ -67,12 +76,15 @@ export default function ApplyTracker() {
       setApps(data);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'applications');
+      // Only report if still logged in
+      if (auth.currentUser) {
+        handleFirestoreError(error, OperationType.LIST, 'applications');
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +93,7 @@ export default function ApplyTracker() {
     try {
       await addDoc(collection(db, 'applications'), {
         ...newApp,
-        uid: auth.currentUser.uid,
+        uid: user.uid,
         createdAt: serverTimestamp(),
         date: new Date().toISOString()
       });

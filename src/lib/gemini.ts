@@ -694,6 +694,72 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
   });
 }
 
+export async function conversationalEdit(currentData: any, command: string) {
+  return withRetry(async (ai) => {
+    const model = "gemini-3.1-pro-preview"; // Use pro for complex instruction following
+    
+    // Convert to TOON to optimize token usage
+    const dataToon = TOON.stringify(currentData, 'RESUME');
+
+    const prompt = `EXPERT RESUME EDITOR & DATA ARCHITECT.
+    
+    CURRENT RESUME DATA (TOON):
+    ${dataToon}
+    
+    USER COMMAND: "${command}"
+    
+    TASK: Apply the USER COMMAND to the RESUME DATA.
+    
+    RULES:
+    1. PRECISION: Modify ONLY the fields requested by the user. Keep everything else identical.
+    2. DATA INTEGRITY: Never lose existing information unless explicitly asked to delete it.
+    3. SMART MAPPING: 
+       - If asked to "Add a project", append it to the projects array.
+       - If asked to "Update my role at Google", find the experience entry for Google and update the role field.
+       - If asked to "Make my summary more punchy", rewrite the summary field.
+       - If asked to "Add a section for Volunteering", add it to customSections.
+    4. TONAL ALIGNMENT: Keep the professional tone consistent with the rest of the resume.
+    5. STRUCTURE PRESERVATION: Keep tables, lists, and grouping as described in the JSON/TOON structure.
+    
+    OUTPUT: Return the COMPLETE updated resume data in TOON format. 
+    Wrap it in [RESUME] ... [/RESUME] tags.
+    
+    Output ONLY THE TOON content.`;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0.1, // High precision
+      }
+    });
+
+    try {
+      const respText = response.text || "";
+      const toonMatch = respText.match(/\[RESUME\][\s\S]*?\[\/RESUME\]/);
+      const toonContent = toonMatch ? toonMatch[0] : respText;
+      
+      const parsed = TOON.parse(toonContent);
+      
+      if (TOON.validateResumeData(parsed)) {
+        return parsed;
+      }
+      
+      // Fallback: If TOON failed, check if it returned RAW JSON
+      const jsonText = extractJson(respText);
+      const jsonParsed = JSON.parse(jsonText);
+      if (TOON.validateResumeData(jsonParsed)) {
+        return jsonParsed;
+      }
+
+      throw new Error("Invalid edit response");
+    } catch (e) {
+      console.error("Conversational edit failed", e);
+      throw new Error("I couldn't process that specific edit. Please try rephrasing.");
+    }
+  });
+}
+
 export async function parseResumeToData(file: { base64: string; mimeType: string; text?: string }) {
   return withRetry(async (ai) => {
     const model = "gemini-3-flash-preview";
@@ -897,13 +963,23 @@ export async function generateResumeFromData(
        - Use 'var(--primary-color)' for all accent colors (icons, headers, borders).
        - Use 'var(--text-main)' for primary text.
        - Use 'var(--bg-card)' for section backgrounds if applicable.
-    3. DATA BINDING: 
+    3. DATA BINDING (CRITICAL - 100% DATA PRESERVATION): 
+       - INJECT 100% OF THE DATA FROM THE SOURCE. DO NOT SUMMARIZE, MERGE, OR OMIT ANY TEXT. EVERY BULLET POINT MUST BE RENDERED.
        - Add 'data-resume-field' to every element that displays data from the JSON.
        - Add a 'data-section-name' attribute to the container DIV of every major section (e.g., 'Summary', 'Experience', 'Projects', 'Education', 'Skills', 'Certifications').
        - Use dot notation for mapping (e.g., 'personalInfo.name', 'experience.0.company').
     4. CUSTOMIZATION: Apply the Style Preferences provided.
     5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills. Use SVG/Lucide icons.
-    6. RESPONSIVENESS: Ensure it looks perfect on A4 size.
+     6. RESPONSIVENESS (A4 PRECISION): 
+        - Design for a fixed 794px wide canvas (A4 at 96dpi).
+        - Use EXACT margins: padding-top: 50px, padding-bottom: 50px, padding-left: 55px, padding-right: 55px.
+        - VERTICAL EXPANSION: The layout MUST expand vertically to accommodate ALL data. Never use fixed heights (e.g. h-96) or overflow:hidden. If the content exceeds 1123px, just let it continue; the export engine handles scrollHeight.
+        - Ensure section spacing (margin-bottom) is consistently 1.5rem to 2rem.
+        - Use clean, standard borders (1px) for dividers.
+        - Ensure all columns, gutters, and font sizes are proportional to this space.
+        - Use 'w-full' for full-width sections and relative percentages for columns.
+    
+    DATA LOSS IS FORBIDDEN: Fail if you cannot map even one bullet point from the source JSON.
     
     OUTPUT: Return ONLY a valid JSON object with the "html" key containing the Tailwind structure.`;
 

@@ -10,8 +10,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        (request.auth.token.email == "sankalpsmn@gmail.com" && request.auth.token.email_verified == true)
+        (request.auth.token.email == "sankalpsmn@gmail.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
@@ -137,7 +137,8 @@ service cloud.firestore {
     }
 
     match /applications/{applicationId} {
-      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow get: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && isValidApplication(request.resource.data);
       allow update: if isAuthenticated() && (
         (resource.data.uid == request.auth.uid && isValidApplication(request.resource.data) && 

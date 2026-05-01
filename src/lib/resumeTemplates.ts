@@ -3,9 +3,29 @@
  * Utility to wrap a generated resume HTML fragment into a full, self-contained HTML document.
  * This ensures that the resume looks the same in preview, saved history, and downloads.
  */
-export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean, previewMode?: boolean } = {}) {
-  const { name = 'Resume', isGuest = false, previewMode = false } = options;
+export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean, previewMode?: boolean, isPremium?: boolean } = {}) {
+  const { name = 'Resume', isGuest = false, previewMode = false, isPremium = false } = options;
   
+  const resumeFooter = !isPremium ? `
+    <div class="resume-footer" style="
+      font-size: 10px; 
+      color: #94a3b8; 
+      text-align: center; 
+      margin-top: 30px; 
+      padding-bottom: 20px;
+      font-family: 'Inter', sans-serif;
+      width: 100%;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 15px;
+      pointer-events: auto !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    ">
+      Created by <a href="https://resume-morph.com" style="color: #6366f1; text-decoration: none; font-weight: 700;">Resume Morph</a> (Sankalp Suman)
+    </div>
+  ` : '';
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -76,6 +96,10 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         print-color-adjust: exact; 
       }
       .watermark { display: none !important; }
+      .resume-footer {
+        break-inside: avoid;
+        margin-top: 10px !important;
+      }
     }
     .watermark {
       position: fixed;
@@ -102,57 +126,46 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       background: #f8fafc;
     }
 
-    /* Global Heading & Divider Styles - Default styles should be minimal to avoid breaking morphed layouts */
-    h2, h3, .section-title {
-      position: relative;
-      text-decoration: none;
+    /* Content Isolation and Reset */
+    .resume-page {
+      transform-origin: top center;
     }
-
-    /* Export-Only Overlap Fixes */
-    .export-mode h2, 
-    .export-mode h3, 
-    .export-mode .section-title {
-      display: block !important;
-      padding-bottom: 6px !important;
-      margin-bottom: 12px !important;
-      margin-top: 24px !important;
-    }
-
-    .export-mode h2:first-of-type, 
-    .export-mode .section-title:first-of-type {
-      margin-top: 0 !important;
-    }
-
-    /* Standard dividers */
-    .section-divider, hr {
-      display: block;
-      margin-top: 4px;
-      margin-bottom: 16px;
-      height: 1px;
-      border: 0;
-      background-color: #e2e8f0;
-      clear: both;
-      position: relative;
-    }
-
-    /* Helper for border-bottom usage in export */
-    .export-mode [class*="border-b"], 
-    .export-mode [style*="border-bottom"] {
-      padding-bottom: 6px !important;
-    }
-
-    /* Prevent rendering artifacts */
-    * {
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+    .resume-page * {
       box-sizing: border-box;
     }
 
-    /* Ensure icons don't cause alignment issues */
-    i[data-lucide], svg {
-      vertical-align: middle;
-      margin-right: 6px;
-      display: inline-block;
+    /* 
+     * EXPORT MODE FIXES
+     * Specifically targeting rendering differences in html2canvas / PDF engines
+     */
+    .resume-page.export-mode .section-title,
+    .export-mode .section-title,
+    .export-mode h1,
+    .export-mode h2,
+    .export-mode h3 {
+      border-bottom: 1px solid #000 !important;
+      padding-bottom: 6px !important; /* Extra padding to prevent descender cutting */
+      margin-bottom: 12px !important;
+      position: static !important;
+      display: block !important;
+      text-rendering: optimizeLegibility !important;
+    }
+
+    .export-mode .section-title::after,
+    .export-mode h1::after,
+    .export-mode h2::after,
+    .export-mode h3::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .export-mode hr, 
+    .export-mode .section-divider {
+      margin-top: 10px !important;
+      margin-bottom: 10px !important;
+      background-color: #000 !important;
+      height: 1px !important;
+      border: 0 !important;
     }
   </style>
 </head>
@@ -162,6 +175,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       <div class="preview-scale" id="scaling-container">
         <div class="resume-page">
           ${contentHtml}
+          ${resumeFooter}
         </div>
       </div>
     </div>
@@ -169,6 +183,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     <div class="scale-wrapper">
       <div class="resume-page">
         ${contentHtml}
+        ${resumeFooter}
       </div>
     </div>
   `}

@@ -722,7 +722,7 @@ export default function App() {
           <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.originalText || ""} />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'tracker' && "hidden")}>
-          <ApplyTracker />
+          <ApplyTracker user={user} />
         </div>
         <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'portfolio' && "hidden")}>
           <PortfolioGenerator 
