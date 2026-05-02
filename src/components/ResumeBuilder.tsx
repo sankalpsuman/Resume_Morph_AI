@@ -4,7 +4,7 @@ import {
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, 
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
-  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown
+  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -50,6 +50,10 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
   const isPremium = (userData?.plan && userData?.plan !== 'free') || !!userData?.premiumExpiryDate;
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
+  const [isDnaValidated, setIsDnaValidated] = useState(false);
+  const [dnaAnalysisStatus, setDnaAnalysisStatus] = useState<string | null>(null);
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [isValidationInProgress, setIsValidationInProgress] = useState(false);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -246,7 +250,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       }
 
       const base64 = await fileToBase64(file);
-      setContentFile({ file, base64, text, type: file.type });
+      const contentData = { file, base64, text, type: file.type };
+      setContentFile(contentData);
+      
       // Reset generated HTML when new content is uploaded
       setGeneratedHtml(null);
     } catch (err: any) {
@@ -395,9 +401,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     const messages = ["Initializing Morph Core...", "Injecting Neural Processing...", "Calibrating Style Engine v2.0...", "Establishing Guest Workspace...", "Ready to Morph."];
     for (let i = 0; i < messages.length; i++) {
       setGuestLoadingStep(i);
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 50));
     setIsGuestBooting(false);
   };
   const handleFeedbackSubmit = async () => {
@@ -452,18 +458,32 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setError(null);
     
     try {
+      let currentLayout = layoutAnalysis;
+      if (!currentLayout && (referenceFile.base64 || referenceFile.text)) {
+        setGenerationStatus('Scanning reference blueprint...');
+        if (referenceFile.text) {
+          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
+        } else if (referenceFile.base64) {
+          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
+        }
+        setLayoutAnalysis(currentLayout);
+      }
+
+      setGenerationStatus('Forensic mapping content to DNA...');
       const result = await generateResume(
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
         jobDescription,
         false,
-        layoutAnalysis,
+        currentLayout,
         strictLayout,
         { lengthMode }
       );
 
-      setGenerationStatus('Optimizing content...');
+      setGenerationStatus('Verifying Pixel-Perfect Parity...');
       applyGenerationResult(result);
+      
+      setIsPreviewReady(true);
 
       if (!user) {
         setHasUsedFreeMorph(true);
@@ -490,25 +510,35 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     
     setIsAnalyzing(true);
     setError(null);
+    setDnaAnalysisStatus('Forensic Scan Initiated...');
     
     try {
-      let currentLayout = layoutAnalysis;
-      if (!currentLayout) {
-        if (referenceFile.text) {
-          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
-        } else if (referenceFile.base64) {
-          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
-        }
-        setLayoutAnalysis(currentLayout);
+      let currentLayout = null;
+      if (referenceFile.text) {
+        currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
+      } else if (referenceFile.base64) {
+        currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
       }
+
+      if (!currentLayout || Object.keys(currentLayout).length < 5) {
+        throw new Error("INSUFFICIENT_DNA_QUALITY");
+      }
+
+      setDnaAnalysisStatus('Validating Structural Integrity...');
+      await new Promise(resolve => setTimeout(resolve, 200)); // Snappy delay
+      
+      setLayoutAnalysis(currentLayout);
+      setIsDnaValidated(true);
+      setDnaAnalysisStatus('DNA Extraction Complete');
     } catch (err: any) {
       console.error(err);
-      if (err.message === "API_KEY_MISSING") {
+      setIsDnaValidated(false);
+      if (err.message === "INSUFFICIENT_DNA_QUALITY") {
+        setError("Reference image quality is too low for forensic cloning. Please upload a clearer resume layout.");
+      } else if (err.message === "API_KEY_MISSING") {
         setError("AI configuration is missing. Please contact support.");
-      } else if (err.message === "QUOTA_EXCEEDED") {
-        setError("Daily AI limit reached. Please try again later.");
       } else {
-        setError("Failed to analyze style. Please try again.");
+        setError("DNA Analysis failed. System could not extract a precise structural blueprint.");
       }
     } finally {
       setIsAnalyzing(false);
@@ -727,36 +757,31 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const handleDownloadPDF = async () => {
+    if (isExporting) return;
     if (!user) {
       setShowLoginPrompt(true);
       setIsLoginPendingForDownload(true);
       return;
     }
     setShowDownloadMenu(false);
+    
     const canvas = await captureResume();
     if (!canvas) return;
 
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pageWidth = 210;
+      const pageHeight = 297;
       
+      const pagesCount = Math.round(canvas.height / 1123) || 1;
+      const imgWidth = pageWidth;
+      const imgHeight = pagesCount * pageHeight; 
       const imgData = canvas.toDataURL('image/png', 1.0);
       
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // First page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pageHeight;
-
-      // Consecutive pages
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
+      for (let i = 0; i < pagesCount; i++) {
+        const position = -i * pageHeight;
+        if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pageHeight;
       }
       
       pdf.save(getFileName('pdf'));
@@ -766,6 +791,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const handleDownloadWord = () => {
+    if (isExporting) return;
     if (!user) {
       setShowLoginPrompt(true);
       setIsLoginPendingForDownload(true);
@@ -775,11 +801,10 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     
     // Construct HTML with Word-specific fixes
     const wrapped = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
-    // Inject Word-specific styles into the wrapped HTML
     const fullHtml = wrapped.replace('</style>', `
       /* Word-specific overrides for layout */
       .grid { display: table !important; width: 100% !important; }
-      .col-span-1, .col-span-2, .col-span-3, .col-span-4, .col-span-5, .col-span-6, .col-span-7, .col-span-8, .col-span-9, .col-span-10, .col-span-11, .col-span-12 { display: table-cell !important; }
+      [class*="col-span-"] { display: table-cell !important; }
     </style>`);
     
     const blob = new Blob(['\ufeff', fullHtml], {
@@ -796,135 +821,94 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const captureResume = async (): Promise<HTMLCanvasElement | null> => {
-    if (!generatedHtml) return null;
+    if (!generatedHtml || !iframeRef.current) return null;
     setIsExporting(true);
     
-    return new Promise((resolve) => {
-      const container = document.createElement('div');
-      container.id = 'export-container-hidden';
-      container.style.position = 'fixed';
-      container.style.left = '-9999px';
-      container.style.top = '0';
-      container.style.width = '794px';
-      container.style.backgroundColor = 'white';
-      container.style.zIndex = '-1000';
-      container.style.pointerEvents = 'none';
-      document.body.appendChild(container);
+    try {
+      const iframe = iframeRef.current;
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error("Preview doc inaccessible");
 
-      const iframe = document.createElement('iframe');
-      iframe.style.width = '794px';
-      iframe.style.height = '1123px';
-      iframe.style.border = 'none';
-      iframe.style.visibility = 'hidden';
-      container.appendChild(iframe);
+      // Wait for fonts & images
+      if (iframe.contentWindow?.document.fonts) {
+        await iframe.contentWindow.document.fonts.ready;
+      }
 
-      const fullHtml = wrapResumeHtml(generatedHtml, { 
-        name: resumeMetadata?.name, 
-        isGuest: !user, 
-        previewMode: false,
-        isPremium
-      });
-      
-      iframe.srcdoc = fullHtml;
+      // Ensure all images are loaded
+      const images = Array.from(iframeDoc.querySelectorAll('img'));
+      await Promise.all(images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      }));
 
-      iframe.onload = async () => {
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) throw new Error("Iframe document not accessible");
+      const target = iframeDoc.getElementById('resume-preview') || 
+                     iframeDoc.querySelector('.resume-page') || 
+                     iframeDoc.body;
 
-          // Ensure and wait for fonts to be ready in the iframe context
-          if (iframe.contentWindow?.document.fonts) {
-            await iframe.contentWindow.document.fonts.ready;
+      // Small stabilization delay
+      await new Promise(r => setTimeout(r, 200));
+
+      const canvas = await html2canvas(target as HTMLElement, {
+        scale: 1, // Strictly matching user request
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Force removal of scaling transform in clone
+          const scaler = clonedDoc.getElementById('scaling-container');
+          if (scaler) {
+            scaler.style.transform = 'none';
+            scaler.style.width = '794px';
+            scaler.style.margin = '0';
+            scaler.style.position = 'relative';
           }
-
-          // Wait for all images to load within the iframe
-          const images = Array.from(doc.querySelectorAll('img'));
-          await Promise.all(images.map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(resolveImg => {
-              img.onload = resolveImg;
-              img.onerror = resolveImg;
-            });
-          }));
-
-          // Extra buffer for rendering stabilization
-          await new Promise(r => setTimeout(r, 800));
+          const preview = clonedDoc.getElementById('resume-preview');
+          if (preview) {
+             preview.style.boxShadow = 'none';
+             preview.style.margin = '0';
+             preview.style.border = 'none';
+             // Force standard text rendering to prevent underline issues
+             preview.style.textRendering = 'geometricPrecision';
+             (preview.style as any).webkitFontSmoothing = 'antialiased';
+          }
           
-          const body = doc.body;
-          if (!body) throw new Error("Iframe body not found");
-          const resumePage = doc.querySelector('.resume-page') as HTMLElement;
-          const captureTarget = resumePage || body;
-
-          const canvas = await html2canvas(captureTarget, {
-            scale: 3, // High-performance 3x scale
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            width: 794,
-            height: captureTarget.offsetHeight,
-            logging: false,
-            onclone: (clonedDoc) => {
-              const clonedBody = clonedDoc.body;
-              if (clonedBody) {
-                clonedBody.style.overflow = 'visible';
-                clonedBody.style.width = '794px';
-                clonedBody.style.height = 'auto';
-                clonedBody.style.background = 'white';
-                
-                // CRITICAL: Remove scaling transform to capture original dimensions
-                const scaler = clonedDoc.getElementById('scaling-container');
-                if (scaler) {
-                  scaler.style.transform = 'none';
-                  scaler.style.margin = '0';
-                  scaler.style.width = '794px';
-                  scaler.style.height = 'auto';
-                  scaler.style.left = '0';
-                  scaler.style.top = '0';
-                }
-
-                // Ensure the resume-page within the clone is properly handled
-                const resumePage = clonedDoc.querySelector('.resume-page') as HTMLElement;
-                if (resumePage) {
-                  resumePage.style.width = '794px';
-                  resumePage.style.height = 'auto';
-                  resumePage.style.minHeight = 'auto';
-                  resumePage.style.boxShadow = 'none';
-                  resumePage.style.margin = '0';
-                  resumePage.style.border = 'none';
-                  resumePage.style.padding = '0';
-                }
-
-                // Ensure no fixed scaling wrapper restricts the content
-                const wrapper = clonedDoc.querySelector('.preview-wrapper');
-                if (wrapper) {
-                  (wrapper as HTMLElement).style.width = '794px';
-                  (wrapper as HTMLElement).style.height = 'auto';
-                  (wrapper as HTMLElement).style.display = 'block';
-                  (wrapper as HTMLElement).style.padding = '0';
-                  (wrapper as HTMLElement).style.margin = '0';
-                }
-              }
+          // Fix potential "strikethrough" look of underlines in html2canvas
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach(el => {
+            const style = (el as HTMLElement).style;
+            if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
+              style.textDecoration = 'none';
+              style.textDecorationLine = 'none';
+              style.borderBottom = '1px solid currentColor';
+              style.display = style.display === 'inline' ? 'inline-block' : style.display;
+              style.paddingBottom = '1px';
             }
           });
-          
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
-          setIsExporting(false);
-          resolve(canvas);
-        } catch (err) {
-          console.error("Capture capture failed:", err);
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
-          setIsExporting(false);
-          resolve(null);
+
+          // Remove gaps between pages for seamless PDF slicing
+          const pages = clonedDoc.querySelectorAll('.page');
+          pages.forEach(p => {
+            (p as HTMLElement).style.margin = '0';
+            (p as HTMLElement).style.boxShadow = 'none';
+          });
         }
-      };
-    });
+      });
+
+      return canvas;
+    } catch (err) {
+      console.error("Capture failed:", err);
+      return null;
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleDownloadImage = async (format: 'png' | 'jpeg') => {
+    if (isExporting) return;
     if (!user) {
       setShowLoginPrompt(true);
       setIsLoginPendingForDownload(true);
@@ -941,7 +925,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const link = document.createElement('a');
       link.download = getFileName(format);
       link.href = dataUrl;
-      // In Safari iOS, we might need target="_blank"
       if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         link.target = '_blank';
       }
@@ -970,11 +953,21 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         return;
       }
 
-      // Generate PDF for sharing/backup
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      // A4 in pt: ~595x842
-      pdf.addImage(imgData, 'JPEG', 0, 0, 595.28, 841.89);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const pageHeight = 297;
+      
+      const pagesCount = Math.round(canvas.height / 1123) || 1;
+      const imgWidth = pageWidth;
+      const imgHeight = pagesCount * pageHeight; 
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      for (let i = 0; i < pagesCount; i++) {
+        const position = -i * pageHeight;
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      }
+
       const pdfBlob = pdf.output('blob');
       const filename = getFileName('pdf');
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
@@ -1041,6 +1034,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setReferenceFile(null);
     setContentFile(null);
     setLayoutAnalysis(null);
+    setIsDnaValidated(false);
+    setDnaAnalysisStatus(null);
     setGeneratedHtml(null);
     setResumeMetadata(null);
     setAtsScore(null);
@@ -1162,7 +1157,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
           {/* Action buttons unified into sticky bottom bar at viewport bottom */}
           
-          {(referenceFile || contentFile) && (
+          {referenceFile && (
             <button 
               onClick={reset}
               disabled={isGenerating || isAnalyzing || isPlanning || isMatching}
@@ -1271,9 +1266,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             )}
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start px-2 sm:px-0">
-          
-          {/* Left Column: Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start px-2 sm:px-0">          {/* Left Column: Controls */}
           <div className="lg:col-span-4 space-y-6 md:space-y-8">
             <div className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10">
               
@@ -1281,7 +1274,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <div className="flex flex-col xs:flex-row xs:items-center gap-3 mb-5 md:mb-6">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100 shrink-0">1</div>
-                    <h2 className="font-black text-lg md:text-xl tracking-tight text-[var(--text-primary)]">The Content</h2>
+                    <h2 className="font-black text-lg md:text-xl tracking-tight text-[var(--text-primary)]">Layout DNA</h2>
                   </div>
                   <button
                     onClick={() => setIsImportingLinkedIn(true)}
@@ -1294,7 +1287,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   </button>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
-                  Upload the resume layout you want to clone. We'll analyze its visual DNA.
+                  Upload the resume layout you want to clone. We'll analyze its visual structure and DNA.
                 </p>
                 
                 <Dropzone 
@@ -1304,10 +1297,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   file={referenceFile?.file}
                   label="Upload Reference Layout (PDF/Image)"
                   color="indigo"
-                  disabled={(() => {
-                    const limit = userData?.planLimit || PLANS[0].limit;
-                    return limit !== -1 && usedMorphs >= limit;
-                  })()}
+                  disabled={isLimitReached}
                 />
 
                 <div className="mt-4">
@@ -1322,7 +1312,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   </a>
                 </div>
                 
-                {referenceFile && !layoutAnalysis && (
+                {referenceFile && !isDnaValidated && (
                   <motion.button
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1330,26 +1320,42 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                     disabled={isAnalyzing || isGenerating}
                     className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <MousePointerClick className="w-3 h-3" />}
-                    {isAnalyzing ? "Analyzing Style..." : "Analyze Style"}
+                    {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Fingerprint className="w-3 h-3" />}
+                    {isAnalyzing ? dnaAnalysisStatus || "Analyzing DNA..." : "Analyze DNA"}
                   </motion.button>
                 )}
                 
-                {layoutAnalysis && (
+                {isDnaValidated && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="mt-4 p-4 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-center gap-3"
+                    className="mt-4 p-4 bg-green-50/50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/30 rounded-2xl flex items-center gap-3 relative overflow-hidden"
                   >
-                    <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                    <div className="absolute top-0 right-0 p-1">
+                      <Lock className="w-3 h-3 text-green-300" />
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
                       <CheckCircle className="w-4 h-4 text-white" />
                     </div>
-                    <p className="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Style Captured</p>
+                    <div>
+                      <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-wider">DNA Captured</p>
+                      <p className="text-[9px] text-green-600/70 font-black uppercase">Layout Locked & Validated</p>
+                    </div>
+                    <button 
+                      onClick={reset}
+                      className="ml-auto text-[9px] font-black text-indigo-600 uppercase hover:underline"
+                    >
+                      Reset
+                    </button>
                   </motion.div>
                 )}
               </section>
 
-              <section className="space-y-4">
+              <div className={cn(
+                "space-y-6 md:space-y-10 transition-all duration-500",
+                !isDnaValidated && "opacity-30 pointer-events-none grayscale blur-[1px]"
+              )}>
+                <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">2</div>
@@ -1358,7 +1364,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   {jobDescription && (
                     <button 
                       onClick={() => setJobDescription('')}
-                      title="Clear the current job description"
                       className="text-[10px] font-bold text-[var(--text-tertiary)] hover:text-red-500 uppercase tracking-wider transition-colors"
                     >
                       Clear
@@ -1366,7 +1371,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   )}
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-medium">
-                  Target a specific role? Paste the job description or requirements below.
+                  Target a specific role? Paste the job description below.
                 </p>
                 <div className="relative">
                   <textarea 
@@ -1378,20 +1383,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       jobDescription && "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-900/10"
                     )}
                   />
-                  <div className="absolute bottom-4 right-4 flex items-center gap-2 pointer-events-none">
-                    {jobDescription ? (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-100">
-                        <RefreshCw className="w-2.5 h-2.5 text-white animate-spin-slow" />
-                        <span className="text-[8px] font-black text-white uppercase tracking-widest">AI Ready</span>
-                      </div>
-                    ) : (
-                      <span className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest opacity-50">Optional</span>
-                    )}
-                  </div>
                 </div>
-                <p className="text-[10px] text-[var(--text-tertiary)] font-bold leading-relaxed">
-                  * AI will emphasize relevant skills without removing your original data or adding fake skills.
-                </p>
 
                 {generatedHtml && jobDescription && (
                   <motion.button
@@ -1399,15 +1391,10 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                     animate={{ opacity: 1, y: 0 }}
                     onClick={handleOptimize}
                     disabled={isGenerating}
-                    title="Run the Morph Engine with Job Description matching"
                     className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group border border-indigo-500"
                   >
-                    {isGenerating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <MousePointerClick className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                    )}
-                    {isGenerating ? "Optimizing..." : "Re-Morph with Optimization"}
+                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MousePointerClick className="w-4 h-4 group-hover:scale-110" />}
+                    {isGenerating ? "Optimizing..." : "Re-Morph with AI"}
                   </motion.button>
                 )}
               </section>
@@ -1415,25 +1402,23 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               <section className="space-y-4">
                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100">3</div>
-                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Smart Length</h2>
+                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Length</h2>
                   </div>
                   <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)]">
                     {[
-                      { id: '1-page', label: '1 Page', sub: 'Standard' },
-                      { id: '2-page', label: '2 Pages', sub: 'Senior' },
-                      { id: 'executive', label: 'Executive', sub: 'Impact' }
+                      { id: '1-page', label: '1 Page' },
+                      { id: '2-page', label: '2 Pages' },
+                      { id: 'executive', label: 'Impact' }
                     ].map((mode) => (
                       <button
                         key={mode.id}
                         onClick={() => setLengthMode(mode.id as any)}
-                        title={`Switch to ${mode.label} mode for ${mode.sub} profiles`}
                         className={cn(
                           "flex-1 py-3 px-2 rounded-xl transition-all flex flex-col items-center",
-                          lengthMode === mode.id ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm ring-1 ring-indigo-50 dark:ring-indigo-900/30" : "text-[var(--text-tertiary)] hover:text-indigo-600"
+                          lengthMode === mode.id ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-indigo-600"
                         )}
                       >
                         <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
-                        <span className="text-[8px] font-bold opacity-50">{mode.sub}</span>
                       </button>
                     ))}
                   </div>
@@ -1445,16 +1430,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                     <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">4</div>
                     <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Your Content</h2>
                   </div>
-                  <button 
-                    onClick={() => setIsImportingLinkedIn(true)}
-                    className="flex items-center gap-2 group/btn"
-                  >
-                     <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest group-hover/btn:text-indigo-400 transition-colors">LinkedIn Import</span>
-                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  </button>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
-                  Upload your data. We'll morph it into the reference style.
+                  Upload your professional content. We'll map it to the DNA above.
                 </p>
                 
                 <Dropzone 
@@ -1463,140 +1441,35 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   file={contentFile?.file}
                   label="Upload Your Content (Resume/Doc)"
                   color="indigo"
-                  disabled={(() => {
-                    const limit = userData?.planLimit || PLANS[0].limit;
-                    return limit !== -1 && usedMorphs >= limit;
-                  })()}
+                  disabled={isLimitReached}
                 />
 
                 {referenceFile && contentFile && !generatedHtml && (
-                  (() => {
-                    const limit = userData?.planLimit || PLANS[0].limit;
-                    const isOverLimit = limit !== -1 && usedMorphs >= limit;
-                    return isOverLimit;
-                  })() ? (
-                    <motion.button
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={onUpgrade}
-                      title="Upgrade to Premium for unlimited morphs and advanced features"
-                      className="w-full mt-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
-                    >
-                      <Zap className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
-                      Upgrade to Premium
-                    </motion.button>
-                  ) : (
-                    <motion.button
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={handleGenerate}
-                      disabled={isGenerating || isAnalyzing}
-                      title="Click to start the Morphing process using your data and the reference style"
-                      className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isGenerating || isAnalyzing ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <MousePointerClick className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
-                      )}
-                      {isGenerating ? "Morphing..." : isAnalyzing ? "Analyzing Style..." : "Generate Resume"}
-                    </motion.button>
-                  )
+                  <motion.button
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleGenerate}
+                    disabled={isGenerating || isAnalyzing}
+                    className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50"
+                  >
+                    {isGenerating || isAnalyzing ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Zap className="w-5 h-5 fill-white" />
+                    )}
+                    {isGenerating ? "Morphing..." : "Generate Resume"}
+                  </motion.button>
                 )}
               </section>
+            </div>
 
-              <section className={cn("transition-all duration-500 pt-6 border-t border-[var(--border-color)]", !contentFile && "opacity-30 pointer-events-none blur-[1px]")}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-indigo-100">5</div>
-                  <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Match Analysis</h2>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed font-medium">
-                  Paste a specific job description to check your match score.
-                </p>
-                <div className="space-y-4">
-                  <textarea 
-                    value={matchDescription}
-                    onChange={(e) => setMatchDescription(e.target.value)}
-                    placeholder="Paste job description here..."
-                    className="w-full h-24 p-4 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all resize-none"
-                  />
-                  <button 
-                    onClick={handleCheckMatch}
-                    disabled={isMatching || !matchDescription}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {isMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <MousePointerClick className="w-3 h-3" />}
-                    {isMatching ? "Analyzing Match..." : "Check Match Score"}
-                  </button>
-
-                  {matchScore !== null && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-2xl space-y-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Match Score</span>
-                        <span className={cn(
-                          "text-2xl font-black",
-                          matchScore >= 80 ? "text-green-600 dark:text-green-400" : matchScore >= 50 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
-                        )}>{matchScore}%</span>
-                      </div>
-                      
-                      {missingKeywords.length > 0 && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-1.5 text-[9px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            Missing Keywords
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {missingKeywords.map((kw) => (
-                              <span key={kw} className="px-2 py-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </div>
-              </section>
-
-              <section className="pt-6 border-t border-[var(--border-color)]">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-green-100">
-                    <CheckCircle className="w-4 h-4" />
-                  </div>
-                  <h2 className="font-black text-lg tracking-tight text-[var(--text-primary)]">ATS Morph Engine</h2>
-                </div>
-                <div className="space-y-3">
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed font-medium">
-                    Our engine now automatically optimizes your resume for **Applicant Tracking Systems (ATS)**. 
-                  </p>
-                  <ul className="space-y-2">
-                    {[
-                      "Standardized section headings",
-                      "Linear HTML structure for parsing",
-                      "Keyword density optimization",
-                      "Clean, searchable typography"
-                    ].map((item) => (
-                      <li key={item} className="flex items-center gap-2 text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
-                        <div className="w-1 h-1 rounded-full bg-green-500" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-
-                {error && (
+              {error && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider text-center space-y-3"
+                  className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider text-center"
                 >
-                  <p>{error}</p>
+                  {error}
                 </motion.div>
               )}
             </div>
@@ -1658,7 +1531,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   )}
                 </div>
                 <div className="flex items-center gap-2 md:gap-4">
-                   {generatedHtml && (
+                    {generatedHtml && (
                     <button 
                       onClick={handleShare}
                       title="Generate a public link for your resume"
@@ -1793,11 +1666,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                           <motion.div 
                             initial={{ width: "0%" }}
                             animate={{ width: "100%" }}
-                            transition={{ duration: 15, ease: "linear" }}
+                            transition={{ duration: 5, ease: "linear" }}
                             className="h-full bg-indigo-600 rounded-full"
                           />
                         </div>
-                        <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Est. time: 15-20 seconds</p>
+                        <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Est. time: 5-8 seconds</p>
                       </div>
                     </motion.div>
                   ) : generatedHtml ? (
@@ -1918,18 +1791,18 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             <div className="max-w-3xl mx-auto flex items-center gap-3 md:gap-4 font-sans">
               <button 
                 onClick={handleShareWhatsApp}
-                disabled={isExporting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5 disabled:opacity-50"
+                disabled={isExporting || !isPreviewReady || isValidationInProgress}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5 disabled:opacity-30"
               >
-                {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+                {isExporting || isValidationInProgress ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
                 <span>WhatsApp</span>
               </button>
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                disabled={isExporting}
-                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-50 relative group"
+                disabled={isExporting || !isPreviewReady || isValidationInProgress}
+                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-30 relative group"
               >
-                {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                {isExporting || isValidationInProgress ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 <span>Download Resume</span>
                 <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
                 

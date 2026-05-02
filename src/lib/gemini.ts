@@ -159,27 +159,28 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
       finalRawText = (finalRawText ? finalRawText + "\n\n" : "") + extracted;
     }
 
-    const prompt = `FORENSIC ARCHITECT & PIXEL-PERFECT CLONER.
+    const prompt = `FORENSIC CLONE ARCHITECT & PIXEL-PERFECT DESIGN ENGINEER.
     
-    TASK: Deconstruct this REFERENCE RESUME into a "High-Fidelity Structural Blueprints".
+    TASK: Extract the absolute STRUCTURAL DNA of this REFERENCE RESUME with 100% fidelity.
     
-    AUDIT REQUIREMENTS (EXACT MEASUREMENTS & COORDINATES):
-    1. SPATIAL GEOMETRY (The "Box Model"):
-       - Detect exact layout type: [Left-Sidebar | Right-Sidebar | Multi-Column Mesh | Bento Grid | Split Header].
-       - Identify Column Ratios: e.g., "Left Sidebar is exactly 32% of total width", "Header is exactly 240px height".
-       - Margin/Padding Rythm: Detect exact gutter sizes (e.g. "8px internal section spacing").
-    2. TYPOGRAPHIC BLUEPRINT (The "Visual Voice"):
-       - Pairings: Detect exact Font Families (Serif vs Sans) and their weights (Light, Regular, Medium, Black).
-       - Scale: Identify exact size ratios between H1, H2, and Body text.
-       - Attributes: Tracking (letter-spacing), Leading (line-height), and Case (All-caps? Small-caps?).
-    3. THEMATIC REPLICATION (The "Visual DNA"):
-       - Extract HEX codes for ALL layers: Background, Text levels, Dividers, Accent marks.
-       - Effects: Identify specific drop shadows, border-radius (e.g. rounded-[30px]), and opacity levels.
-    4. COMPONENT ARCHESS (The "Graphic Elements"):
-       - Shapes: Detect specific icons (Lucide/SVG), profile photo masks (Circle/Rounded Rect), and dividers.
-       - Infographic Styles: How are skills shown? (Progress bars, dots, levels, or plain text).
+    EXTRACTION PROTOCOLS (NO APPROXIMATIONS):
+    1. GEOMETRY & GRID:
+       - Detect exact layout model: [Single Column | 2-Column Split | 3-Column Mesh | Asymmetric Sidebar].
+       - Column Ratios: Measure exact width percentages (e.g., Left Sidebar is exactly 31.5%).
+       - Padding/Margins: Detect internal gutter sizes (e.g. 12px) and outer page margins (e.g. 40px).
+    2. TYPOGRAPHIC BLUEPRINT:
+       - Hierarchical Pairing: Detect font weights (300, 400, 600, 800), exact sizes, and line-heights.
+       - Letter Spacing: Identify tracking/kerning for headings.
+    3. VISUAL THEME & DECOR:
+       - HEX Accuracy: Extract exact colors for backgrounds, accent bars, bullet points, and icons.
+       - Dividers: Detect thickness (e.g., 1px solid vs 2px dashed) and positions.
+       - Shapes: Identify corner radii of profile photos or highlighting boxes (e.g., rounded-3xl).
+    4. INFOGRAPHIC STYLES:
+       - Skills Representation: Map exact style (Solid pill, outline pill, progress bar, dots, or simple list).
     
-    OUTPUT: A technical "Layout Manifest" describing the physical structure. Detect if a profile photo is expected and its exact shape/position. Treat this as a 1:1 reconstructive blueprint.`;
+    STRICT REQUIREMENT: If the document is unreadable or non-standard, return an error. Otherwise, return a technical Manifest.
+    
+    OUTFIT: Return a technical "Layout Manifest" describing every pixel of the physical structure as a 1:1 reconstructive blueprint.`;
 
     const contents: any[] = [];
     if (fileBase64 && mimeType && isNative) {
@@ -294,7 +295,7 @@ export async function generateResume(
   options: { lengthMode?: '1-page' | '2-page' | 'executive' } = {}
 ) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3-flash-preview"; 
     
     const optimizationPrompt = jobDescription 
       ? `\n\nCONTENT MAPPING & AI OPTIMIZATION:
@@ -304,12 +305,14 @@ export async function generateResume(
       : "\n\nCONTENT MAPPING: Map USER DATA into the structural containers defined by the reference visual.";
 
     const layoutSystemPrompt = `
-    LAYOUT SYSTEM SPECIFICATIONS:
-    - DETECT COLUMNS: If there is a sidebar, calculate the exact width (e.g., 1/3 or 300px).
-    - SPATIAL ACCURACY: Replicate headers, footers, and floating sidebars.
-    - REPLICATE SHAPES: Use Tailwind classes for rounded corners, borders, and color zones.
-    - INFOGRAPHIC ELEMENTS: If skills are shown as bars, use <div class="h-2 bg-gray-200 rounded"><div class="h-full bg-blue-500" style="width: 80%"></div></div>.
-    - ICONS & GRAPHICS: Use Lucide icons (e.g., <i data-lucide="mail"></i>) or SVG for all visual symbols.
+    LAYOUT SYSTEM SPECIFICATIONS (CLONING DIRECTIVE):
+    - DETECT COLUMNS: If there is a sidebar, you MUST use a multi-column structure (Flexbox or CSS Grid). Calculate exact widths (e.g., sidebar w-[30%] vs main w-[70%]).
+    - SPATIAL ACCURACY: Replicate headers, footers, and floating sidebars. Use absolute positioning ONLY if necessary, otherwise prefer Flex/Grid.
+    - REPLICATE SHAPES: Use Tailwind classes for rounded corners (rounded-[...]px), borders (border-[...]), and color zones (bg-[#...]).
+    - FONTS & COLORS: Use the analyzed HEX codes and font categories. 
+    - INFOGRAPHIC ELEMENTS: If skills are shown as bars, use <div class="h-2 bg-gray-100 rounded-full"><div class="h-full bg-indigo-600 rounded-full" style="width: 80%"></div></div>.
+    - ICONS & GRAPHICS: Use Lucide icons via <i data-lucide="..."></i> or equivalent SVG.
+    - CONTAINER LOCK: The total width is 794px. Ensure the layout handles this fixed width gracefully with internal padding.
     `;
 
     const atsMaxPrompt = maximizeAts 
@@ -328,33 +331,46 @@ export async function generateResume(
     const refText = reference.text || "";
     const userText = content.text || "";
 
-    const prompt = `SUPREME UNIVERSAL MORPH ENGINE & DATA INTEGRITY GUARDIAN.
+    const prompt = `SUPREME FORENSIC MAPPING ENGINE & DATA INTEGRITY GUARDIAN.
     
-    GOAL: Replicate the REFERENCE VISUAL's geometry, colors, and layout structure while ensuring 100% DATA PARITY between the USER CONTENT and the output. Content must NEVER be removed.
+    GOAL: Transform the USER CONTENT into the reference DNA layout with 100% visual fidelity and absolute data integrity.
     
-    ZERO-LOSS DIRECTIVE:
-    1. DATA PARITY LOCK: Every single section, bullet point, skill, and piece of metadata from the USER CONTENT must be present in the output HTML.
-    2. ADAPTIVE SECTIONING: If the USER CONTENT has a section (e.g. "Projects", "Certifications", "Volunteering") that is NOT present in the REFERENCE layout, you MUST dynamically create a new section for it. 
-       - Style these new sections to match the existing section headers in the template.
-       - Place them logically (usually after Education or Experience).
-    3. NO TRUNCATION: If the user content is longer than the reference template's placeholder, EXPAND the layout. 
-       - Multi-column layouts should overflow into the next logical column or expand vertically.
-       - NEVER use overflow:hidden or fixed-height containers that clip text.
+    STRICT MAPPING PROTOCOLS:
+    1. DNA TEMPLATE BINDING: 
+       - You MUST use the column ratios, vertical spacing, and typographic scales extracted in the DNA.
+       - Sections MUST appear in the same order and visual hierarchy as the reference.
+       - Match all decorative elements: Dividers (use border-bottom or border-top, NEVER text-decoration: underline for layout lines), horizontal/vertical lines, frames, bullet symbols, and HEX accent colors.
+       - If the reference uses a vertical line to separate a sidebar, you MUST implement it using a border-l or border-r on the appropriate container.
+    2. ZERO DATA LOSS (ABSOLUTE REQUIREMENT):
+       - Extract EVERY piece of information from the user source document.
+       - ALL Experience entries (Company, Role, Dates, ALL Bullet Points).
+       - ALL Education history, ALL Skills categories and items.
+       - ALL Projects, Certifications, Awards, and any Custom Sections.
+       - TRUNCATION IS A FAILURE. If content exceeds a single page, allow the layout to expand vertically.
+       - DO NOT Summarize. If the user has 10 bullet points, you list 10 bullet points.
+    3. PIXEL-PERFECT RENDER (STRICT):
+       - Page Setup: Use A4 size blocks.
+       - Dimensions: Each page MUST be 794px width x 1123px height.
+       - Structure: You MUST wrap each page's content in this exact structure:
+         <div class="page">
+           <div class="content">
+             [YOU INSERT CONTENT HERE]
+           </div>
+         </div>
+       - Margins: The .page container has fixed padding of 48px T/B and 56px L/R. Usable content area is 682px (width) x 1027px (height).
+       - Content Constraint: Ensure content within a .content block NEVER exceeds 1027px in height. If more content exists, create a NEW <div class="page"><div class="content">...</div></div> block.
+       - Section Headers (STRICT SPACING): All section titles must have either:
+         a) A divider line (border-bottom) with padding-bottom: 6px and margin-bottom: 10px.
+         b) If a separate divider line is used, apply margin-bottom: 6px before it and margin-bottom: 10px after it.
+       - Dividers: Use border-bottom/top for lines. Round all spacing to whole pixels. No transform: scale().
+       - Page Breaks: Avoid splitting single lines or job headers across pages.
     
-    CORE CLONING COMMANDS:
-    1. STRUCTURAL MATCHING:
-       - Replicate the exact grid/flex proportions from the DESIGN TOKENS MANIFEST.
-       - Use Tailwind classes for all layout: \`grid-cols-[...]\`, \`w-[...]\`, \`bg-[#...]\`.
-    2. COMPONENT FIDELITY:
-       - Replicate dividers, headers, and infographic widgets identically.
-    3. INTELLIGENT MAPPING:
-       - Detect input structures (tables, lists, grouped data) and preserve their hierarchy.
-       - Professional rewrite: Use the JOB DESCRIPTION to align keywords while keeping 100% of the factual content.
+    VALIDATION GATE:
+    - Before returning code, perform a final "Source-to-Output" audit. 
+    - Verify that no experience entry was omitted because of space.
+    - If space is tight, use tighter leading/padding instead of deleting data.
     
-    VALIDATION REQUIREMENT:
-    - Compare field count: User Input Sections vs Output Sections. Match MUST be 1:1.
-    
-    OUTPUT: A single self-contained HTML structure with Tailwind classes.
+    OUTPUT: A single self-contained HTML structure with Tailwind classes. No descriptions. Just code.
     
     ${optimizationPrompt}
     ${layoutSystemPrompt}
@@ -696,7 +712,7 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
 
 export async function conversationalEdit(currentData: any, command: string) {
   return withRetry(async (ai) => {
-    const model = "gemini-3.1-pro-preview"; // Use pro for complex instruction following
+    const model = "gemini-3-flash-preview"; 
     
     // Convert to TOON to optimize token usage
     const dataToon = TOON.stringify(currentData, 'RESUME');
@@ -949,7 +965,7 @@ export async function generateResumeFromData(
     const dataJson = JSON.stringify(data);
     const stylesJson = JSON.stringify(styles);
 
-    const prompt = `SUPREME FRONT-END DESIGN ENGINEER.
+    const prompt = `SUPREME FRONT-END DESIGN ENGINEER & CLONE ARCHITECT.
     
     TASK: Code a pixel-perfect, interactive RESUME using the visual blueprint and the provided JSON data.
     
@@ -957,23 +973,25 @@ export async function generateResumeFromData(
     STYLE PREFERENCES: ${stylesJson}
     STRUCTURAL BLUEPRINT: ${referenceLayout || "Standard Professional"}
     
-    CODING RULES:
+    CODING RULES (CLONING FIRST):
     1. STYLE: Use Tailwind CSS. THE STRUCTURAL BLUEPRINT IS THE MASTER. Replicate its visual structure (columns, placement, margin, padding) with 100% fidelity.
+       - If the blueprint has a sidebar, the generated HTML MUST have a 2-column sidebar layout.
+       - Match the visual weight: Use font-weight classes (font-black, font-bold, font-medium) to match the analyzed blueprint.
     2. THEMING: You MUST use CSS variables for dynamic styles:
-       - Use 'var(--primary-color)' for all accent colors (icons, headers, borders).
+       - Use 'var(--primary-color)' for all accent colors (icons, headers, borders, active bars).
        - Use 'var(--text-main)' for primary text.
        - Use 'var(--bg-card)' for section backgrounds if applicable.
     3. DATA BINDING (CRITICAL - 100% DATA PRESERVATION): 
        - INJECT 100% OF THE DATA FROM THE SOURCE. DO NOT SUMMARIZE, MERGE, OR OMIT ANY TEXT. EVERY BULLET POINT MUST BE RENDERED.
        - Add 'data-resume-field' to every element that displays data from the JSON.
        - Add a 'data-section-name' attribute to the container DIV of every major section.
-    4. CUSTOMIZATION: Apply the Style Preferences provided.
-    5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills. Use SVG/Lucide icons.
-     6. RESPONSIVENESS (A4 PRECISION): 
-        - Design for a fixed 794px wide canvas (A4 at 96dpi).
-        - Use EXACT internal padding: padding: 50px 55px.
-        - VERTICAL EXPANSION: Content MUST NOT wrap or truncate. Expand vertically.
-        - RELATIVE PRECISION: Use percentage widths for columns (e.g., w-[30%] and w-[70%]) to match the blueprint exactly.
+    4. CUSTOMIZATION: Apply the Style Preferences provided while respecting the layout structure.
+    5. INFOGRAPHIC ELEMENTS: Map skills to bars/pills based on the blueprint style.
+    6. RESPONSIVENESS (A4 PRECISION): 
+       - Design for a fixed 794px wide canvas (A4 at 96dpi).
+       - Use EXACT internal padding from blueprint (or default to 50px 55px).
+       - VERTICAL EXPANSION: Content MUST NOT wrap or truncate. Expand vertically to accommodate all user content.
+       - RELATIVE PRECISION: Use exact percentage widths for columns (e.g., w-[32%] and w-[68%]) to match the blueprint exactly.
     
     NO DATA LOSS: Outputting a summary instead of full text is a failure.
     

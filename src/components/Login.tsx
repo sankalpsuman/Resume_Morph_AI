@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LogIn, RefreshCw, ShieldCheck, Zap, Target, Star, MessageSquare, User, Info, Heart, Code, Layout, Sparkles, Globe, Brain, Rocket, UserCircle, Sun, Moon } from 'lucide-react';
 import { signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth';
 import { cn } from '../lib/utils';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, db, ensureConnection } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 import ProjectDeepDive from './ProjectDeepDive';
@@ -63,13 +63,38 @@ export default function Login({ onTryGuest, theme, toggleTheme }: LoginProps) {
     if (isLoggingIn) return;
     setIsLoggingIn('google');
     try {
-      await signInWithPopup(auth, googleProvider);
-      // Profile creation is handled globally in App.tsx via onAuthStateChanged/onSnapshot
+      // Use locally imported classes to ensure type consistency and avoid argument-error
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ 
+        prompt: 'select_account',
+        // Optional: Hint at host if it helps with iframe contexts
+        // auth_type: 'popup'
+      });
+      
+      console.log('DEBUG: Auth Instance:', auth);
+      console.log('DEBUG: Provider Instance:', provider);
+      
+      if (!auth || typeof auth.signOut !== 'function') {
+        throw new Error('INTERNAL_AUTH_INVALID');
+      }
+
+      // Ensure firestore is reachable before attempting login
+      await ensureConnection();
+      
+      console.log('Attempting login with Google popup...');
+      const result = await signInWithPopup(auth, provider);
+      console.log('Login successful for user:', result.user.email);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        console.warn('Login popup closed or cancelled');
+        console.warn('Login popup closed or cancelled by user');
       } else {
-        console.error('Login failed:', error);
+        console.error('Login Error Object:', error);
+        if (error.code === 'auth/argument-error') {
+          console.error('CRITICAL: Argument Error detected. This usually means the Auth instance or Provider is invalid for the current library version.');
+        }
+        if (error.message?.includes('Pending promise')) {
+          console.error('ASSERTION FAILURE: A previous login attempt is still pending or the Auth state is inconsistent.');
+        }
       }
     } finally {
       setIsLoggingIn(null);

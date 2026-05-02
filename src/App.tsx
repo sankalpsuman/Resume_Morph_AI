@@ -17,9 +17,9 @@ import ApplyTracker from './components/ApplyTracker';
 import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy, LogIn } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db, storage, googleProvider } from './firebase';
-import { onAuthStateChanged, signOut, signInWithPopup } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, storage, ensureConnection } from './firebase';
+import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc, getDocFromServer } from 'firebase/firestore';
 import { ref } from 'firebase/storage';
 import { deleteWithRetry } from './lib/storage';
 import AccountModal from './components/AccountModal';
@@ -81,6 +81,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    ensureConnection().catch(console.error);
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
       if (!user) {
@@ -97,50 +98,59 @@ export default function App() {
 
     const userRef = doc(db, 'users', user.uid);
     const unsubscribeUser = onSnapshot(userRef, async (docSnap) => {
+      const isFromCache = docSnap.metadata.fromCache;
+      
+      // If we have data, update state immediately (even if from cache)
       if (docSnap.exists()) {
         const data = docSnap.data();
         setUserData(data);
-        console.log(`[Subscription] Profile loaded for ${user.uid}. Plan: ${data.plan}`);
+        console.log(`[Subscription] Snapshot updated for ${user.uid}. Plan: ${data.plan} (Cache: ${isFromCache})`);
 
-        // Integrated Expiry Check - Only for plans that actually expire
-        if (data.plan && data.plan !== 'free' && data.premiumExpiryDate) {
+        // Handle Expiry check only if we are relatively sure we have fresh-ish data
+        // and actually, it's safer to only revert plan if !isFromCache to avoid client-side clock desync revert.
+        // We also check that plan is NOT actually 'free' already to avoid redundant updates.
+        if (data.plan && data.plan !== 'free' && data.premiumExpiryDate && !isFromCache) {
           try {
-            // Ensure we're dealing with a Firestore Timestamp
             const expiry = data.premiumExpiryDate.toDate ? data.premiumExpiryDate.toDate() : new Date(data.premiumExpiryDate);
-            
-            // Validate the date is actually a valid Date object
             if (expiry instanceof Date && !isNaN(expiry.getTime())) {
-              // Add a generous 15-minute grace period to prevent clock-sync issues
               const isExpired = Date.now() > (expiry.getTime() + 900000);
-              console.log(`[Subscription] Expiry check: ${expiry.toLocaleString()}. Expired: ${isExpired}`);
-
               if (isExpired) {
+                const currentPlan = data.plan; // Capture current plan for logging
                 const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
                 const currentUsed = data.usedMorphs !== undefined ? data.usedMorphs : (data.morphCount || 0);
 
-                console.warn(`[Subscription] Plan expired for user ${user.uid} (${data.plan}). Reverting to free.`);
+                console.warn(`[Subscription] Plan ${currentPlan} expired for user ${user.uid}. Reverting.`);
+                // Only update if we're sure this wasn't just a glitchy snapshot
                 await updateDoc(userRef, {
                   plan: freePlan.id,
                   planLimit: freePlan.limit,
                   remainingMorphs: Math.max(0, freePlan.limit - currentUsed),
                   premiumExpiryDate: null,
                   showExpiryNotice: true,
-                  adminMessage: "Your premium access has expired. Please renew to continue with full benefits."
+                  lastExpiryCheck: Date.now()
                 });
               }
             }
           } catch (err) {
-            console.error("[Subscription] Expiry check failed to process date:", err);
+            console.error("[Subscription] Expiry error:", err);
           }
         }
-      } else {
-        // ONLY initialize if the server explicitly confirms the document does not exist.
-        // We use a direct getDoc to verify the state before creating a new profile.
+        setLoading(false);
+      } else if (!isFromCache) {
+        // ONLY initialize if the SERVER confirms the document is actually missing.
+        // We add an extra layer of verification with getDocFromServer to prevent 
+        // accidental overwrites during network/stream glitches on reload.
         try {
-          const freshSnap = await getDoc(userRef);
-          if (!freshSnap.exists()) {
-            console.log(`[Subscription] Initializing NEW user profile: ${user.uid}`);
-            const initialData = {
+          const serverCheck = await getDocFromServer(userRef);
+          if (serverCheck.exists()) {
+            console.log(`[Subscription] Server check FOUND document for ${user.uid} despite onSnapshot miss. Skipping initialization.`);
+            setUserData(serverCheck.data());
+            setLoading(false);
+            return;
+          }
+
+          console.log(`[Subscription] Initializing NEW user profile: ${user.uid}`);
+          const initialData = {
             userId: user.uid,
             email: user.email,
             name: user.displayName || 'Morph User',
@@ -162,17 +172,17 @@ export default function App() {
             metadata: { freeClaimed: false }
           };
           
-          // Use setDoc with EXISTS check or just be careful.
-          // Since docSnap.exists() was false, it's safe to create.
           await setDoc(userRef, initialData);
           setUserData(initialData);
-        }
-      } catch (err) {
+          setLoading(false);
+        } catch (err) {
           console.error("Failed to initialize user data:", err);
           handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+          setLoading(false);
         }
       }
-      setLoading(false);
+      // Note: if docSnap doesn't exist AND it's from cache, we wait for the next fire (server fire)
+      // We don't set loading to false yet to avoid showing guest mode prematurely
     }, (error) => {
       console.error("Firestore user snapshot error:", error);
       if (error.code === 'unavailable') {
@@ -373,16 +383,34 @@ export default function App() {
 
   const triggerLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      console.log('DEBUG: Auth Instance (App):', auth);
+      console.log('DEBUG: Provider Instance (App):', provider);
+      
+      if (!auth || typeof auth.signOut !== 'function') {
+        throw new Error('INTERNAL_AUTH_INVALID');
+      }
+
+      // Ensure connection to backend
+      await ensureConnection();
+      
+      console.log('Attempting login with Google popup (trigger)...');
+      const result = await signInWithPopup(auth, provider);
       if (result.user) {
+        console.log('Login successful (trigger) for user:', result.user.email);
         setUser(result.user);
       }
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.warn('Login popup closed by user');
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        console.warn('Login popup closed by user or cancelled');
         return;
       }
-      console.error('Login error:', error);
+      console.error('Login error (trigger):', error);
+      if (error.code === 'auth/argument-error') {
+        console.error('CRITICAL: Argument Error detected in App.tsx. Likely Auth/Provider version mismatch.');
+      }
     }
   };
 

@@ -345,25 +345,17 @@ export default function SmartEditor({ userData }: { userData: any }) {
 
           const imgData = event.data.imgData;
           const pdf = new jsPDF('p', 'mm', 'a4');
-          const pageWidth = pdf.internal.pageSize.getWidth();
-          const pageHeight = pdf.internal.pageSize.getHeight();
+          const pageWidth = 210;
+          const pageHeight = 297;
           
+          const pagesCount = Math.round(event.data.height / 1123) || 1;
           const imgWidth = pageWidth;
-          const imgHeight = (event.data.height * imgWidth) / event.data.width;
+          const imgHeight = pagesCount * pageHeight;
           
-          let heightLeft = imgHeight;
-          let position = 0;
-          
-          // First page
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-          heightLeft -= pageHeight;
-          
-          // Subsequent pages if content overflows
-          while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
+          for (let i = 0; i < pagesCount; i++) {
+            const position = -i * pageHeight;
+            if (i > 0) pdf.addPage();
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-            heightLeft -= pageHeight;
           }
           
           pdf.save(`${resumeData?.personalInfo.name || 'resume'}_premium.pdf`);
@@ -886,19 +878,30 @@ export default function SmartEditor({ userData }: { userData: any }) {
                               min-height: 100vh;
                               box-sizing: border-box;
                             }
-                            #resume-root {
-                              background-color: white;
+                            .page { 
+                              background: white;
                               width: 794px;
-                              min-height: 1123px;
+                              height: 1123px;
+                              padding: 48px 56px;
+                              margin: 0 auto 20px auto;
+                              box-sizing: border-box;
+                              overflow: hidden;
+                              position: relative;
+                            }
+                            .content {
+                              width: 100%;
+                              height: 100%;
+                              box-sizing: border-box;
+                              overflow: hidden;
+                            }
+                            #resume-root {
+                              width: 794px;
                               margin: 0 auto;
-                              box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-                              font-family: var(--font-family);
-                              line-height: var(--line-height);
-                              font-size: var(--font-size);
-                              color: var(--text-main);
                               box-sizing: border-box;
                               position: relative;
-                              overflow: visible;
+                            }
+                            @media print {
+                              .page { margin: 0; box-shadow: none; }
                             }
                             .resume-footer {
                               font-size: 10px; 
@@ -926,6 +929,80 @@ export default function SmartEditor({ userData }: { userData: any }) {
                             function resolvePath(obj, path) {
                               if (!path) return undefined;
                               return path.split('.').reduce((acc, part) => acc && acc[part], obj);
+                            }
+
+                            async function paginate() {
+                              const root = document.getElementById('resume-root');
+                              if (!root) return;
+
+                              // Use a unique marker to avoid infinite loops
+                              if (root.getAttribute('data-paginating') === 'true') return;
+                              root.setAttribute('data-paginating', 'true');
+
+                              // 1. Wait for images for accurate sizing
+                              const images = Array.from(root.querySelectorAll('img'));
+                              await Promise.all(images.map(img => {
+                                if (img.complete) return Promise.resolve();
+                                return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                              }));
+
+                              // 2. Flatten
+                              const existingPages = Array.from(root.querySelectorAll('.page'));
+                              if (existingPages.length > 0) {
+                                const flatContent = document.createDocumentFragment();
+                                existingPages.forEach(p => {
+                                  const c = p.querySelector('.content');
+                                  if (c) {
+                                    while (c.firstChild) flatContent.appendChild(c.firstChild);
+                                  }
+                                });
+                                root.innerHTML = '';
+                                root.appendChild(flatContent);
+                              }
+
+                              const elements = Array.from(root.children);
+                              root.innerHTML = '';
+
+                              const USABLE_HEIGHT = 1027;
+                              const BUFFER = 4;
+
+                              let currentPage = createPage();
+                              root.appendChild(currentPage);
+                              let currentContent = currentPage.querySelector('.content');
+
+                              for (const el of elements) {
+                                if (el instanceof HTMLElement) {
+                                  el.style.breakInside = 'avoid';
+                                  el.style.pageBreakInside = 'avoid';
+                                }
+                                currentContent.appendChild(el);
+
+                                const lastChild = currentContent.lastElementChild;
+                                const currentHeight = lastChild 
+                                  ? Math.ceil(lastChild.getBoundingClientRect().bottom - currentContent.getBoundingClientRect().top) 
+                                  : 0;
+
+                                if (currentHeight > (USABLE_HEIGHT - BUFFER)) {
+                                  if (currentContent.children.length > 1) {
+                                    currentContent.removeChild(el);
+                                    currentPage = createPage();
+                                    root.appendChild(currentPage);
+                                    currentContent = currentPage.querySelector('.content');
+                                    currentContent.appendChild(el);
+                                  }
+                                }
+                              }
+
+                              function createPage() {
+                                const p = document.createElement('div');
+                                p.className = 'page';
+                                const c = document.createElement('div');
+                                c.className = 'content';
+                                p.appendChild(c);
+                                return p;
+                              }
+                              
+                              root.removeAttribute('data-paginating');
                             }
 
                             window.addEventListener('message', async (event) => {
@@ -962,6 +1039,9 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                     setTimeout(() => el.classList.remove('new-content'), 1000);
                                   }
                                 });
+
+                                // Repaginate if data changed
+                                setTimeout(paginate, 100);
                               }
 
                               if (event.data.type === 'CAPTURE_CANVAS') {
@@ -983,37 +1063,54 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                   await new Promise(r => setTimeout(r, 400));
 
                                   const canvas = await html2canvas(root, {
-                                    scale: 3, 
+                                    scale: 1, 
                                     useCORS: true,
                                     allowTaint: true,
                                     backgroundColor: "#ffffff",
                                     logging: false,
                                     width: 794,
-                                    height: root.offsetHeight, 
+                                    height: Math.ceil(root.offsetHeight), 
                                     scrollX: 0,
                                     scrollY: 0,
                                     windowWidth: 794,
                                     imageTimeout: 15000,
                                     removeContainer: true,
                                     onclone: (clonedDoc) => {
-                                      const clonedRoot = clonedDoc.getElementById('resume-root');
-                                      if (clonedRoot) {
-                                        clonedRoot.style.margin = '0';
-                                        clonedRoot.style.padding = '0';
-                                        clonedRoot.style.boxShadow = 'none';
-                                        clonedRoot.style.width = '794px';
-                                        clonedRoot.style.position = 'static';
-                                        clonedRoot.style.transform = 'none';
-                                        clonedRoot.style.minHeight = 'auto'; // Prevent extra white space if short
-                                      }
-                                      
-                                      const clonedBody = clonedDoc.body;
-                                      if (clonedBody) {
-                                        clonedBody.style.margin = '0';
-                                        clonedBody.style.padding = '0';
-                                        clonedBody.style.background = 'white';
-                                        clonedBody.style.display = 'block';
-                                      }
+          // Force removal of scaling transform in clone
+          const scaler = clonedDoc.getElementById('scaling-container');
+          if (scaler) {
+            scaler.style.transform = 'none';
+          }
+          
+          const preview = clonedDoc.getElementById('resume-root');
+          if (preview) {
+             preview.style.boxShadow = 'none';
+             preview.style.margin = '0';
+             preview.style.border = 'none';
+             // Force standard text rendering to prevent underline issues
+             preview.style.textRendering = 'geometricPrecision';
+             (preview.style as any).webkitFontSmoothing = 'antialiased';
+          }
+          
+          // Fix potential "strikethrough" look of underlines in html2canvas
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach(el => {
+            const style = (el as HTMLElement).style;
+            if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
+              style.textDecoration = 'none';
+              style.textDecorationLine = 'none';
+              style.borderBottom = '1px solid currentColor';
+              style.display = style.display === 'inline' ? 'inline-block' : style.display;
+              style.paddingBottom = '1px';
+            }
+          });
+
+          // Remove gaps between pages for seamless PDF slicing
+          const pages = clonedDoc.querySelectorAll('.page');
+          pages.forEach(p => {
+            (p as HTMLElement).style.margin = '0';
+            (p as HTMLElement).style.boxShadow = 'none';
+          });
 
                                       // Hard removal of non-export elements
                                       clonedDoc.querySelectorAll('.no-export, .ui-controls').forEach(el => el.remove());
@@ -1035,6 +1132,31 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                   }, '*');
                                 }
                               }
+                            });
+
+                            const observer = new MutationObserver((mutations) => {
+                              let shouldRepaginate = false;
+                              mutations.forEach(m => {
+                                if (m.type === 'childList') {
+                                  const hasPages = Array.from(m.target.children || []).some(child => child.classList?.contains('page'));
+                                  if (!hasPages && m.target.id === 'resume-root' && m.addedNodes.length > 0) {
+                                    shouldRepaginate = true;
+                                  }
+                                }
+                              });
+                              if (shouldRepaginate) setTimeout(paginate, 100);
+                            });
+                            
+                            setTimeout(() => {
+                              const root = document.getElementById('resume-root');
+                              if (root) {
+                                observer.observe(root, { childList: true });
+                                paginate(); // Initial manual call
+                              }
+                            }, 500);
+
+                            window.addEventListener('load', () => {
+                              setTimeout(paginate, 100);
                             });
                           </script>
                         </head>
