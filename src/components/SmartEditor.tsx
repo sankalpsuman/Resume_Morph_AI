@@ -348,7 +348,8 @@ export default function SmartEditor({ userData }: { userData: any }) {
           const pageWidth = 210;
           const pageHeight = 297;
           
-          const pagesCount = Math.round(event.data.height / 1123) || 1;
+          const edScale = event.data.width / 794;
+          const pagesCount = Math.round(event.data.height / (1123 * edScale)) || 1;
           const imgWidth = pageWidth;
           const imgHeight = pagesCount * pageHeight;
           
@@ -871,22 +872,26 @@ export default function SmartEditor({ userData }: { userData: any }) {
                             }
                             body { 
                               margin: 0; 
-                              padding: 40px 0;
-                              background-color: #f1f5f9;
+                              padding: 60px 0;
+                              background-color: #f8fafc;
                               display: flex;
-                              justify-content: center;
+                              flex-direction: column;
+                              align-items: center;
                               min-height: 100vh;
                               box-sizing: border-box;
+                              scroll-behavior: smooth;
                             }
                             .page { 
                               background: white;
                               width: 794px;
                               height: 1123px;
                               padding: 48px 56px;
-                              margin: 0 auto 20px auto;
+                              margin: 0 0 32px 0;
                               box-sizing: border-box;
                               overflow: hidden;
                               position: relative;
+                              box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15), 0 8px 24px -10px rgba(0, 0, 0, 0.1); 
+                              border-radius: 2px;
                             }
                             .content {
                               width: 100%;
@@ -1002,7 +1007,10 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                 return p;
                               }
                               
-                              root.removeAttribute('data-paginating');
+                              // Release guard with delay
+                              setTimeout(() => {
+                                root.removeAttribute('data-paginating');
+                              }, 500);
                             }
 
                             window.addEventListener('message', async (event) => {
@@ -1044,7 +1052,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                 setTimeout(paginate, 100);
                               }
 
-                              if (event.data.type === 'CAPTURE_CANVAS') {
+                               if (event.data.type === 'CAPTURE_CANVAS') {
                                 try {
                                   // For capturing, we target the main resume container
                                   const root = document.getElementById('resume-root');
@@ -1059,60 +1067,53 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                   await document.fonts.ready;
                                   
                                   // Delay to ensure fonts and layout are settled
-                                  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
                                   await new Promise(r => setTimeout(r, 400));
 
                                   const canvas = await html2canvas(root, {
-                                    scale: 1, 
+                                    scale: 2, 
                                     useCORS: true,
                                     allowTaint: true,
                                     backgroundColor: "#ffffff",
                                     logging: false,
-                                    width: 794,
-                                    height: Math.ceil(root.offsetHeight), 
-                                    scrollX: 0,
-                                    scrollY: 0,
-                                    windowWidth: 794,
                                     imageTimeout: 15000,
                                     removeContainer: true,
                                     onclone: (clonedDoc) => {
-          // Force removal of scaling transform in clone
-          const scaler = clonedDoc.getElementById('scaling-container');
-          if (scaler) {
-            scaler.style.transform = 'none';
-          }
-          
-          const preview = clonedDoc.getElementById('resume-root');
-          if (preview) {
-             preview.style.boxShadow = 'none';
-             preview.style.margin = '0';
-             preview.style.border = 'none';
-             // Force standard text rendering to prevent underline issues
-             preview.style.textRendering = 'geometricPrecision';
-             (preview.style as any).webkitFontSmoothing = 'antialiased';
-          }
-          
-          // Fix potential "strikethrough" look of underlines in html2canvas
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach(el => {
-            const style = (el as HTMLElement).style;
-            if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
-              style.textDecoration = 'none';
-              style.textDecorationLine = 'none';
-              style.borderBottom = '1px solid currentColor';
-              style.display = style.display === 'inline' ? 'inline-block' : style.display;
-              style.paddingBottom = '1px';
-            }
-          });
+                                      const preview = clonedDoc.getElementById('resume-root');
+                                      if (preview) {
+                                         // ENSURE NO GAPS in export for seamless PDF slicing
+                                         preview.style.gap = '0';
+                                         preview.style.padding = '0';
+                                         preview.style.margin = '0';
+                                         preview.style.boxShadow = 'none';
+                                         preview.style.border = 'none';
+                                         preview.style.background = 'white';
+                                         preview.style.display = 'flex';
+                                         preview.style.flexDirection = 'column';
+                                      }
+                                      
+                                      // Hide pagination UI decorations
+                                      const styleTag = clonedDoc.createElement('style');
+                                      styleTag.innerHTML = '.page::before, .page::after { display: none !important; opacity: 0 !important; } .page { margin: 0 !important; box-shadow: none !important; border: none !important; border-radius: 0 !important; } .resume-footer { margin-bottom: 0 !important; padding-bottom: 20px !important; border-top: none !important; }';
+                                      clonedDoc.head.appendChild(styleTag);
+                                      
+                                      // Force standard text rendering
+                                      const allElements = clonedDoc.querySelectorAll('*');
+                                      allElements.forEach(el => {
+                                        const style = (el as HTMLElement).style;
+                                        style.textRendering = 'geometricPrecision';
+                                        (style as any).webkitFontSmoothing = 'antialiased';
+                                        
+                                        // Fix potential "strikethrough" look of underlines in html2canvas
+                                        if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
+                                          style.textDecoration = 'none';
+                                          style.textDecorationLine = 'none';
+                                          style.borderBottom = '1px solid currentColor';
+                                          style.display = style.display === 'inline' ? 'inline-block' : style.display;
+                                          style.paddingBottom = '1px';
+                                        }
+                                      });
 
-          // Remove gaps between pages for seamless PDF slicing
-          const pages = clonedDoc.querySelectorAll('.page');
-          pages.forEach(p => {
-            (p as HTMLElement).style.margin = '0';
-            (p as HTMLElement).style.boxShadow = 'none';
-          });
-
-                                      // Hard removal of non-export elements
+                                      // Handle additional non-export elements
                                       clonedDoc.querySelectorAll('.no-export, .ui-controls').forEach(el => el.remove());
                                     }
                                   });
@@ -1136,6 +1137,9 @@ export default function SmartEditor({ userData }: { userData: any }) {
 
                             const observer = new MutationObserver((mutations) => {
                               let shouldRepaginate = false;
+                              const root = document.getElementById('resume-root');
+                              if (root && root.getAttribute('data-paginating') === 'true') return;
+
                               mutations.forEach(m => {
                                 if (m.type === 'childList') {
                                   const hasPages = Array.from(m.target.children || []).some(child => child.classList?.contains('page'));

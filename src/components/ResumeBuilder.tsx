@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
-  RefreshCw, FileCode, FileType, 
+  RefreshCw, FileCode, FileType, Files, ShieldCheck,
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
 } from 'lucide-react';
@@ -369,6 +369,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     }
     if (err.message === "QUOTA_EXCEEDED") {
       return "Daily AI limit reached. Please try again later.";
+    }
+    if (err.message === "AI_CALL_TIMEOUT") {
+      return "The Morph Engine is overloaded. Please try again in a few moments.";
     }
     return fallback;
   };
@@ -773,7 +776,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const pageWidth = 210;
       const pageHeight = 297;
       
-      const pagesCount = Math.round(canvas.height / 1123) || 1;
+      const scale = canvas.width / 794;
+      const pagesCount = Math.round(canvas.height / (1123 * scale)) || 1;
       const imgWidth = pageWidth;
       const imgHeight = pagesCount * pageHeight; 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -829,12 +833,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) throw new Error("Preview doc inaccessible");
 
-      // Wait for fonts & images
+      // 1. Ensure all assets are fully loaded
       if (iframe.contentWindow?.document.fonts) {
         await iframe.contentWindow.document.fonts.ready;
       }
 
-      // Ensure all images are loaded
       const images = Array.from(iframeDoc.querySelectorAll('img'));
       await Promise.all(images.map(img => {
         if (img.complete) return Promise.resolve();
@@ -844,42 +847,78 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         });
       }));
 
+      // 2. Identify capture target
       const target = iframeDoc.getElementById('resume-preview') || 
                      iframeDoc.querySelector('.resume-page') || 
                      iframeDoc.body;
 
-      // Small stabilization delay
-      await new Promise(r => setTimeout(r, 200));
+      // 3. Stabilization delay for rendering engine
+      await new Promise(r => setTimeout(r, 300));
 
+      // 4. Capture with html2canvas using optimized settings
       const canvas = await html2canvas(target as HTMLElement, {
-        scale: 1, // Strictly matching user request
+        scale: 2, // High resolution capture
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
+        imageTimeout: 0,
+        removeContainer: true,
         onclone: (clonedDoc) => {
-          // Force removal of scaling transform in clone
+          // ENSURE PIXEL-PERFECT PARITY BY REMOVING UI DECORATIONS
+          
+          // Force layout to 1:1 scale by removing scaling transforms
           const scaler = clonedDoc.getElementById('scaling-container');
           if (scaler) {
             scaler.style.transform = 'none';
+            scaler.style.transition = 'none';
             scaler.style.width = '794px';
             scaler.style.margin = '0';
+            scaler.style.padding = '0';
+            scaler.style.opacity = '1';
             scaler.style.position = 'relative';
           }
+          
           const preview = clonedDoc.getElementById('resume-preview');
           if (preview) {
-             preview.style.boxShadow = 'none';
+             // CRITICAL: Remove gaps between pages so slicing in PDF is seamless
+             preview.style.gap = '0';
+             preview.style.padding = '0';
              preview.style.margin = '0';
+             preview.style.boxShadow = 'none';
              preview.style.border = 'none';
-             // Force standard text rendering to prevent underline issues
-             preview.style.textRendering = 'geometricPrecision';
-             (preview.style as any).webkitFontSmoothing = 'antialiased';
+             preview.style.background = 'white';
+             preview.style.display = 'flex';
+             preview.style.flexDirection = 'column';
           }
           
-          // Fix potential "strikethrough" look of underlines in html2canvas
+          // Hide pagination UI elements that shouldn't be in the PDF
+          const styleTag = clonedDoc.createElement('style');
+          styleTag.innerHTML = `
+            .page::before, .page::after { display: none !important; opacity: 0 !important; }
+            .page { 
+              margin: 0 !important; 
+              box-shadow: none !important; 
+              border: none !important; 
+              border-radius: 0 !important;
+              page-break-after: always !important;
+            }
+            .resume-footer { 
+              margin-bottom: 0 !important; 
+              padding-bottom: 20px !important;
+              border-top: none !important;
+            }
+          `;
+          clonedDoc.head.appendChild(styleTag);
+          
+          // Force standard text rendering
           const allElements = clonedDoc.querySelectorAll('*');
           allElements.forEach(el => {
             const style = (el as HTMLElement).style;
+            style.textRendering = 'geometricPrecision';
+            (style as any).webkitFontSmoothing = 'antialiased';
+            
+            // Fix potential underline rendering bugs in html2canvas
             if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
               style.textDecoration = 'none';
               style.textDecorationLine = 'none';
@@ -887,13 +926,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               style.display = style.display === 'inline' ? 'inline-block' : style.display;
               style.paddingBottom = '1px';
             }
-          });
-
-          // Remove gaps between pages for seamless PDF slicing
-          const pages = clonedDoc.querySelectorAll('.page');
-          pages.forEach(p => {
-            (p as HTMLElement).style.margin = '0';
-            (p as HTMLElement).style.boxShadow = 'none';
           });
         }
       });
@@ -957,7 +989,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const pageWidth = 210;
       const pageHeight = 297;
       
-      const pagesCount = Math.round(canvas.height / 1123) || 1;
+      const shareScale = canvas.width / 794;
+      const pagesCount = Math.round(canvas.height / (1123 * shareScale)) || 1;
       const imgWidth = pageWidth;
       const imgHeight = pagesCount * pageHeight; 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -1210,10 +1243,18 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             
             <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
             
-            <div className="flex items-center justify-between w-full lg:w-auto gap-4 bg-[var(--bg-tertiary)] px-4 md:px-6 py-3 rounded-2xl border border-[var(--border-color)]">
-              <div className="flex flex-col">
-                <span className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest leading-none">Strict Layout</span>
-                <span className="text-[7px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1">Structural Mirror</span>
+            <div className="flex items-center justify-between w-full lg:w-auto gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2.5 rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                  strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
+                )}>
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
+                  <span className="text-[7px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
+                </div>
               </div>
               <button 
                 onClick={() => setStrictLayout(!strictLayout)}
@@ -1223,8 +1264,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 )}
               >
                 <motion.div 
+                  initial={false}
                   animate={{ x: strictLayout ? (window.innerWidth < 768 ? 20 : 24) : 4 }}
-                  className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-sm"
+                  className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
                 />
               </button>
             </div>
@@ -1401,24 +1443,28 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
 
               <section className="space-y-4">
                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100">3</div>
-                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Length</h2>
+                    <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100 dark:shadow-none">3</div>
+                    <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Target Length</h2>
                   </div>
-                  <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-color)]">
+                  <div className="grid grid-cols-3 gap-2 bg-[var(--bg-tertiary)] p-1.5 rounded-[22px] border border-[var(--border-color)]">
                     {[
-                      { id: '1-page', label: '1 Page' },
-                      { id: '2-page', label: '2 Pages' },
-                      { id: 'executive', label: 'Impact' }
+                      { id: '1-page', label: 'Classic', icon: FileText, desc: '1 Page' },
+                      { id: '2-page', label: 'Detail', icon: Files, desc: '2 Pages' },
+                      { id: 'executive', label: 'Impact', icon: ShieldCheck, desc: 'Exec' }
                     ].map((mode) => (
                       <button
                         key={mode.id}
                         onClick={() => setLengthMode(mode.id as any)}
                         className={cn(
-                          "flex-1 py-3 px-2 rounded-xl transition-all flex flex-col items-center",
-                          lengthMode === mode.id ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-indigo-600"
+                          "py-2.5 px-1 rounded-[18px] transition-all flex flex-col items-center gap-1 group",
+                          lengthMode === mode.id 
+                            ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100 dark:shadow-none" 
+                            : "text-[var(--text-tertiary)] hover:text-indigo-600 hover:bg-[var(--bg-primary)]"
                         )}
                       >
-                        <span className="text-[10px] font-black uppercase tracking-widest">{mode.label}</span>
+                        <mode.icon className={cn("w-4 h-4 mb-0.5", lengthMode === mode.id ? "text-white" : "group-hover:scale-110 transition-transform")} />
+                        <span className="text-[9px] font-black uppercase tracking-widest leading-none">{mode.label}</span>
+                        <span className={cn("text-[7px] font-bold uppercase tracking-tight", lengthMode === mode.id ? "text-white/60" : "text-[var(--text-tertiary)]")}>{mode.desc}</span>
                       </button>
                     ))}
                   </div>
@@ -1674,19 +1720,76 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       </div>
                     </motion.div>
                   ) : generatedHtml ? (
-                    <motion.iframe 
-                      key="content"
-                      ref={iframeRef}
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className={cn(
-                        "w-full border-none transition-all duration-300",
-                        isPreviewFull 
-                          ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
-                          : "h-[500px] md:h-[784px] lg:h-[850px]"
-                      )}
-                      srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true, isPremium })}
-                    />
+                    <div className={cn(
+                      "relative flex flex-col bg-[var(--bg-secondary)] overflow-hidden transition-all duration-300",
+                      isPreviewFull 
+                        ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
+                        : "h-[500px] md:h-[1050px]"
+                    )}>
+                      {/* Modern Preview Workbench Toolbar */}
+                      <div className="h-12 border-b border-[var(--border-color)] bg-[var(--bg-primary)] flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
+                            <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                            <span className="text-[10px] font-black uppercase tracking-tight text-indigo-600 dark:text-indigo-400">Workbench</span>
+                          </div>
+                          
+                          <div className="h-4 w-[1px] bg-[var(--border-color)]" />
+                          
+                          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border-color)]">
+                            {[
+                              { id: 'fit-width', label: 'Fit Width', icon: Maximize2 },
+                              { id: 'fit-page', label: 'Fit Page', icon: Minimize2 },
+                              { id: 'actual', label: '100%', icon: MousePointerClick }
+                            ].map((mode) => (
+                              <button
+                                key={mode.id}
+                                onClick={() => {
+                                  // Send message to iframe to change zoom mode
+                                  const iframe = iframeRef.current;
+                                  if (iframe && iframe.contentWindow) {
+                                    iframe.contentWindow.postMessage({ type: 'SET_ZOOM_MODE', mode: mode.id }, '*');
+                                  }
+                                }}
+                                className="px-2 py-1 hover:bg-[var(--bg-primary)] rounded-md text-[9px] font-black uppercase tracking-tighter text-[var(--text-tertiary)] hover:text-indigo-600 transition-all flex items-center gap-1"
+                              >
+                                <mode.icon className="w-3 h-3" />
+                                <span className="hidden md:inline">{mode.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                           <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg">
+                            <Zap className="w-3 h-3 text-amber-500" />
+                            <span className="text-[10px] font-black tracking-tight text-[var(--text-secondary)] uppercase">Live Rendering</span>
+                          </div>
+                          
+                          <button 
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-[var(--text-tertiary)] transition-colors border border-transparent hover:border-[var(--border-color)]"
+                            title="Force Refresh Workspace"
+                            onClick={() => {
+                              const iframe = iframeRef.current;
+                              if (iframe && iframe.contentWindow) {
+                                iframe.contentWindow.location.reload();
+                              }
+                            }}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <motion.iframe 
+                        key={resumeMetadata?.name || 'resume-preview'}
+                        ref={iframeRef}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="w-full h-full border-none"
+                        srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true, isPremium })}
+                      />
+                    </div>
                   ) : (
                     <motion.div 
                       key="empty"

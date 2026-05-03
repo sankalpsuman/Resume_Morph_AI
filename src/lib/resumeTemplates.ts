@@ -87,27 +87,78 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     .preview-mode .preview-wrapper {
       width: 100vw;
       height: 100vh;
-      overflow: auto; /* Allow scrolling between pages in preview */
+      overflow-x: hidden;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #f1f5f9;
-      padding: 20px 0;
+      background: #f1f5f9; /* Workbench gray */
+      padding: 60px 0;
+      scroll-behavior: smooth;
     }
     .preview-mode .preview-scale {
       transform-origin: top center;
       will-change: transform;
       width: 794px;
-      /* Height will be dynamic based on page count */
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .preview-mode #resume-preview {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 40px; /* Wider gap for page breaks */
+      padding-bottom: 120px;
     }
     .preview-mode .page {
       margin: 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+      background: white;
+      position: relative;
+    }
+    /* Page Labels on Hover */
+    .preview-mode .page::after {
+      content: "Page " attr(data-page);
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748b;
+      background: #e2e8f0;
+      padding: 4px 12px;
+      border-radius: 100px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border: 1px solid #cbd5e1;
+    }
+    .preview-mode .page:hover::after {
+      opacity: 1;
+    }
+    /* Printable Margin Guides */
+    .preview-mode .page::before {
+      content: "";
+      position: absolute;
+      top: 48px;
+      left: 56px;
+      right: 56px;
+      bottom: 48px;
+      border: 1px dashed rgba(99, 102, 241, 0.15);
+      pointer-events: none;
+      z-index: 1;
+    }
+    /* Overflow Detection */
+    .preview-mode .page.overflow {
+      box-shadow: 0 0 0 3px #ef4444 !important;
+    }
+    .preview-mode .page.overflow::after {
+      content: "⚠️ PAGE OVERFLOW - CONTENT CLIPPED";
+      background: #ef4444;
+      color: white;
+      opacity: 1;
     }
 
     @media print {
@@ -221,6 +272,10 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       const root = document.getElementById('resume-preview');
       if (!root) return;
 
+      // Anti-recursion guard
+      if (root.getAttribute('data-paginating') === 'true') return;
+      root.setAttribute('data-paginating', 'true');
+
       // 1. Wait for images to load for accurate sizing
       const images = Array.from(root.querySelectorAll('img'));
       await Promise.all(images.map(img => {
@@ -248,7 +303,11 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       const USABLE_HEIGHT = 1027; // 1123 - (48 * 2)
       const BUFFER = 4; // 4px safety buffer
 
+      let pageCount = 0;
+      let pages = [];
+      
       let currentPage = createPage();
+      pages.push(currentPage);
       root.appendChild(currentPage);
       let currentContent = currentPage.querySelector('.content');
 
@@ -260,26 +319,33 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
 
         currentContent.appendChild(el);
         
-        // Precise measurement using relative bottom position
         const lastChild = currentContent.lastElementChild;
         const currentHeight = lastChild 
           ? Math.ceil(lastChild.getBoundingClientRect().bottom - currentContent.getBoundingClientRect().top) 
           : 0;
 
         if (currentHeight > (USABLE_HEIGHT - BUFFER)) {
-          // If this is not the only element, move it to a new page
           if (currentContent.children.length > 1) {
             currentContent.removeChild(el);
             
             currentPage = createPage();
+            pages.push(currentPage);
             root.appendChild(currentPage);
             currentContent = currentPage.querySelector('.content');
             currentContent.appendChild(el);
+          } else {
+            currentPage.classList.add('overflow');
           }
         }
       }
 
+      // Update all pages with total count
+      pages.forEach((p, idx) => {
+        p.setAttribute('data-page', (idx + 1) + ' of ' + pages.length);
+      });
+
       function createPage() {
+        pageCount++;
         const p = document.createElement('div');
         p.className = 'page';
         const c = document.createElement('div');
@@ -289,22 +355,58 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       }
       
       if (typeof adjustScale === 'function') adjustScale();
+      
+      // Release guard
+      setTimeout(() => {
+        root.removeAttribute('data-paginating');
+      }, 500);
     }
+
+    let currentZoomMode = 'fit-width';
 
     function adjustScale() {
       if (!document.body.classList.contains('preview-mode')) return;
+      if (document.body.classList.contains('no-scale')) return;
 
       const element = document.getElementById('scaling-container');
       if (!element) return;
       
       const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
       
-      // Scale based on WIDTH only if we want to scroll vertically
-      const widthScale = (containerWidth - 60) / 794;
-      const finalScale = Math.min(widthScale, 1.1); 
+      let finalScale = 1;
+
+      if (currentZoomMode === 'fit-width') {
+        const horizontalPadding = containerWidth < 768 ? 40 : 100;
+        finalScale = (containerWidth - horizontalPadding) / 794;
+      } else if (currentZoomMode === 'fit-page') {
+        const verticalPadding = 80;
+        // Fit to a single page height (1123px)
+        finalScale = (containerHeight - verticalPadding) / 1123;
+      } else {
+        // Actual size (100%)
+        finalScale = 1;
+      }
+
+      // Constrain scale for sanity
+      finalScale = Math.max(0.4, Math.min(finalScale, 1.5));
       
       element.style.transform = 'scale(' + finalScale + ')';
+      
+      if (element.style.opacity === '0' || !element.style.opacity) {
+        setTimeout(() => {
+          element.style.opacity = '1';
+          element.style.transition = 'opacity 0.4s ease-out, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+        }, 50);
+      }
     }
+
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'SET_ZOOM_MODE') {
+        currentZoomMode = event.data.mode;
+        adjustScale();
+      }
+    });
     
     window.addEventListener('load', () => {
       const runPagination = () => {
@@ -326,6 +428,9 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     // Mutation observer to handle late-arriving content updates from React
     const observer = new MutationObserver((mutations) => {
       let shouldRepaginate = false;
+      const root = document.getElementById('resume-preview');
+      if (root && root.getAttribute('data-paginating') === 'true') return;
+      
       mutations.forEach(m => {
         if (m.type === 'childList') {
           const hasPages = Array.from(m.target.children || []).some(child => child.classList?.contains('page'));

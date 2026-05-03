@@ -118,9 +118,24 @@ async function withRetry<T>(fn: (ai: GoogleGenAI) => Promise<T>, retries = 2): P
     const ai = new GoogleGenAI({ apiKey });
 
     try {
-      return await fn(ai);
+      console.log(`[Gemini AI] Attempt ${attempt + 1}/${retries + 1} using key index ${currentKeyIndex}`);
+      
+      // Add a 60-second timeout to the function execution
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("AI_CALL_TIMEOUT")), 60000)
+      );
+      
+      const result = await Promise.race([fn(ai), timeoutPromise]) as T;
+      console.log(`[Gemini AI] Success on attempt ${attempt + 1}`);
+      return result;
     } catch (error: any) {
       const errorMsg = error?.message?.toLowerCase() || "";
+      console.warn(`[Gemini AI] Error on attempt ${attempt + 1}:`, errorMsg);
+      
+      if (errorMsg === "ai_call_timeout") {
+        console.error("[Gemini AI] Call timed out after 60s");
+      }
+
       const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota");
       const isRpcError = errorMsg.includes("rpc failed") || errorMsg.includes("xhr error") || errorMsg.includes("failed to fetch");
       
