@@ -198,19 +198,21 @@ export default function PremiumModal({ isOpen, onClose, user }: PremiumModalProp
                     </p>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="flex flex-col items-center gap-4">
                     <button
                       onClick={handleWhatsApp}
-                      className="w-full py-5 bg-[#25D366] text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl shadow-green-100 dark:shadow-none hover:bg-[#128C7E] transition-all flex items-center justify-center gap-3"
+                      title="Contact on WhatsApp"
+                      className="w-20 h-20 bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white rounded-full flex items-center justify-center shadow-2xl shadow-green-200 dark:shadow-none hover:scale-110 active:scale-95 transition-all group"
                     >
-                      <MessageCircle className="w-6 h-6 fill-white" />
-                      Contact on WhatsApp
+                      <MessageCircle className="w-10 h-10 fill-white" />
                     </button>
+                    <p className="text-[10px] font-black text-[#25D366] uppercase tracking-[0.2em]">Contact on WhatsApp</p>
+                    
                     <button
                       onClick={onClose}
-                      className="w-full py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
+                      className="mt-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
                     >
-                      Close Window
+                      Dismiss
                     </button>
                   </div>
                 </div>

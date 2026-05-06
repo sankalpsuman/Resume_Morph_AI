@@ -134,21 +134,20 @@ export default function CoverLetterGenerator({ resumeData }: { resumeData: any }
                       <p className="font-black text-[var(--text-primary)] tracking-tight">Tailored Cover Letter</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <button 
                       onClick={copyToClipboard}
-                      title="Copy cover letter to clipboard"
-                      className="p-3 text-[var(--text-tertiary)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all relative group"
+                      title="Copy to clipboard"
+                      className="w-11 h-11 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-tertiary)] flex items-center justify-center hover:text-indigo-600 hover:border-indigo-600/30 hover:scale-110 active:scale-95 transition-all shadow-sm group"
                     >
                       {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />}
                     </button>
                     <button 
                       onClick={downloadTxt}
-                      title="Download cover letter as a text file"
-                      className="flex items-center gap-2 px-6 py-3 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all shadow-lg dark:shadow-none group"
+                      title="Download as .txt"
+                      className="w-11 h-11 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 hover:scale-110 active:scale-95 transition-all group"
                     >
-                      <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      Download .txt
+                      <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     </button>
                   </div>
                 </div>

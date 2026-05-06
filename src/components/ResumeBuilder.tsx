@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
-  RefreshCw, FileCode, FileType, Files, ShieldCheck,
+  RefreshCw, FileCode, FileType, Files, ShieldCheck, Target,
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
 } from 'lucide-react';
@@ -60,6 +60,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<string>('');
   const [jobDescription, setJobDescription] = useState('');
+  const [optimizeForAts, setOptimizeForAts] = useState(true);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
   const [resumeMetadata, setResumeMetadata] = useState<{ name: string; yoe: string; profile: string } | null>(null);
   const [atsScore, setAtsScore] = useState<number | null>(null);
@@ -71,7 +72,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [matchDescription, setMatchDescription] = useState('');
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
   const [isMatching, setIsMatching] = useState(false);
@@ -477,7 +477,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
         { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
         jobDescription,
-        false,
+        optimizeForAts,
         currentLayout,
         strictLayout,
         { lengthMode }
@@ -579,12 +579,27 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const handleCheckMatch = async () => {
     if (!checkUsageLimits('check')) return;
 
-    if (!matchDescription) {
-      setError("Please paste a job description first.");
+    if (!jobDescription) {
+      setError("Please paste a job description in Step 2 first.");
       return;
     }
-    if (!contentFile?.text) {
-      setError("Please upload your resume first.");
+    
+    // Ensure we have current text
+    let currentText = contentFile?.text;
+    if (!currentText && contentFile?.base64) {
+      setIsMatching(true);
+      try {
+        currentText = await extractTextFromAny(contentFile.base64, contentFile.type);
+        if (currentText) {
+          setContentFile(prev => prev ? { ...prev, text: currentText } : null);
+        }
+      } catch (err) {
+        console.error("Text extraction failed:", err);
+      }
+    }
+
+    if (!currentText) {
+      setError("Please upload your resume content first.");
       return;
     }
 
@@ -592,7 +607,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setGenerationStatus('Scanning job description...');
     setError(null);
     try {
-      const result = await checkMatch(contentFile.text, matchDescription);
+      const result = await checkMatch(currentText, jobDescription);
       setMatchScore(result.score);
       setMissingKeywords(result.missing);
     } catch (err: any) {
@@ -734,9 +749,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const getFileName = (ext: string) => {
-    if (resumeMetadata) {
-      const { name, yoe, profile } = resumeMetadata;
-      return `${name}_${yoe}_${profile}.${ext}`;
+    if (resumeMetadata?.name) {
+      const firstName = resumeMetadata.name.split(' ')[0] || 'Resume';
+      return `${firstName}.${ext}`;
     }
     return `morph-resume.${ext}`;
   };
@@ -776,15 +791,20 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const pageWidth = 210;
       const pageHeight = 297;
       
-      const scale = canvas.width / 794;
-      const pagesCount = Math.round(canvas.height / (1123 * scale)) || 1;
+      // Calculate how many A4 pages we need based on the captured height
+      // The captured target is 794px wide. Scale it to fit 210mm.
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const pxPerPage = (canvasWidth / pageWidth) * pageHeight;
+      const pagesCount = Math.ceil(canvasHeight / pxPerPage) || 1;
+      
       const imgWidth = pageWidth;
-      const imgHeight = pagesCount * pageHeight; 
+      const imgHeight = (canvasHeight * pageWidth) / canvasWidth;
       const imgData = canvas.toDataURL('image/png', 1.0);
       
       for (let i = 0; i < pagesCount; i++) {
-        const position = -i * pageHeight;
         if (i > 0) pdf.addPage();
+        const position = -i * pageHeight;
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       }
       
@@ -1309,7 +1329,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start px-2 sm:px-0">          {/* Left Column: Controls */}
-          <div className="lg:col-span-4 space-y-6 md:space-y-8">
+          <div className="lg:col-span-4 xl:col-span-3 space-y-6 md:space-y-8">
             <div className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10">
               
               <section>
@@ -1415,6 +1435,31 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-medium">
                   Target a specific role? Paste the job description below.
                 </p>
+
+                {jobDescription && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="flex items-center gap-3 p-3 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 rounded-xl"
+                  >
+                    <div 
+                      onClick={() => setOptimizeForAts(!optimizeForAts)}
+                      className={cn(
+                        "w-10 h-5 rounded-full relative cursor-pointer transition-all duration-300 shrink-0",
+                        optimizeForAts ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-700"
+                      )}
+                    >
+                      <motion.div 
+                        animate={{ x: optimizeForAts ? 22 : 2 }}
+                        className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-sm"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-900 dark:text-indigo-300">ATS High-Impact Mode</span>
+                      <span className="text-[9px] text-indigo-600/70 dark:text-indigo-400/60 font-medium tracking-tight">Auto-inject keywords & structure optimization</span>
+                    </div>
+                  </motion.div>
+                )}
                 <div className="relative">
                   <textarea 
                     value={jobDescription}
@@ -1428,16 +1473,60 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                 </div>
 
                 {generatedHtml && jobDescription && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={handleOptimize}
-                    disabled={isGenerating}
-                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group border border-indigo-500"
+                  <motion.div className="space-y-3">
+                    <motion.button
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={handleOptimize}
+                      disabled={isGenerating}
+                      className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2 group border border-indigo-500"
+                    >
+                      {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MousePointerClick className="w-4 h-4 group-hover:scale-110" />}
+                      {isGenerating ? "Optimizing..." : "Re-Morph with AI"}
+                    </motion.button>
+
+                    {!matchScore && !isGenerating && (
+                      <motion.button
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={handleCheckMatch}
+                        disabled={isMatching}
+                        className="w-full py-3 bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center gap-2 group"
+                      >
+                        {isMatching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                        {isMatching ? "Analyzing..." : "Quick Match Check"}
+                      </motion.button>
+                    )}
+                  </motion.div>
+                )}
+
+                {matchScore !== null && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-[32px] text-white shadow-xl shadow-indigo-200 overflow-hidden relative"
                   >
-                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MousePointerClick className="w-4 h-4 group-hover:scale-110" />}
-                    {isGenerating ? "Optimizing..." : "Re-Morph with AI"}
-                  </motion.button>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl pointer-events-none" />
+                    <div className="flex items-center justify-between mb-4 relative z-10">
+                       <div>
+                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">ATS Match Score</p>
+                         <h3 className="text-3xl font-black">{matchScore}%</h3>
+                       </div>
+                       <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                         <Target className="w-6 h-6" />
+                       </div>
+                    </div>
+                    {missingKeywords?.length > 0 && (
+                      <div className="space-y-2 relative z-10">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Missing Keywords</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {missingKeywords.map((kw, i) => (
+                            <span key={kw + i} className="px-2 py-1 bg-white/10 hover:bg-white/20 transition-colors rounded-lg text-[9px] font-bold border border-white/5 break-words max-w-full">{kw}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
                 )}
               </section>
 
@@ -1490,21 +1579,30 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   disabled={isLimitReached}
                 />
 
-                {referenceFile && contentFile && !generatedHtml && (
-                  <motion.button
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={handleGenerate}
-                    disabled={isGenerating || isAnalyzing}
-                    className="w-full mt-6 py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50"
+                {referenceFile && contentFile && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="sticky bottom-4 left-0 right-0 z-50 py-4 bg-white/80 backdrop-blur-xl border border-indigo-100 dark:bg-slate-900/80 dark:border-indigo-900/30 rounded-3xl mt-6 px-4 shadow-2xl md:static md:bg-transparent md:border-none md:p-0 md:shadow-none"
                   >
-                    {isGenerating || isAnalyzing ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Zap className="w-5 h-5 fill-white" />
+                    <button
+                      onClick={handleGenerate}
+                      disabled={isGenerating || isAnalyzing}
+                      className="w-full py-5 bg-indigo-600 text-white rounded-[24px] text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group disabled:opacity-50"
+                    >
+                      {isGenerating || isAnalyzing ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Zap className="w-5 h-5 fill-white" />
+                      )}
+                      {generatedHtml ? (isGenerating ? "Updating..." : "Regenerate Resume") : (isGenerating ? "Morphing..." : "Generate Resume")}
+                    </button>
+                    {generatedHtml && (
+                      <p className="text-[10px] text-center mt-3 font-bold text-indigo-500 uppercase tracking-widest animate-pulse">
+                        Ready to reprocess with current settings
+                      </p>
                     )}
-                    {isGenerating ? "Morphing..." : "Generate Resume"}
-                  </motion.button>
+                  </motion.div>
                 )}
               </section>
             </div>
@@ -1526,11 +1624,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             "transition-all duration-700 ease-in-out w-full",
             isPreviewFull 
               ? "fixed inset-0 z-[200] bg-[var(--bg-primary)] p-4 md:p-8 overflow-y-auto" 
-              : "lg:col-span-8 lg:sticky lg:top-32"
+              : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32"
           )}>
             <div className={cn(
-              "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[40px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/20 flex flex-col overflow-hidden group transition-all duration-500",
-              isPreviewFull ? "min-h-[calc(100vh-80px)] w-full max-w-5xl mx-auto" : "h-[600px] md:h-[850px] lg:h-[900px]"
+              "bg-[var(--bg-primary)] rounded-[32px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
+              isPreviewFull ? "min-h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" : "h-[85vh] lg:h-[calc(100vh-140px)] min-h-[700px] w-full"
             )}>
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)]">
                 <div className="flex items-center gap-3 md:gap-6">
@@ -1615,9 +1713,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               </div>
 
               <div className={cn(
-                "flex-1 p-0 bg-white relative",
+                "flex-1 p-0 bg-white relative min-h-0",
                 isPreviewFull ? "h-auto" : "overflow-hidden"
               )}>
+
+
                 {/* Watermark for guests */}
                 {!user && generatedHtml && (
                   <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none opacity-[0.05] rotate-[-15deg] select-none scale-150 overflow-hidden">
@@ -1724,19 +1824,30 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       "relative flex flex-col bg-[var(--bg-secondary)] overflow-hidden transition-all duration-300",
                       isPreviewFull 
                         ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
-                        : "h-[500px] md:h-[1050px]"
+                        : "h-full"
                     )}>
                       {/* Modern Preview Workbench Toolbar */}
                       <div className="h-12 border-b border-[var(--border-color)] bg-[var(--bg-primary)] flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 md:gap-4">
                           <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
                             <FileText className="w-3.5 h-3.5 text-indigo-500" />
                             <span className="text-[10px] font-black uppercase tracking-tight text-indigo-600 dark:text-indigo-400">Workbench</span>
                           </div>
                           
+                          <div className="h-4 w-[1px] bg-[var(--border-color)] hidden md:block" />
+                          
+                          <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || isAnalyzing}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-indigo-100 disabled:opacity-50"
+                          >
+                            <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                            <span className="hidden sm:inline">Regenerate</span>
+                          </button>
+
                           <div className="h-4 w-[1px] bg-[var(--border-color)]" />
                           
-                          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border-color)]">
+                          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border-color)] overflow-x-auto no-scrollbar">
                             {[
                               { id: 'fit-width', label: 'Fit Width', icon: Maximize2 },
                               { id: 'fit-page', label: 'Fit Page', icon: Minimize2 },
@@ -1782,11 +1893,9 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       </div>
 
                       <motion.iframe 
-                        key={resumeMetadata?.name || 'resume-preview'}
+                        key={generatedHtml ? 'active-preview' : 'empty-preview'}
                         ref={iframeRef}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="w-full h-full border-none"
+                        className="w-full h-full border-none bg-white font-sans"
                         srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true, isPremium })}
                       />
                     </div>
@@ -1883,111 +1992,120 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         )}
       </AnimatePresence>
 
+      {/* Floating Actions */}
       <AnimatePresence>
         {generatedHtml && (
           <motion.div 
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-[150] p-4 md:p-6 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-t border-[var(--border-color)] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+            initial={{ opacity: 0, scale: 0.8, x: -20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, x: -20 }}
+            className="fixed bottom-24 md:bottom-6 left-4 md:left-6 z-[150] flex flex-col gap-4"
           >
-            <div className="max-w-3xl mx-auto flex items-center gap-3 md:gap-4 font-sans">
-              <button 
-                onClick={handleShareWhatsApp}
-                disabled={isExporting || !isPreviewReady || isValidationInProgress}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5 disabled:opacity-30"
-              >
-                {isExporting || isValidationInProgress ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
-                <span>WhatsApp</span>
-              </button>
+            {/* WhatsApp share */}
+            <button 
+              onClick={handleShareWhatsApp}
+              disabled={isExporting || !isPreviewReady || isValidationInProgress}
+              title="Share on WhatsApp"
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white flex items-center justify-center shadow-2xl shadow-[#25D366]/30 transition-all hover:scale-110 active:scale-95 group relative disabled:opacity-50"
+            >
+              {isExporting || isValidationInProgress ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+              <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
+                WhatsApp Share
+              </div>
+            </button>
+
+            {/* Download Resume Link with Menu */}
+            <div className="relative">
               <button 
                 onClick={() => setShowDownloadMenu(!showDownloadMenu)}
                 disabled={isExporting || !isPreviewReady || isValidationInProgress}
-                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-30 relative group"
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/30 transition-all hover:scale-110 active:scale-95 group relative disabled:opacity-50"
+                title="Download Resume"
               >
                 {isExporting || isValidationInProgress ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                <span>Download Resume</span>
-                <ChevronDown className={cn("w-4 h-4 transition-transform", showDownloadMenu && "rotate-180")} />
-                
-                {/* Menu Highlight */}
                 {showDownloadMenu && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-ping" />}
+                
+                <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
+                  Download Options
+                </div>
               </button>
+
+              <AnimatePresence>
+                {showDownloadMenu && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
+                    style={{ transformOrigin: 'bottom left' }}
+                    className="absolute bottom-full left-0 mb-4 w-64 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 gap-1">
+                      <button 
+                        onClick={() => { handleDownloadPDF(); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4 text-red-600" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-[var(--text-primary)] text-xs">PDF Document</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">A4 Blueprint</span>
+                        </div>
+                      </button>
+                      <button 
+                        onClick={() => { handleDownloadImage('png'); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center shrink-0">
+                          <ImageIcon className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-[var(--text-primary)] text-xs">PNG Image</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">High Res Image</span>
+                        </div>
+                      </button>
+                      <button 
+                        onClick={() => { handleDownloadImage('jpeg'); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center shrink-0">
+                          <ImageIcon className="w-4 h-4 text-pink-600" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-[var(--text-primary)] text-xs">JPEG Image</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">Optimized Image</span>
+                        </div>
+                      </button>
+                      <div className="h-px bg-[var(--border-color)] my-1 mx-2" />
+                      <button 
+                        onClick={() => { handleDownloadHTML(); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
+                          <FileCode className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-[var(--text-primary)] text-xs">HTML Source</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">Web format</span>
+                        </div>
+                      </button>
+                      <button 
+                        onClick={() => { handleDownloadWord(); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                          <FileType className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-[var(--text-primary)] text-xs">Word Document</span>
+                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">Editable .docx</span>
+                        </div>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            
-            <AnimatePresence>
-              {showDownloadMenu && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full left-4 right-4 mb-4 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-y-auto max-h-[60vh] scrollbar-hide"
-                >
-                  <div className="grid grid-cols-1 gap-2">
-                    <button 
-                      onClick={() => { handleDownloadPDF(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-red-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">Download PDF</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Pixel Perfect A4</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => { handleDownloadImage('png'); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
-                        <ImageIcon className="w-5 h-5 text-indigo-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">Download PNG</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">High Res Image</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => { handleDownloadImage('jpeg'); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900/20 flex items-center justify-center">
-                        <ImageIcon className="w-5 h-5 text-pink-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">Download JPEG</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Optimized Image</span>
-                      </div>
-                    </button>
-                    <div className="h-px bg-[var(--border-color)] my-1 mx-2" />
-                    <button 
-                      onClick={() => { handleDownloadHTML(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                        <FileCode className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">HTML</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Web format</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => { handleDownloadWord(); setShowDownloadMenu(false); }}
-                      className="w-full px-4 py-4 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-4 transition-colors"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                        <FileType className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[var(--text-primary)]">Word</span>
-                        <span className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Editable .doc</span>
-                      </div>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

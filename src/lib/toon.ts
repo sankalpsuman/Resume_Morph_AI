@@ -167,7 +167,12 @@ TOKEN-ORIENTED OBJECT NOTATION (TOON) SPECIFICATION:
   parse(toon: string): any {
     if (!toon) return null;
     const trimmed = toon.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    
+    // Improved JSON check: [ or { followed by likely JSON content characters
+    // Differentiates from [RESUME] which starts with [ but followed by letters
+    const isJson = /^\{/.test(trimmed) || /^\[\s*[\[\{"0-9\-tfn]/.test(trimmed);
+
+    if (isJson) {
       try {
         return JSON.parse(trimmed);
       } catch (e) {
@@ -176,7 +181,20 @@ TOKEN-ORIENTED OBJECT NOTATION (TOON) SPECIFICATION:
     }
 
     try {
-      return this.recursiveParse(trimmed);
+      const result = this.recursiveParse(trimmed);
+      
+      // Unwrapping logic: If the result is a single object with a key that 
+      // matches a common wrapper tag, unwrap it.
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        const keys = Object.keys(result);
+        const lowerKeys = keys.map(k => k.toLowerCase());
+        const wrapperTags = ['resume', 'data', 'item', 'personalinfo', 'old_resume', 'new_resume', 'summary', 'experience', 'projects', 'education', 'skills', 'certifications', 'customsections'];
+        if (keys.length === 1 && wrapperTags.includes(lowerKeys[0])) {
+          return result[keys[0]];
+        }
+      }
+      
+      return result;
     } catch (e) {
       console.warn('TOON Parse failed, returning raw string', e);
       return toon;

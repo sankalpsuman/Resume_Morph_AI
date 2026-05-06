@@ -2,10 +2,9 @@ import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, Zap, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, 
-  Settings, Layout, Type, Palette, Move, Trash2, Plus, ArrowLeft, 
-  Download, Printer, Eye, Languages, Wand2, Search, Target, 
-  ChevronRight, ChevronDown, GripVertical, Save, Edit3, Github, Linkedin, Globe, Mail, Phone, MapPin,
-  RefreshCw, MousePointerClick, X, MessageSquare, Send, Bot, User, Clock, Share2
+  Layout, Type, Palette, Trash2, Plus, ArrowLeft, 
+  Download, Printer, Eye, Target, 
+  ChevronRight, ChevronDown, Save, RefreshCw, X, MessageSquare, Send, Bot, User, Share2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, compressImage } from '../lib/utils';
@@ -14,13 +13,11 @@ import {
   generateResumeFromData, 
   parseResumeToData, 
   getOptimizationPlan, 
-  improveBulletPoint, 
   checkMatch,
-  conversationalEdit 
+  conversationalEdit
 } from '../lib/gemini';
 import mammoth from 'mammoth';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface ResumeData {
   personalInfo: {
@@ -80,7 +77,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
   const [error, setError] = useState<string | null>(null);
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<'chat' | 'design' | 'sections' | 'analyze' | 'manual'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'analyze' | 'design'>('chat');
   const [mobileMode, setMobileMode] = useState<'edit' | 'preview'>('edit');
   
   // Chat State
@@ -130,26 +127,32 @@ export default function SmartEditor({ userData }: { userData: any }) {
   
   // Real-time Preview Sync Effect (Zero-Lag Content & Style)
   useEffect(() => {
-    if (resumeData && iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ 
-        type: 'SYNC_DATA', 
-        data: resumeData,
-        styles: styles,
-        sections: sectionConfig
-      }, '*');
-    }
+    const syncData = () => {
+      if (resumeData && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ 
+          type: 'SYNC_DATA', 
+          data: resumeData,
+          styles: styles,
+          sections: sectionConfig
+        }, '*');
+      }
+    };
+
+    syncData();
+    
+    // Listen for IFRAME_READY to resync
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'IFRAME_READY') {
+        syncData();
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [resumeData, styles, sectionConfig]);
   
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isOptimizing, setIsOptimizing] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Tab change handler for mobile (auto-switch to edit)
-  const handleTabChange = (tab: any) => {
-    setActiveTab(tab);
-    setMobileMode('edit');
-  };
   
   // Analysis States
   const [atsAnalysis, setAtsAnalysis] = useState<any>(null);
@@ -163,35 +166,51 @@ export default function SmartEditor({ userData }: { userData: any }) {
         data: resumeData,
         styles,
         sections: sectionConfig,
+        step,
         timestamp: Date.now()
       };
       localStorage.setItem('resume_morph_draft', JSON.stringify(draft));
     }
   }, [resumeData, styles, sectionConfig, step]);
 
-  // Load draft
+  // Load draft logic
   useEffect(() => {
     const saved = localStorage.getItem('resume_morph_draft');
     if (saved) {
       try {
         const draft = JSON.parse(saved);
-      } catch (e) {}
+        // Only load if it's recent (e.g. 24 hours)
+        if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) {
+          setResumeData(draft.data);
+          setStyles(draft.styles);
+          setSectionConfig(draft.sections);
+          setStep(draft.step || 'studio');
+        }
+      } catch (e) {
+        console.error("Failed to load draft", e);
+      }
     }
   }, []);
+
+  // Initial preview generation when data is available
+  useEffect(() => {
+    if (resumeData && step === 'studio' && !generatedHtml && !loading) {
+      refreshPreview();
+    }
+  }, [resumeData, step, generatedHtml]);
 
   const [userMessage, setUserMessage] = useState('');
   
   const [isLocked, setIsLocked] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     setIsLocked(true);
-    setActiveTab('analyze'); // Close chat/edit by moving to analysis
+    setActiveTab('analyze');
     
-    // Trigger Success Event for Congratulations Modal/Notification
     window.dispatchEvent(new CustomEvent('resume-saved', { 
       detail: { name: resumeData?.personalInfo.name } 
     }));
-  };
+  }, [resumeData]);
 
   const shareToWhatsApp = () => {
     if (!resumeData) return;
@@ -215,16 +234,39 @@ export default function SmartEditor({ userData }: { userData: any }) {
     setIsTyping(true);
     
     try {
-      const updatedData = await conversationalEdit(resumeData, userMsg.content);
-      setResumeData(updatedData);
+      const result = await conversationalEdit(resumeData, userMsg.content);
+      
+      if (result.status === 'clarification_needed') {
+        const assistantMsg: CustomMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: result.message || "I need a bit more information to help you with that. Could you please specify what exactly you'd like to update?",
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+        return;
+      }
+
+      if (result.updated_resume) {
+        setResumeData(result.updated_resume);
+        // Full refresh to ensure structural changes are reflected
+        setTimeout(() => refreshPreview(), 100);
+      }
       
       const assistantMsg: CustomMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I've updated your resume based on your request. You can see the changes in the preview. Is there anything else you'd like to modify?",
+        content: result.finalized 
+          ? "Your resume has been finalized! I've applied all your changes and frozen the content for export. You can now download your resume using the buttons below."
+          : (result.message || "I've updated your resume based on your request. You can see the changes in the preview. Is there anything else you'd like to modify?"),
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      if (result.finalized) {
+        handleSave();
+      }
+
     } catch (e: any) {
       const errorMsg: CustomMessage = {
         id: (Date.now() + 1).toString(),
@@ -236,7 +278,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
     } finally {
       setIsTyping(false);
     }
-  }, [userMessage, isTyping, resumeData]);
+  }, [userMessage, isTyping, resumeData, isLocked, handleSave]);
 
   const onDropResume = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
@@ -261,15 +303,12 @@ export default function SmartEditor({ userData }: { userData: any }) {
         reader.readAsDataURL(file);
       });
 
-      // Compress large images if any (not really applicable to resumes but good practice)
       const parsed = await parseResumeToData({ base64, mimeType: file.type, text });
       setResumeData(parsed);
       setStep('studio');
       
-      // Trigger Success Event for Congratulations Modal
       window.dispatchEvent(new CustomEvent('morph-success'));
 
-      // Force initial refresh 
       setTimeout(() => refreshPreview(), 100);
     } catch (err: any) {
       setError(err.message || "Failed to parse resume.");
@@ -289,7 +328,6 @@ export default function SmartEditor({ userData }: { userData: any }) {
         reader.readAsDataURL(file);
       });
       
-      // Compress design reference image to avoid large AI payloads
       if (file.type.startsWith('image/')) {
         base64 = await compressImage(base64, 1024);
       }
@@ -329,8 +367,6 @@ export default function SmartEditor({ userData }: { userData: any }) {
 
     setLoading(true);
     try {
-      // Send a request to the iframe to generate a canvas
-      // We'll use a unique ID to handle the response
       const requestId = Date.now().toString();
       
       const handleMessage = async (event: MessageEvent) => {
@@ -367,7 +403,6 @@ export default function SmartEditor({ userData }: { userData: any }) {
       window.addEventListener('message', handleMessage);
       iframeWindow.postMessage({ type: 'CAPTURE_CANVAS', requestId }, '*');
       
-      // Cleanup listener if it takes too long
       setTimeout(() => {
         window.removeEventListener('message', handleMessage);
         if (loading) setLoading(false);
@@ -598,7 +633,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
   }
 
   return (
-    <div className="h-[calc(100vh-160px)] bg-[var(--bg-secondary)] flex flex-col overflow-hidden">
+    <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] bg-[var(--bg-secondary)] flex flex-col overflow-hidden">
       {/* Local Context Header */}
       <div className="h-16 bg-[var(--bg-primary)]/50 backdrop-blur-md border-b border-[var(--border-color)] flex items-center justify-between px-8 md:px-12 shrink-0 z-30">
         <div className="flex items-center gap-6">
@@ -642,7 +677,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
               mobileMode === 'edit' ? "bg-indigo-600 text-white shadow-lg" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
             )}
           >
-            <Edit3 className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
             Editor
           </button>
           <button 
@@ -665,23 +700,42 @@ export default function SmartEditor({ userData }: { userData: any }) {
             mobileMode === 'preview' && "hidden lg:flex"
           )}
         >
-          {/* Tabs */}
-          <div className="flex border-b border-[var(--border-color)] shrink-0 overflow-x-auto no-scrollbar">
-            {(['chat', 'design', 'sections', 'analyze', 'manual'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabChange(tab)}
+          {/* Header */}
+          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setActiveTab('chat')}
                 className={cn(
-                  "flex-1 py-5 px-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative whitespace-nowrap min-w-[80px]",
-                  activeTab === tab ? "text-indigo-600" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                  activeTab === 'chat' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
                 )}
               >
-                {tab}
-                {activeTab === tab && (
-                  <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600" />
-                )}
+                Chat
               </button>
-            ))}
+              <button 
+                onClick={() => setActiveTab('design')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                  activeTab === 'design' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                )}
+              >
+                Design
+              </button>
+              <button 
+                onClick={() => setActiveTab('analyze')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                  activeTab === 'analyze' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+                )}
+              >
+                Score
+              </button>
+            </div>
+            {isLocked && (
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
+                <CheckCircle className="w-3 h-3" /> Finalized
+              </span>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -690,9 +744,9 @@ export default function SmartEditor({ userData }: { userData: any }) {
               {activeTab === 'chat' && (
                 <motion.div 
                   key="chat"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="flex-1 min-h-0"
                 >
                   <ResumeChat 
@@ -701,73 +755,29 @@ export default function SmartEditor({ userData }: { userData: any }) {
                     userMessage={userMessage}
                     setUserMessage={setUserMessage}
                     onSend={handleSendMessage}
+                    isLocked={isLocked}
                   />
                 </motion.div>
               )}
-
-              {activeTab === 'manual' && (
-                <motion.div 
-                  key="manual"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 md:space-y-10 custom-scrollbar"
-                >
-                  <IdentitySection 
-                    data={resumeData?.personalInfo} 
-                    update={updatePersonalInfo} 
-                  />
-
-                  <SummarySection 
-                    value={resumeData?.summary} 
-                    onChange={(v: string) => setResumeData(prev => prev ? ({ ...prev, summary: v }) : null)} 
-                  />
-
-                  <ExperienceSection 
-                    data={resumeData?.experience} 
-                    update={updateExperience}
-                    add={addExperience}
-                    remove={removeExperience}
-                  />
-
-                  <ProjectsSection 
-                    data={resumeData?.projects}
-                    update={updateProject}
-                    add={addProject}
-                    remove={removeProject}
-                  />
-
-                  <EducationSection 
-                    data={resumeData?.education} 
-                    update={updateEducation}
-                    add={addEducation}
-                    remove={removeEducation}
-                  />
-
-                  <SkillsSection 
-                    data={resumeData?.skills} 
-                    update={updateSkills}
-                  />
-                </motion.div>
-              )}
-
               {activeTab === 'design' && (
-                <div className="p-8 overflow-y-auto custom-scrollbar">
-                  <DesignSection styles={styles} setStyles={setStyles} />
-                </div>
+                 <motion.div 
+                   key="design"
+                   initial={{ opacity: 0 }}
+                   animate={{ opacity: 1 }}
+                   exit={{ opacity: 0 }}
+                   className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar"
+                 >
+                   <DesignSection styles={styles} setStyles={setStyles} />
+                 </motion.div>
               )}
-
-              {activeTab === 'sections' && (
-                <div className="p-8 overflow-y-auto custom-scrollbar">
-                  <SectionsVisibility 
-                    config={sectionConfig} 
-                    setConfig={setSectionConfig} 
-                  />
-                </div>
-              )}
-
               {activeTab === 'analyze' && (
-                <div className="p-8 overflow-y-auto custom-scrollbar">
+                <motion.div 
+                  key="analyze"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex-1 overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar"
+                >
                   <AnalyzeSection 
                     resumeData={resumeData}
                     atsAnalysis={atsAnalysis}
@@ -777,18 +787,15 @@ export default function SmartEditor({ userData }: { userData: any }) {
                     targetJd={targetJd}
                     setTargetJd={setTargetJd}
                   />
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
-            
-            {/* Bottom Spacing for Mobile Toggle Bar */}
-            <div className="h-24 lg:hidden shrink-0" />
           </div>
         </aside>
 
         {/* Right Area: Preview Canvas */}
         <main className={cn(
-          "flex-1 bg-[var(--bg-secondary)] p-4 md:p-12 overflow-y-auto relative flex flex-col items-center custom-scrollbar transition-all duration-300",
+          "flex-1 bg-[var(--bg-secondary)] p-4 md:p-12 overflow-y-auto relative flex flex-col items-center custom-scrollbar transition-all duration-300 pb-40",
           mobileMode === 'edit' && "hidden lg:flex"
         )}>
           {isRefreshing && (
@@ -808,12 +815,12 @@ export default function SmartEditor({ userData }: { userData: any }) {
              {/* Toolbar Overlay */}
              <div className="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-[var(--bg-primary)]/80 backdrop-blur-md rounded-2xl shadow-xl shadow-black/5 border border-[var(--border-color)] mb-4 md:mb-8 sticky top-0 z-30">
                <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-indigo-600 flex items-center gap-2 group shrink-0">
-                 <MousePointerClick className="w-4 h-4" />
+                 <Target className="w-4 h-4" />
                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Select Mode</span>
                </button>
                <div className="w-px h-6 bg-[var(--border-color)]" />
                <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center gap-2 group shrink-0">
-                 <Move className="w-4 h-4 group-hover:scale-110" />
+                 <Layout className="w-4 h-4 group-hover:scale-110" />
                  <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Layout</span>
                </button>
                <div className="w-px h-6 bg-[var(--border-color)]" />
@@ -830,7 +837,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
                    <RefreshCw className="w-4 h-4" />
                  </button>
                  <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><AlertCircle className="w-4 h-4" /></button>
-                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><Languages className="w-4 h-4" /></button>
+                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><RefreshCw className="w-4 h-4" /></button>
                  <button 
                   onClick={handleSave}
                   disabled={isLocked}
@@ -1160,7 +1167,10 @@ export default function SmartEditor({ userData }: { userData: any }) {
                             }, 500);
 
                             window.addEventListener('load', () => {
-                              setTimeout(paginate, 100);
+                              setTimeout(() => {
+                                paginate();
+                                window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
+                              }, 100);
                             });
                           </script>
                         </head>
@@ -1187,33 +1197,39 @@ export default function SmartEditor({ userData }: { userData: any }) {
           </div>
         </main>
       </div>
-      {/* Unified Action Bar */}
+      {/* Floating Actions */}
       <AnimatePresence>
         {!loading && (
           <motion.div 
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-[150] p-4 md:p-6 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-t border-[var(--border-color)] shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+            initial={{ opacity: 0, scale: 0.8, x: -20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.8, x: -20 }}
+            className="fixed bottom-24 md:bottom-6 left-4 md:left-6 z-[150] flex flex-col gap-4"
           >
-            <div className="max-w-3xl mx-auto flex items-center gap-3 md:gap-4">
-              <button 
-                onClick={shareToWhatsApp}
-                title="Share on WhatsApp"
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-white dark:bg-gray-900 text-[#25D366] border-2 border-[#25D366] rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 hover:bg-[#25D366]/5"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span>WhatsApp</span>
-              </button>
-              <button 
-                onClick={downloadPdf}
-                disabled={loading}
-                className="flex-[1.5] flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 disabled:opacity-50"
-              >
-                <Download className="w-5 h-5" />
-                <span>Download PDF</span>
-              </button>
-            </div>
+            {/* WhatsApp share */}
+            <button 
+              onClick={shareToWhatsApp}
+              title="Share on WhatsApp"
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white flex items-center justify-center shadow-2xl shadow-[#25D366]/30 transition-all hover:scale-110 active:scale-95 group relative"
+            >
+              <MessageSquare className="w-5 h-5" />
+              <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
+                WhatsApp Share
+              </div>
+            </button>
+
+            {/* Download PDF */}
+            <button 
+              onClick={downloadPdf}
+              disabled={loading}
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/30 transition-all hover:scale-110 active:scale-95 group relative disabled:opacity-50"
+              title="Download PDF"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
+                Download PDF
+              </div>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1222,7 +1238,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
 }
 
 // Sub-components
-const ResumeChat = memo(({ messages, isTyping, userMessage, setUserMessage, onSend }: any) => {
+const ResumeChat = memo(({ messages, isTyping, userMessage, setUserMessage, onSend, isLocked }: any) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1258,13 +1274,6 @@ const ResumeChat = memo(({ messages, isTyping, userMessage, setUserMessage, onSe
               m.role === 'user' ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-tl-none whitespace-pre-wrap"
             )}>
               {m.content}
-              <div className={cn(
-                "mt-2 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest opacity-40",
-                m.role === 'user' ? "justify-end" : "justify-start"
-              )}>
-                <Clock className="w-2.5 h-2.5" />
-                {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
             </div>
           </motion.div>
         ))}
@@ -1291,409 +1300,121 @@ const ResumeChat = memo(({ messages, isTyping, userMessage, setUserMessage, onSe
           <textarea
             value={userMessage}
             onChange={(e) => setUserMessage(e.target.value)}
+            disabled={isLocked}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 onSend();
               }
             }}
-            placeholder="Tell me what to change..."
-            className="w-full bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] rounded-2xl p-4 pr-14 text-sm font-medium focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5 transition-all resize-none outline-none text-[var(--text-primary)]"
+            placeholder={isLocked ? "Editing is locked. Your resume is finalized." : "Tell me what to change..."}
+            className={cn(
+              "w-full bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] rounded-2xl p-4 pr-14 text-sm font-medium transition-all resize-none outline-none text-[var(--text-primary)]",
+              isLocked ? "opacity-50 cursor-not-allowed border-gray-200" : "focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5"
+            )}
             rows={2}
           />
           <button
             onClick={onSend}
-            disabled={!userMessage.trim() || isTyping}
+            disabled={!userMessage.trim() || isTyping || isLocked}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 shadow-lg shadow-indigo-200 dark:shadow-none"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
         <p className="mt-2 text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest text-center">
-          Type commands like "Add a summary" or "Update my title"
+          {isLocked ? "Resume Finalized & Locked" : 'Type commands like "Add a summary" or "Update my title"'}
         </p>
       </div>
     </div>
   );
 });
 
-const IdentitySection = memo(({ data, update }: any) => (
-  <section className="space-y-8">
-    <div className="space-y-2">
-      <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Identity & Contact</h2>
-      <p className="text-sm font-medium text-[var(--text-tertiary)]">Essential contact information and professional headline.</p>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <Input label="Full Name" value={data?.name} onChange={(v: string) => update('name', v)} icon={<Edit3 />} />
-      <Input label="Job Title" value={data?.title} onChange={(v: string) => update('title', v)} icon={<Target />} />
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <Input label="Email" value={data?.email} onChange={(v: string) => update('email', v)} icon={<Mail />} />
-      <Input label="Phone" value={data?.phone} onChange={(v: string) => update('phone', v)} icon={<Phone />} />
-    </div>
-    <Input label="Location" value={data?.location} onChange={(v: string) => update('location', v)} icon={<MapPin />} />
-  </section>
-));
-
-const EducationSection = memo(({ data, update, add, remove }: any) => (
-  <section className="space-y-6">
-    <div className="flex items-center justify-between">
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Education</h2>
-        <p className="text-sm font-medium text-[var(--text-tertiary)]">Academic background and certifications.</p>
-      </div>
-      <button 
-        onClick={add}
-        className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 group shadow-sm border border-indigo-500/20"
-      >
-        <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-        <span className="text-[10px] font-black uppercase tracking-widest leading-none">Add Item</span>
-      </button>
-    </div>
-    <div className="grid gap-6">
-      {data?.map((edu: any, i: number) => (
-        <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
-           <div className="flex justify-between items-start gap-4">
-             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-               <Input label="School / University" value={edu.school} onChange={(v: any) => update(i, 'school', v)} small />
-               <Input label="Dates" value={edu.dates} onChange={(v: any) => update(i, 'dates', v)} small />
-             </div>
-             <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
-               <Trash2 className="w-5 h-5" />
-             </button>
-           </div>
-           <Input label="Degree / Major" value={edu.degree} onChange={(v: any) => update(i, 'degree', v)} small />
-        </div>
-      ))}
-    </div>
-  </section>
-));
-
-const SkillsSection = memo(({ data, update }: any) => {
-  const [newSkill, setNewSkill] = useState('');
-  
-  const handleAdd = () => {
-    if (!newSkill.trim()) return;
-    update([...(data || []), newSkill.trim()]);
-    setNewSkill('');
-  };
-
-  const handleRemove = (index: number) => {
-    update(data.filter((_: any, i: number) => i !== index));
-  };
-
+const DesignSection = memo(({ styles, setStyles }: any) => {
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Key Skills</h2>
-        <p className="text-sm font-medium text-[var(--text-tertiary)]">Technical expertise and core competencies.</p>
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Visual Architecture</h2>
+        <p className="text-sm font-medium text-[var(--text-secondary)]">Customize the aesthetic framework of your resume.</p>
       </div>
-      <div className="p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6">
-        <div className="flex gap-3">
-          <div className="flex-1 relative group">
-            <input 
-              type="text" 
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              placeholder="Add a skill (e.g. TypeScript, Strategy)"
-              className="w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl py-4 px-6 text-sm font-bold transition-all outline-none focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5 text-[var(--text-primary)]"
-            />
-          </div>
-          <button 
-            onClick={handleAdd}
-            className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 dark:shadow-none"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {data?.map((skill: any, i: number) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="group flex items-center gap-2 px-4 py-2 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl hover:border-indigo-200 transition-all"
-            >
-              <span className="text-xs font-black uppercase tracking-widest text-[var(--text-primary)]">
-                {typeof skill === 'string' ? skill : (skill?.category ? `${skill.category}: ${skill.items?.join(', ')}` : JSON.stringify(skill))}
-              </span>
-              <button onClick={() => handleRemove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                <X className="w-3.5 h-3.5" />
+
+      <div className="space-y-6">
+        {/* Colors */}
+        <div className="space-y-4">
+          <label className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)]">Accent Palette</label>
+          <div className="grid grid-cols-6 gap-3">
+            {COLORS.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setStyles((prev: any) => ({ ...prev, primaryColor: c.value }))}
+                className={cn(
+                  "w-10 h-10 rounded-xl transition-all relative group",
+                  styles.primaryColor === c.value ? "ring-4 ring-indigo-500/10 scale-110" : "hover:scale-105"
+                )}
+                style={{ backgroundColor: c.value }}
+              >
+                {styles.primaryColor === c.value && (
+                  <CheckCircle className="w-5 h-5 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                )}
               </button>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-});
-
-const SummarySection = memo(({ value, onChange }: any) => {
-  const [isFocused, setIsFocused] = useState(false);
-
-  return (
-    <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Profile Summary</h2>
-          <p className="text-sm font-medium text-[var(--text-tertiary)]">Your professional pitch and unique value proposition.</p>
-        </div>
-        <button 
-          className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-500/20 transition-all flex items-center gap-2 group shadow-sm border border-indigo-500/20"
-          title="Polish with AI"
-        >
-          <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-          <span className="text-[10px] font-black uppercase tracking-widest leading-none">Optimize</span>
-        </button>
-      </div>
-      <div className={cn(
-        "relative rounded-3xl transition-all duration-300 p-0.5",
-        isFocused ? "bg-gradient-to-br from-indigo-500/20 to-purple-500/20 shadow-xl" : "bg-transparent"
-      )}>
-        <textarea 
-          value={value || ''} 
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            "w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-[22px] p-6 text-sm font-medium min-h-[180px] transition-all outline-none resize-none leading-relaxed text-[var(--text-secondary)]",
-            "focus:bg-[var(--bg-primary)] focus:border-indigo-600/20",
-            "placeholder:text-[var(--text-tertiary)]/30"
-          )}
-          placeholder="Write a brief, high-impact summary of your career..."
-        />
-      </div>
-    </section>
-  );
-});
-
-const ProjectsSection = memo(({ data, update, add, remove }: any) => {
-  return (
-    <section className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Personal Projects</h2>
-          <p className="text-sm font-medium text-[var(--text-tertiary)]">Showcase your side projects and technical contributions.</p>
-        </div>
-        <button 
-          onClick={add}
-          className="p-3 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-black/5"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="grid gap-6">
-        {data?.map((project: any, i: number) => (
-          <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
-            <div className="flex justify-between items-start gap-4">
-               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <Input label="Project Name" value={project.name} onChange={(v: any) => update(i, 'name', v)} small />
-                 <Input label="Tech Stack" value={project.tech} onChange={(v: any) => update(i, 'tech', v)} placeholder="React, Node.js, etc." small />
-               </div>
-               <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
-                 <Trash2 className="w-5 h-5" />
-               </button>
-            </div>
-            <Input label="Description" value={project.description} onChange={(v: any) => update(i, 'description', v)} small />
-            <Input label="Project Link (Optional)" value={project.link} onChange={(v: any) => update(i, 'link', v)} small />
+            ))}
           </div>
-        ))}
-      </div>
-    </section>
-  );
-});
-
-const ExperienceSection = memo(({ data, update, add, remove }: any) => {
-  const [isOptimizing, setIsOptimizing] = useState<{index: number, lineIndex: number} | null>(null);
-
-  const optimizeLine = async (index: number, lineIndex: number) => {
-    const bullet = data[index].bullets[lineIndex];
-    if (!bullet) return;
-    
-    setIsOptimizing({ index, lineIndex });
-    try {
-      const context = `${data[index].role} at ${data[index].company}`;
-      const improved = await improveBulletPoint(bullet, context);
-      
-      const newBullets = [...data[index].bullets];
-      newBullets[lineIndex] = improved;
-      update(index, 'bullets', newBullets);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsOptimizing(null);
-    }
-  };
-
-  return (
-    <section className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Work Experience</h2>
-          <p className="text-sm font-medium text-[var(--text-tertiary)]">Chronological list of your professional roles.</p>
         </div>
-        <button 
-          onClick={add}
-          className="p-3 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-black/5"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="grid gap-6">
-        {data?.map((exp: any, i: number) => (
-          <div key={i} className="p-6 md:p-8 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] space-y-6 group relative hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-500">
-            <div className="flex justify-between items-start gap-4">
-               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <Input label="Company" value={exp.company} onChange={(v: any) => update(i, 'company', v)} small />
-                 <Input label="Dates" value={exp.dates} onChange={(v: any) => update(i, 'dates', v)} small />
-               </div>
-               <button onClick={() => remove(i)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100 shrink-0">
-                 <Trash2 className="w-5 h-5" />
-               </button>
-            </div>
-            <Input label="Role / Title" value={exp.role} onChange={(v: any) => update(i, 'role', v)} small />
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Key Achievements</label>
-                <div className="h-px flex-1 bg-[var(--border-color)] mx-4 md:block hidden" />
-              </div>
-              <div className="space-y-4">
-                {exp.bullets.map((bullet: string, lineIdx: number) => (
-                  <div key={lineIdx} className="relative group/line">
-                    <textarea 
-                      value={bullet}
-                      onChange={(e) => {
-                        const newBullets = [...exp.bullets];
-                        newBullets[lineIdx] = e.target.value;
-                        update(i, 'bullets', newBullets);
-                      }}
-                      rows={2}
-                      className="w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl p-4 md:p-5 pr-12 text-xs font-medium focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5 transition-all resize-none leading-relaxed outline-none text-[var(--text-primary)] transition-all duration-300"
-                      placeholder="Describe your impact and results..."
-                    />
-                    <div className="absolute right-2 top-2 bottom-2 flex flex-col justify-center opacity-0 group-hover/line:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => optimizeLine(i, lineIdx)}
-                        disabled={isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx}
-                        className="p-2 bg-indigo-600 shadow-xl shadow-indigo-500/30 dark:shadow-none border border-indigo-400 rounded-xl text-white hover:scale-110 transition-all disabled:opacity-50 z-30"
-                        title="Boost Impact with AI"
-                      >
-                        {isOptimizing?.index === i && isOptimizing?.lineIndex === lineIdx ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4 fill-white" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <button 
-                  onClick={() => update(i, 'bullets', [...exp.bullets, ''])}
-                  className="w-full py-3 border-2 border-dashed border-[var(--border-color)] rounded-2xl text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] hover:border-indigo-100 hover:text-indigo-600 transition-all"
-                >
-                  + Add achievement
-                </button>
-              </div>
-            </div>
+
+        {/* Fonts */}
+        <div className="space-y-4">
+          <label className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)]">Typographic Scale</label>
+          <div className="grid grid-cols-1 gap-2">
+            {FONTS.map((f) => (
+              <button
+                key={f.name}
+                onClick={() => setStyles((prev: any) => ({ ...prev, fontFamily: f.name }))}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left",
+                  styles.fontFamily === f.name 
+                    ? "border-indigo-600 bg-indigo-50/10 text-indigo-600" 
+                    : "border-[var(--border-color)] text-[var(--text-secondary)] hover:border-indigo-400"
+                )}
+              >
+                <span className="font-bold" style={{ fontFamily: f.value }}>{f.name}</span>
+                {styles.fontFamily === f.name && <CheckCircle className="w-4 h-4" />}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Font Size & Spacing */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Font Size</label>
+            <select 
+              value={styles.fontSize}
+              onChange={(e) => setStyles((prev: any) => ({ ...prev, fontSize: e.target.value }))}
+              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl p-3 text-xs font-bold outline-none"
+            >
+              <option value="xs">Extra Small</option>
+              <option value="small">Small</option>
+              <option value="normal">Normal</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Line Spacing</label>
+            <select 
+              value={styles.spacing}
+              onChange={(e) => setStyles((prev: any) => ({ ...prev, spacing: e.target.value }))}
+              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl p-3 text-xs font-bold outline-none"
+            >
+              <option value="compact">Compact</option>
+              <option value="normal">Normal</option>
+              <option value="comfortable">Comfortable</option>
+            </select>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   );
 });
-
-const DesignSection = memo(({ styles, setStyles }: any) => (
-  <motion.div 
-    key="design"
-    initial={{ opacity: 0, x: -10 }}
-    animate={{ opacity: 1, x: 0 }}
-    exit={{ opacity: 0, x: 10 }}
-    className="space-y-12"
-  >
-    <section className="space-y-6 text-[var(--text-primary)]">
-      <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest flex items-center gap-2">
-        <Type className="w-4 h-4" /> Typography
-      </h3>
-      <div className="grid grid-cols-1 gap-2">
-        {FONTS.map((font) => (
-          <button
-            key={font.name}
-            onClick={() => setStyles((prev: any) => ({...prev, fontFamily: font.name}))}
-            className={cn(
-              "flex items-center justify-between px-6 py-4 rounded-2xl border transition-all",
-              styles.fontFamily === font.name 
-                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/20 dark:shadow-none" 
-                : "bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-primary)] hover:border-indigo-600"
-            )}
-          >
-            <span className="text-sm font-bold" style={{ fontFamily: font.value }}>{font.name}</span>
-            {styles.fontFamily === font.name && <CheckCircle className="w-4 h-4" />}
-          </button>
-        ))}
-      </div>
-    </section>
-
-    <section className="space-y-6">
-      <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest flex items-center gap-2">
-        <Palette className="w-4 h-4" /> Accent Palette
-      </h3>
-      <div className="grid grid-cols-6 gap-3">
-        {COLORS.map((color) => (
-          <button
-            key={color.name}
-            onClick={() => setStyles((prev: any) => ({...prev, primaryColor: color.value}))}
-            className={cn(
-              "w-full aspect-square rounded-xl transition-all border-4 flex items-center justify-center",
-              styles.primaryColor === color.value ? "border-[var(--bg-primary)] scale-110 shadow-lg" : "border-transparent"
-            )}
-            style={{ backgroundColor: color.value }}
-          >
-            {styles.primaryColor === color.value && <CheckCircle className="w-4 h-4 text-white" />}
-          </button>
-        ))}
-      </div>
-    </section>
-
-    <section className="space-y-8 text-[var(--text-primary)]">
-      <div className="space-y-4">
-        <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest">Global Font Size</h3>
-        <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl">
-          {['xs', 'small', 'normal', 'large'].map((size) => (
-            <button
-              key={size}
-              onClick={() => setStyles((prev: any) => ({...prev, fontSize: size}))}
-              className={cn(
-                "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                styles.fontSize === size ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              )}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest">Section Density</h3>
-        <div className="flex p-1 bg-[var(--bg-secondary)] rounded-2xl">
-          {['compact', 'normal', 'comfortable'].map((gap) => (
-            <button
-              key={gap}
-              onClick={() => setStyles((prev: any) => ({...prev, spacing: gap}))}
-              className={cn(
-                "flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                styles.spacing === gap ? "bg-[var(--bg-primary)] text-indigo-600 shadow-sm" : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-              )}
-            >
-              {gap}
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  </motion.div>
-));
 
 const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch, setJdMatch, targetJd, setTargetJd }: any) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -1706,7 +1427,7 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
       const resumeText = JSON.stringify(resumeData);
       const plan = await getOptimizationPlan(resumeText);
       setAtsAnalysis({
-        score: 75 + Math.floor(Math.random() * 15), // Mocking some logical variance
+        score: 75 + Math.floor(Math.random() * 15),
         recommendations: plan
       });
     } catch (e) {
@@ -1751,7 +1472,6 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
             <button 
               onClick={runAtsCheck}
               disabled={isAnalyzing}
-              title="Run a deep audit of your resume for ATS compatibility"
               className="px-4 py-2 bg-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-900/20"
             >
               {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
@@ -1834,7 +1554,6 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
               <button 
                 onClick={runJdMatch}
                 disabled={isMatching || !targetJd}
-                title="Analyze how well your resume matches this specific job description"
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 dark:shadow-none"
               >
                 {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
@@ -1872,65 +1591,6 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
   );
 });
 
-const SectionsVisibility = memo(({ config, setConfig }: any) => {
-  const toggleVisibility = (id: string) => {
-    setConfig((prev: any) => prev.map((s: any) => 
-      s.id === id ? { ...s, visible: !s.visible } : s
-    ));
-  };
-
-  return (
-    <motion.div 
-      key="sections"
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 10 }}
-      className="space-y-12"
-    >
-            <div className="space-y-2">
-              <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Layout & Structure</h2>
-              <p className="text-sm font-medium text-[var(--text-tertiary)] leading-relaxed">
-                Toggle section visibility and drag to re-order your resume structure.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              {config.map((section: any) => (
-                <div 
-                  key={section.id}
-                  className={cn(
-                    "flex items-center justify-between p-4 bg-[var(--bg-primary)] border rounded-2xl shadow-sm transition-all group",
-                    section.visible ? "border-[var(--border-color)] opacity-100" : "border-[var(--border-color)] opacity-50 bg-[var(--bg-secondary)]"
-                  )}
-                >
-                  <div className="flex items-center gap-4 text-[var(--text-primary)]">
-                    <GripVertical className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-300 transition-colors cursor-move" />
-                    <span className="text-sm font-black tracking-tight">{section.name}</span>
-                  </div>
-                  <button 
-                    onClick={() => toggleVisibility(section.id)}
-                    className={cn(
-                      "w-12 h-6 rounded-full transition-all relative flex items-center px-1",
-                      section.visible ? "bg-indigo-600" : "bg-[var(--bg-secondary)]"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-4 h-4 bg-white rounded-full shadow-sm transition-all transform",
-                      section.visible ? "translate-x-6" : "translate-x-0"
-                    )} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-      <button className="w-full py-4 border-2 border-dashed border-[var(--border-color)] rounded-2xl text-[var(--text-tertiary)] hover:border-indigo-200 hover:text-indigo-600 flex items-center justify-center gap-3 transition-all">
-        <Plus className="w-5 h-5" />
-        <span className="text-sm font-black uppercase tracking-widest">Add Custom Section</span>
-      </button>
-    </motion.div>
-  );
-});
-
 function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) => void, loading: boolean, label: string, icon: React.ReactNode }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -1962,53 +1622,6 @@ function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) =>
       <div className="space-y-1">
         <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">{label}</p>
         <p className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest">Drag & drop or click to browse</p>
-      </div>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, small = false, icon = null }: any) {
-  const [localValue, setLocalValue] = useState(value || '');
-  const [isFocused, setIsFocused] = useState(false);
-  
-  useEffect(() => {
-    setLocalValue(value || '');
-  }, [value]);
-
-  return (
-    <div className="space-y-2 flex-1">
-      <label className={cn(
-        "block text-[10px] font-black uppercase tracking-widest ml-1 transition-colors",
-        isFocused ? "text-indigo-600" : "text-[var(--text-tertiary)]"
-      )}>
-        {label}
-      </label>
-      <div className="relative group">
-        {icon && (
-          <div className={cn(
-            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
-            isFocused ? "text-indigo-600" : "text-[var(--text-tertiary)]"
-          )}>
-            {React.cloneElement(icon, { size: 14 })}
-          </div>
-        )}
-        <input 
-          type="text" 
-          value={localValue} 
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onChange={(e) => {
-            setLocalValue(e.target.value);
-            onChange(e.target.value);
-          }}
-          className={cn(
-            "w-full bg-[var(--bg-secondary)] border-2 border-transparent rounded-2xl text-sm font-bold transition-all outline-none",
-            "focus:bg-[var(--bg-primary)] focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5",
-            "text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]/30",
-            small ? "py-3 pl-4 pr-4" : "py-4 pr-6 font-black tracking-tight",
-            icon && "pl-11"
-          )}
-        />
       </div>
     </div>
   );

@@ -48,21 +48,28 @@ async function extractDocxText(base64: string): Promise<string> {
 
 // Helper to extract JSON from a string that might contain extra text
 function extractJson(text: string): string {
+  if (!text) return "";
+  
   // First, try to handle markdown code blocks
   const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (markdownMatch && markdownMatch[1]) {
-    return markdownMatch[1].trim();
+    const cleaned = markdownMatch[1].trim();
+    if (cleaned.startsWith('{') || cleaned.startsWith('[')) return cleaned;
   }
 
+  // Find actual JSON object start
   const firstBrace = text.indexOf('{');
   const lastBrace = text.lastIndexOf('}');
-  const firstBracket = text.indexOf('[');
+  
+  // Find actual JSON array start: [ followed by optional whitespace and a valid JSON character
+  // Differentiates from [RESUME] or other TOON tags
+  const firstBracketMatch = text.match(/\[\s*[\[\{"0-9\-tfn]/);
+  const firstBracket = firstBracketMatch ? firstBracketMatch.index! : -1;
   const lastBracket = text.lastIndexOf(']');
 
   let start = -1;
   let end = -1;
 
-  // Determine if we are looking for an object or an array based on what comes first
   if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
     start = firstBrace;
     end = lastBrace;
@@ -72,14 +79,15 @@ function extractJson(text: string): string {
   }
 
   if (start !== -1 && end !== -1 && end > start) {
-    let candidate = text.substring(start, end + 1);
-    // Cleanup trailing junk after the last closing brace if it's an object
-    if (candidate.endsWith('}') || candidate.endsWith(']')) {
+    const candidate = text.substring(start, end + 1).trim();
+    // Strict JSON check: must start/end with correct braces and NOT look like TOON [TAG]
+    if ((candidate.startsWith('{') && candidate.endsWith('}')) || 
+        (candidate.startsWith('[') && candidate.endsWith(']') && !/^\[[A-Z_]+\]/.test(candidate))) {
       return candidate;
     }
   }
   
-  return text.trim();
+  return "";
 }
 
 // Support multiple API keys for rotation
@@ -120,9 +128,9 @@ async function withRetry<T>(fn: (ai: GoogleGenAI) => Promise<T>, retries = 2): P
     try {
       console.log(`[Gemini AI] Attempt ${attempt + 1}/${retries + 1} using key index ${currentKeyIndex}`);
       
-      // Add a 60-second timeout to the function execution
+      // Add a 120-second timeout to the function execution
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("AI_CALL_TIMEOUT")), 60000)
+        setTimeout(() => reject(new Error("AI_CALL_TIMEOUT")), 120000)
       );
       
       const result = await Promise.race([fn(ai), timeoutPromise]) as T;
@@ -133,7 +141,7 @@ async function withRetry<T>(fn: (ai: GoogleGenAI) => Promise<T>, retries = 2): P
       console.warn(`[Gemini AI] Error on attempt ${attempt + 1}:`, errorMsg);
       
       if (errorMsg === "ai_call_timeout") {
-        console.error("[Gemini AI] Call timed out after 60s");
+        console.error("[Gemini AI] Call timed out after 120s");
       }
 
       const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota");
@@ -176,26 +184,23 @@ export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawT
 
     const prompt = `FORENSIC CLONE ARCHITECT & PIXEL-PERFECT DESIGN ENGINEER.
     
-    TASK: Extract the absolute STRUCTURAL DNA of this REFERENCE RESUME with 100% fidelity.
+    TASK: Extract the absolute STRUCTURAL DNA of this REFERENCE RESUME with 100% fidelity for A4 RECONSTRUCTION.
     
     EXTRACTION PROTOCOLS (NO APPROXIMATIONS):
     1. GEOMETRY & GRID:
-       - Detect exact layout model: [Single Column | 2-Column Split | 3-Column Mesh | Asymmetric Sidebar].
-       - Column Ratios: Measure exact width percentages (e.g., Left Sidebar is exactly 31.5%).
-       - Padding/Margins: Detect internal gutter sizes (e.g. 12px) and outer page margins (e.g. 40px).
+       - Columns: Detect exact layout model (Single, 1:2 split, 2:1 split, Sidebar Left/Right).
+       - Widths: Measure exact width percentages for all columns (e.g., "Sidebar: 30%, Main: 70%").
+       - Gutters: Measure exact spacing between columns.
     2. TYPOGRAPHIC BLUEPRINT:
-       - Hierarchical Pairing: Detect font weights (300, 400, 600, 800), exact sizes, and line-heights.
-       - Letter Spacing: Identify tracking/kerning for headings.
-    3. VISUAL THEME & DECOR:
-       - HEX Accuracy: Extract exact colors for backgrounds, accent bars, bullet points, and icons.
-       - Dividers: Detect thickness (e.g., 1px solid vs 2px dashed) and positions.
-       - Shapes: Identify corner radii of profile photos or highlighting boxes (e.g., rounded-3xl).
-    4. INFOGRAPHIC STYLES:
-       - Skills Representation: Map exact style (Solid pill, outline pill, progress bar, dots, or simple list).
+       - Fonts: Identify font category (Serif, Sans, Mono) and pairing.
+       - Hierarchy: Identify exact weights (300 to 900) and relative sizes (H1, H2, Body, Subtext).
+       - Leading: Detect line heights and paragraph spacing.
+    3. VISUAL THEME:
+       - Colors: Extract HEX codes for backgrounds, accents, and text.
+       - Dividers: Identify divider styles (Solid lines, dashed, dots) and their positions (Top, Bottom, Left, Right).
+       - Bullet Points: Identify the symbol or style used.
     
-    STRICT REQUIREMENT: If the document is unreadable or non-standard, return an error. Otherwise, return a technical Manifest.
-    
-    OUTFIT: Return a technical "Layout Manifest" describing every pixel of the physical structure as a 1:1 reconstructive blueprint.`;
+    OUTPUT: A technical "Layout Manifest" as a JSON-like object describing the physical structure. Return ONLY the manifest.`;
 
     const contents: any[] = [];
     if (fileBase64 && mimeType && isNative) {
@@ -310,7 +315,7 @@ export async function generateResume(
   options: { lengthMode?: '1-page' | '2-page' | 'executive' } = {}
 ) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview"; 
+    const model = "gemini-3.1-pro-preview"; 
     
     const optimizationPrompt = jobDescription 
       ? `\n\nCONTENT MAPPING & AI OPTIMIZATION:
@@ -352,7 +357,7 @@ export async function generateResume(
     
     STRICT MAPPING PROTOCOLS:
     1. DNA TEMPLATE BINDING: 
-       - You MUST use the column ratios, vertical spacing, and typographic scales extracted in the DNA.
+       - You MUST use the column ratios, vertical spacing, and typographic scales extracted in the DNA analysis.
        - Sections MUST appear in the same order and visual hierarchy as the reference.
        - Match all decorative elements: Dividers (use border-bottom or border-top, NEVER text-decoration: underline for layout lines), horizontal/vertical lines, frames, bullet symbols, and HEX accent colors.
        - If the reference uses a vertical line to separate a sidebar, you MUST implement it using a border-l or border-r on the appropriate container.
@@ -361,29 +366,30 @@ export async function generateResume(
        - ALL Experience entries (Company, Role, Dates, ALL Bullet Points).
        - ALL Education history, ALL Skills categories and items.
        - ALL Projects, Certifications, Awards, and any Custom Sections.
-       - TRUNCATION IS A FAILURE. If content exceeds a single page, allow the layout to expand vertically.
-       - DO NOT Summarize. If the user has 10 bullet points, you list 10 bullet points.
+       - TRUNCATION IS A FAILURE. If content exceeds a single page, allow the layout to expand vertically into multiple <div class="page"> blocks.
+       - DO NOT Summarize or omit bullet points. If the user has 10 bullet points, you list 10 bullet points.
     3. PIXEL-PERFECT RENDER (STRICT):
-       - Page Setup: Use A4 size blocks.
-       - Dimensions: Each page MUST be 794px width x 1123px height.
-       - Structure: You MUST wrap each page's content in this exact structure:
-         <div class="page">
+       - Page Setup: Each page MUST be wrapped in:
+         <div class="page" data-page="Page X of Y">
            <div class="content">
              [YOU INSERT CONTENT HERE]
            </div>
          </div>
-       - Margins: The .page container has fixed padding of 48px T/B and 56px L/R. Usable content area is 682px (width) x 1027px (height).
-       - Content Constraint: Ensure content within a .content block NEVER exceeds 1027px in height. If more content exists, create a NEW <div class="page"><div class="content">...</div></div> block.
-       - Section Headers (STRICT SPACING): All section titles must have either:
-         a) A divider line (border-bottom) with padding-bottom: 6px and margin-bottom: 10px.
-         b) If a separate divider line is used, apply margin-bottom: 6px before it and margin-bottom: 10px after it.
-       - Dividers: Use border-bottom/top for lines. Round all spacing to whole pixels. No transform: scale().
-       - Page Breaks: Avoid splitting single lines or job headers across pages.
+       - Dimensions: Each .page block MUST be 794px width x 1123px height.
+       - Margins: The .page container has fixed padding of 48px T/B and 56px L/R.
+       - Content Height: Ensure content within a .content block does NOT exceed 1027px. If it does, safely move the rest to the NEXT page.
+       - Layout Fidelity: Strictly mirror the Columns and Width ratios from the Manifest.
+       - Layout Strategy (STRICT): 
+         * Use CSS Grid or Flexbox for columns. Example: <div class="grid grid-cols-[1fr_2.5fr] gap-8">.
+         * If the reference has a sidebar (Left or Right), YOU MUST REPLICATE IT EXACTLY.
+       - Spacing: Use Tailwind w-full for sections to ensure they span the column width.
+       - Section Headers: Replicate the styling (borders, bolding, capitalization) exactly as seen in the DNA.
+       - Typography: Use the specified font categories (Sans, Serif, Mono).
     
     VALIDATION GATE:
-    - Before returning code, perform a final "Source-to-Output" audit. 
-    - Verify that no experience entry was omitted because of space.
-    - If space is tight, use tighter leading/padding instead of deleting data.
+    - Verify that NO experience entry was omitted.
+    - If a section (like Skills) is on a sidebar in the reference, it MUST be on the sidebar in the output.
+    - If content spans multiple pages, ENSURE the sidebar/layout structure is maintained across pages if the reference requires it.
     
     OUTPUT: A single self-contained HTML structure with Tailwind classes. No descriptions. Just code.
     
@@ -725,65 +731,92 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
   });
 }
 
-export async function conversationalEdit(currentData: any, command: string) {
+export async function conversationalEdit(currentData: any, command: string, history: any[] = []) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview"; 
+    const model = "gemini-3.1-pro-preview"; 
     
     // Convert to TOON to optimize token usage
     const dataToon = TOON.stringify(currentData, 'RESUME');
 
-    const prompt = `EXPERT RESUME EDITOR & DATA ARCHITECT.
-    
-    CURRENT RESUME DATA (TOON):
-    ${dataToon}
-    
-    USER COMMAND: "${command}"
-    
-    TASK: Apply the USER COMMAND to the RESUME DATA.
-    
-    RULES:
-    1. PRECISION: Modify ONLY the fields requested by the user. Keep everything else identical.
-    2. DATA INTEGRITY: Never lose existing information unless explicitly asked to delete it.
-    3. SMART MAPPING: 
-       - If asked to "Add a project", append it to the projects array.
-       - If asked to "Update my role at Google", find the experience entry for Google and update the role field.
-       - If asked to "Make my summary more punchy", rewrite the summary field.
-       - If asked to "Add a section for Volunteering", add it to customSections.
-    4. TONAL ALIGNMENT: Keep the professional tone consistent with the rest of the resume.
-    5. STRUCTURE PRESERVATION: Keep tables, lists, and grouping as described in the JSON/TOON structure.
-    
-    OUTPUT: Return the COMPLETE updated resume data in TOON format. 
-    Wrap it in [RESUME] ... [/RESUME] tags.
-    
-    Output ONLY THE TOON content.`;
+    const prompt = `You are an AI Resume Editor embedded inside SmartEditor.tsx.
+
+Your job is to edit an existing resume JSON/HTML layout WITHOUT changing its design, structure, styling, spacing, or formatting.
+
+STRICT RULES:
+1. DO NOT modify layout, styling, fonts, spacing, alignment, margins, or sections order.
+2. ONLY update content based on user instruction.
+3. Preserve exact structure of the reference resume (clone-based editing).
+4. DO NOT add any new design elements (no lines, icons, bullets, dividers unless already present).
+5. DO NOT hallucinate data. Only use:
+   - Existing resume data
+   - User instructions
+6. If user asks vague instruction → ask clarification instead of guessing.
+7. Maintain professional resume language while editing.
+
+---
+
+SUPPORTED USER INTENTS:
+1. UPDATE existing content
+2. ADD new content
+3. DELETE content
+4. MODIFY sections
+5. RESTRUCTURE CONTENT ONLY (not layout)
+
+---
+
+MULTI-STEP EDITING MODE:
+- Maintain a working state of resume (DRAFT MODE)
+- Apply all user instructions step by step
+- DO NOT finalize until user says: "SAVE" or "FINALIZE"
+
+---
+
+SAVE BEHAVIOR:
+When user says "SAVE" or "SAVE IT":
+1. Freeze all edits
+2. Return FINAL structured resume data
+3. Mark state as FINALIZED = true
+4. Enable Download Button (frontend trigger)
+
+---
+
+OUTPUT FORMAT (STRICT):
+Always return valid JSON:
+{
+  "status": "editing" | "final" | "clarification_needed",
+  "message": "Used for clarification or summary of changes",
+  "changes_applied": ["list of strings"],
+  "updated_resume": {full_structured_resume_data},
+  "finalized": true | false
+}
+
+CURRENT RESUME DATA (TOON):
+${dataToon}
+
+USER COMMAND: "${command}"
+
+Return ONLY valid JSON.`;
 
     const response = await ai.models.generateContent({
       model,
       contents: [{ parts: [{ text: prompt }] }],
       config: {
-        temperature: 0.1, // High precision
+        temperature: 0.1,
+        responseMimeType: "application/json",
       }
     });
 
     try {
       const respText = response.text || "";
-      const toonMatch = respText.match(/\[RESUME\][\s\S]*?\[\/RESUME\]/);
-      const toonContent = toonMatch ? toonMatch[0] : respText;
-      
-      const parsed = TOON.parse(toonContent);
-      
-      if (TOON.validateResumeData(parsed)) {
-        return parsed;
-      }
-      
-      // Fallback: If TOON failed, check if it returned RAW JSON
       const jsonText = extractJson(respText);
-      const jsonParsed = JSON.parse(jsonText);
-      if (TOON.validateResumeData(jsonParsed)) {
-        return jsonParsed;
+      const result = JSON.parse(jsonText);
+      
+      // If the AI used TOON inside updated_resume (unlikely with this prompt but safe to check)
+      if (typeof result.updated_resume === 'string' && result.updated_resume.includes('[RESUME]')) {
+         result.updated_resume = TOON.parse(result.updated_resume);
       }
 
-      throw new Error("Invalid edit response");
+      return result;
     } catch (e) {
       console.error("Conversational edit failed", e);
       throw new Error("I couldn't process that specific edit. Please try rephrasing.");
@@ -875,12 +908,14 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
     } catch (e) {
       console.warn("TOON parsing failed or invalid, attempting JSON fallback", e);
       try {
-        const jsonText = extractJson(response.text || "{}");
+        const jsonText = extractJson(response.text || "");
+        if (!jsonText) throw new Error("No valid JSON found in response");
+        
         const jsonParsed = JSON.parse(jsonText);
         if (TOON.validateResumeData(jsonParsed)) {
           return jsonParsed;
         }
-        throw new Error("JSON also invalid");
+        throw new Error("JSON structure invalid for resume");
       } catch (jsonErr) {
         console.error("All parsing attempts failed", jsonErr);
         throw new Error("Failed to process resume data structure.");
@@ -964,7 +999,7 @@ export async function generateResumeFromData(
   referenceMime: string | null = null
 ) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.1-pro-preview";
     const parts: any[] = [];
     
     if (referenceBase64 && referenceMime && isSupportedMime(referenceMime)) {

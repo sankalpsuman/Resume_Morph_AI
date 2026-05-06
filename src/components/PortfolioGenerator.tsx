@@ -1540,12 +1540,27 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
                   )}
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={handleDownloadPDF} className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group">
-                      <Printer className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" /><span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">PDF Resume</span>
+                  <div className="flex justify-center gap-3">
+                    <button 
+                      onClick={handleDownloadPDF} 
+                      title="Download PDF Resume"
+                      className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group shadow-sm"
+                    >
+                      <Printer className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
                     </button>
-                    <button onClick={() => setShowSourceCode(true)} className="flex flex-col items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group">
-                      <Code className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" /><span className="text-[10px] font-bold text-slate-800 dark:text-slate-200">Code</span>
+                    <button 
+                      onClick={() => setShowSourceCode(true)} 
+                      title="View Source Code"
+                      className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group shadow-sm"
+                    >
+                      <Code className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
+                    </button>
+                    <button 
+                      onClick={handleDownloadSource}
+                      title="Download JSON Content"
+                      className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-all group shadow-sm"
+                    >
+                      <Download className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
                     </button>
                   </div>
                 </div>

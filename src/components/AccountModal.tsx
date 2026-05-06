@@ -360,14 +360,14 @@ export default function AccountModal({
                       <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
                       <button 
                         onClick={() => handleDownload(resume)}
-                        className="p-3 text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-2xl transition-all"
+                        className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-full transition-all"
                         title="Download HTML"
                       >
                         <FileCode className="w-5 h-5" />
                       </button>
                       <button 
                         onClick={() => handleDownloadWord(resume)}
-                        className="p-3 text-[var(--text-tertiary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-2xl transition-all"
+                        className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"
                         title="Download Word"
                       >
                         <FileType className="w-5 h-5" />

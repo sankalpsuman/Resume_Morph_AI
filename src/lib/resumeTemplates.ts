@@ -92,26 +92,38 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #f1f5f9; /* Workbench gray */
-      padding: 60px 0;
+      background: #e2e8f0; /* Slightly darker workbench gray for better contrast */
+      padding: 0; 
       scroll-behavior: smooth;
+    }
+    .preview-mode .preview-container-inner {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: visible;
     }
     .preview-mode .preview-scale {
       transform-origin: top center;
       will-change: transform;
-      width: 794px;
+      width: 850px; /* Wider to accommodate shadows */
       transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 0 100px 0;
+      overflow: visible;
     }
     .preview-mode #resume-preview {
       display: flex;
       flex-direction: column;
-      gap: 40px; /* Wider gap for page breaks */
-      padding-bottom: 120px;
+      gap: 50px; /* Increased gap */
+      width: 794px;
     }
     .preview-mode .page {
       margin: 0;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      border-radius: 2px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.15); /* Stronger shadow for depth */
+      border-radius: 4px;
       background: white;
       position: relative;
     }
@@ -251,10 +263,12 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
 <body class="${previewMode ? 'preview-mode' : ''}">
   ${previewMode ? `
     <div class="preview-wrapper">
-      <div class="preview-scale" id="scaling-container">
-        <div id="resume-preview">
-          ${contentHtml}
-          ${resumeFooter}
+      <div class="preview-container-inner" id="scrolling-limiter">
+        <div class="preview-scale" id="scaling-container">
+          <div id="resume-preview">
+            ${contentHtml}
+            ${resumeFooter}
+          </div>
         </div>
       </div>
     </div>
@@ -270,48 +284,103 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   <script>
     async function paginate() {
       const root = document.getElementById('resume-preview');
-      if (!root) return;
+      const scaler = document.getElementById('scaling-container');
+      if (!root || !scaler) return;
 
       // Anti-recursion guard
       if (root.getAttribute('data-paginating') === 'true') return;
       root.setAttribute('data-paginating', 'true');
 
-      // 1. Wait for images to load for accurate sizing
-      const images = Array.from(root.querySelectorAll('img'));
-      await Promise.all(images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-      }));
+      // 1. Temporarily disable scaling for accurate pixel measurement
+      const originalTransform = scaler.style.transform;
+      scaler.style.transform = 'scale(1)';
+      scaler.style.transition = 'none';
 
-      // 2. Flatten any existing pagination for a clean re-run
+      // Ensure no cropping during measurement
       const existingPages = Array.from(root.querySelectorAll('.page'));
+      existingPages.forEach(p => {
+        p.style.height = 'auto';
+        p.style.minHeight = '1123px';
+        const c = p.querySelector('.content');
+        if (c) {
+          c.style.height = 'auto';
+          c.style.minHeight = '1027px';
+        }
+      });
+
+      // Essential Usable height: 1123 - (48 * 2) = 1027
+      const USABLE_HEIGHT = 1027; 
+      const BUFFER = 5; // 5px buffer to prevent edge cases
+
+      const images = Array.from(root.querySelectorAll('img'));
+      await Promise.all(images.map(img => img.complete ? Promise.resolve() : new Promise(r => img.onload = img.onerror = r)));
+
+      // 1.5 Detect and cache layout shell (sidebar, etc) if present
+      let shellTemplate = null;
       if (existingPages.length > 0) {
-        const flatContent = document.createDocumentFragment();
+        const firstC = existingPages[0].querySelector('.content');
+        if (firstC && firstC.firstElementChild) {
+           const firstChild = firstC.firstElementChild;
+           // If it's a grid or flex with children, it's likely our shell
+           if (firstChild instanceof HTMLElement && (firstChild.classList.contains('grid') || firstChild.classList.contains('flex')) && firstChild.children.length > 1) {
+              shellTemplate = firstChild.cloneNode(false);
+              // Clone the sidebar (first child)
+              const sidebar = firstChild.firstElementChild.cloneNode(true);
+              shellTemplate.appendChild(sidebar);
+              // Clone the main column container (last child) but empty
+              const mainCol = firstChild.lastElementChild.cloneNode(false);
+              shellTemplate.appendChild(mainCol);
+           }
+        }
+      }
+
+      let initialNodes = [];
+      if (existingPages.length > 0) {
         existingPages.forEach(p => {
           const c = p.querySelector('.content');
           if (c) {
-            while (c.firstChild) flatContent.appendChild(c.firstChild);
+            const shell = c.firstElementChild;
+            if (shell instanceof HTMLElement && (shell.classList.contains('grid') || shell.classList.contains('flex')) && shell.children.length > 1) {
+              // Extract from main column (last child)
+              initialNodes.push(...Array.from(shell.lastElementChild.childNodes));
+            } else {
+              initialNodes.push(...Array.from(c.childNodes));
+            }
           }
         });
-        root.innerHTML = '';
-        root.appendChild(flatContent);
+      } else {
+        initialNodes = Array.from(root.childNodes);
       }
 
-      const elements = Array.from(root.children);
-      root.innerHTML = '';
+      if (initialNodes.length === 0) {
+        scaler.style.transform = originalTransform;
+        scaler.style.transition = '';
+        root.removeAttribute('data-paginating');
+        return;
+      }
 
-      const USABLE_HEIGHT = 1027; // 1123 - (48 * 2)
-      const BUFFER = 4; // 4px safety buffer
-
-      let pageCount = 0;
-      let pages = [];
-      
+      const fragment = document.createDocumentFragment();
       let currentPage = createPage();
-      pages.push(currentPage);
-      root.appendChild(currentPage);
       let currentContent = currentPage.querySelector('.content');
+      
+      // Target the main column if shell exists
+      if (shellTemplate) {
+        const shell = currentContent.firstElementChild;
+        if (shell && shell.lastElementChild) {
+          currentContent = shell.lastElementChild;
+        }
+      }
+      
+      // During pagination, allow content to grow for measurement
+      currentContent.style.height = 'auto';
+      
+      let pageList = [currentPage];
+      fragment.appendChild(currentPage);
 
-      for (const el of elements) {
+      for (const node of initialNodes) {
+        if (node.nodeType === 3 && !node.textContent?.trim()) continue;
+        
+        const el = node.cloneNode(true);
         if (el instanceof HTMLElement) {
           el.style.breakInside = 'avoid';
           el.style.pageBreakInside = 'avoid';
@@ -319,19 +388,25 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
 
         currentContent.appendChild(el);
         
-        const lastChild = currentContent.lastElementChild;
-        const currentHeight = lastChild 
-          ? Math.ceil(lastChild.getBoundingClientRect().bottom - currentContent.getBoundingClientRect().top) 
-          : 0;
+        // Measure real content height using scrollHeight which is more reliable for hidden overflow content
+        const currentHeight = currentContent.scrollHeight;
 
         if (currentHeight > (USABLE_HEIGHT - BUFFER)) {
-          if (currentContent.children.length > 1) {
-            currentContent.removeChild(el);
+          if (currentContent.childNodes.length > 1) {
+            currentContent.removeChild(currentContent.lastChild!);
             
             currentPage = createPage();
-            pages.push(currentPage);
-            root.appendChild(currentPage);
+            pageList.push(currentPage);
+            fragment.appendChild(currentPage);
+            
             currentContent = currentPage.querySelector('.content');
+            if (shellTemplate) {
+              const shell = currentContent.firstElementChild;
+              if (shell && shell.lastElementChild) {
+                currentContent = shell.lastElementChild;
+              }
+            }
+            currentContent.style.height = 'auto';
             currentContent.appendChild(el);
           } else {
             currentPage.classList.add('overflow');
@@ -339,20 +414,37 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         }
       }
 
-      // Update all pages with total count
-      pages.forEach((p, idx) => {
-        p.setAttribute('data-page', (idx + 1) + ' of ' + pages.length);
+      // Final cleanup: Restore fixed heights for display
+      pageList.forEach((p, idx) => {
+        p.setAttribute('data-page', (idx + 1) + ' of ' + pageList.length);
+        p.style.height = '';
+        p.style.minHeight = '';
+        const c = p.querySelector('.content');
+        if (c) {
+          c.style.height = '';
+          c.style.minHeight = '';
+        }
       });
 
+      root.innerHTML = '';
+      root.appendChild(fragment);
+
       function createPage() {
-        pageCount++;
         const p = document.createElement('div');
         p.className = 'page';
         const c = document.createElement('div');
         c.className = 'content';
+        
+        if (shellTemplate) {
+          c.appendChild(shellTemplate.cloneNode(true));
+        }
+        
         p.appendChild(c);
         return p;
       }
+      
+      scaler.style.transform = originalTransform;
+      scaler.style.transition = '';
       
       if (typeof adjustScale === 'function') adjustScale();
       
@@ -369,36 +461,58 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       if (document.body.classList.contains('no-scale')) return;
 
       const element = document.getElementById('scaling-container');
-      if (!element) return;
+      const wrapper = document.querySelector('.preview-wrapper');
+      const limiter = document.getElementById('scrolling-limiter');
+      if (!element || !wrapper || !limiter) return;
       
-      const containerWidth = window.innerWidth;
-      const containerHeight = window.innerHeight;
+      const containerWidth = wrapper.clientWidth;
+      const containerHeight = wrapper.clientHeight;
       
-      let finalScale = 1;
-
-      if (currentZoomMode === 'fit-width') {
-        const horizontalPadding = containerWidth < 768 ? 40 : 100;
-        finalScale = (containerWidth - horizontalPadding) / 794;
-      } else if (currentZoomMode === 'fit-page') {
-        const verticalPadding = 80;
-        // Fit to a single page height (1123px)
-        finalScale = (containerHeight - verticalPadding) / 1123;
-      } else {
-        // Actual size (100%)
+      // Calculate best fit scale
+      const horizontalPadding = containerWidth < 768 ? 20 : 80;
+      const verticalPadding = 40;
+      
+      let finalScale = (containerWidth - horizontalPadding) / 794;
+      
+      // If we want to fit a full page height
+      if (currentZoomMode === 'fit-page') {
+        const pageScale = (containerHeight - verticalPadding) / 1123;
+        finalScale = Math.min(finalScale, pageScale);
+      } else if (currentZoomMode === 'actual') {
         finalScale = 1;
+        // On mobile, actual size might be too big, so we clamp it to fit-width if actual > fit-width
+        const fitWidthScale = (containerWidth - 20) / 794;
+        if (containerWidth < 800) finalScale = Math.min(1, fitWidthScale);
       }
 
       // Constrain scale for sanity
-      finalScale = Math.max(0.4, Math.min(finalScale, 1.5));
+      finalScale = Math.max(0.2, Math.min(finalScale, 2.0));
       
       element.style.transform = 'scale(' + finalScale + ')';
       
-      if (element.style.opacity === '0' || !element.style.opacity) {
-        setTimeout(() => {
-          element.style.opacity = '1';
-          element.style.transition = 'opacity 0.4s ease-out, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
-        }, 50);
-      }
+      // Calculate real dimensions
+      const unscaledHeight = element.offsetHeight;
+      const scaledHeight = unscaledHeight * finalScale;
+      const scaledWidth = 850 * finalScale;
+
+      // The scaling container's own height must be reduced to the scaled height
+      // transform: scale doesn't do this, so we must limit it via the limiter.
+      element.style.height = unscaledHeight + 'px'; 
+      element.style.marginBottom = '-' + (unscaledHeight - scaledHeight) + 'px';
+      
+      limiter.style.height = scaledHeight + 'px';
+      limiter.style.overflow = 'hidden';
+
+      element.style.opacity = '1';
+      element.style.transition = 'opacity 0.4s ease-out, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+
+    // Use ResizeObserver for more responsive scaling if supported
+    if (window.ResizeObserver) {
+      const resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(adjustScale);
+      });
+      resizeObserver.observe(document.body);
     }
 
     window.addEventListener('message', (event) => {
@@ -413,6 +527,10 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         // Essential 100ms delay for full DOM render stabilization
         setTimeout(paginate, 100); 
       };
+
+      // Force visibility immediately
+      const sc = document.getElementById('scaling-container');
+      if (sc) sc.style.opacity = '1';
 
       if (document.fonts) {
         document.fonts.ready.then(runPagination);

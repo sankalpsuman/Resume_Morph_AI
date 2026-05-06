@@ -103,17 +103,29 @@ export default function App() {
       // If we have data, update state immediately (even if from cache)
       if (docSnap.exists()) {
         const data = docSnap.data();
+        
+        // Subscription Protection:
+        // If we have an existing plan in state and it's premium, but the snapshot data
+        // is somehow reverted (which happens during transient network states or cache issues),
+        // we PROTECT the state until we are certain the data is from the server.
+        // This stops the UI from "flickering" back to Free on reload.
+        if (userData?.plan && userData.plan !== 'free' && data.plan === 'free' && isFromCache) {
+          console.log(`[Subscription] Protecting premium state ${userData.plan} against cached revert for ${user.uid}`);
+          setLoading(false);
+          return;
+        }
+
         setUserData(data);
         console.log(`[Subscription] Snapshot updated for ${user.uid}. Plan: ${data.plan} (Cache: ${isFromCache})`);
 
         // Handle Expiry check only if we are relatively sure we have fresh-ish data
-        // and actually, it's safer to only revert plan if !isFromCache to avoid client-side clock desync revert.
         // We also check that plan is NOT actually 'free' already to avoid redundant updates.
         if (data.plan && data.plan !== 'free' && data.premiumExpiryDate && !isFromCache) {
           try {
             const expiry = data.premiumExpiryDate.toDate ? data.premiumExpiryDate.toDate() : new Date(data.premiumExpiryDate);
             if (expiry instanceof Date && !isNaN(expiry.getTime())) {
-              const isExpired = Date.now() > (expiry.getTime() + 900000);
+              // 30 minute buffer to account for minor clock drifts/skew
+              const isExpired = Date.now() > (expiry.getTime() + 1800000); 
               if (isExpired) {
                 const currentPlan = data.plan; // Capture current plan for logging
                 const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
@@ -743,7 +755,7 @@ export default function App() {
         "flex-grow relative w-full",
         !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32"
       )}>
-        <div className={cn("max-w-7xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
+        <div className={cn("max-w-screen-2xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder 
             userData={userData} 
             onUpgrade={() => setShowUpgradeModal(true)} 
