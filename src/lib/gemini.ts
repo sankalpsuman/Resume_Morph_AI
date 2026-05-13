@@ -1090,6 +1090,11 @@ export async function generateResumeFromData(
     - Sidebar Right: <div class="content flex gap-8"><div class="layout-main flex-1">...</div><div class="layout-sidebar w-[SIDEBAR_WIDTH] shrink-0">...</div></div>
     - Single Column: <div class="content"><div class="layout-main w-full">...</div></div>
 
+    GRANULARITY RULE (CRITICAL FOR PAGINATION):
+    - DO NOT wrap entire major sections (like all of Experience) in a single high-level container if possible. 
+    - Instead, render each Experience entry, Education entry, or major section as a DIRECT child of the <div class="content"> or <div class="layout-main/sidebar">.
+    - This allows the pagination engine to break the resume between jobs or headers rather than moving the entire section to a new page.
+
     STYLE RULES:
     - TYPOGRAPHY: Use fonts defined in DESIGN_TOKENS_OVERRIDE.
     - COLOR: Use specific HEX codes from the layout manifest.

@@ -310,14 +310,20 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
         </div>
 
         {/* Right Panel: Chat Interface */}
-        <div className="flex-grow bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm flex flex-col overflow-hidden h-[500px] md:h-[700px] lg:h-auto lg:max-h-[800px]">
+        <div className="flex-grow bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm flex flex-col overflow-hidden h-[600px] md:h-[700px] lg:h-auto lg:max-h-[850px]">
           {/* Chat Header */}
-          <div className="p-4 md:p-6 border-b border-[var(--border-color)] flex items-center justify-between">
+          <div className="p-5 md:p-6 border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
                 <MessageSquare className="w-4 h-4 text-white fill-white" />
               </div>
-              <h3 className="text-base md:text-lg font-black text-[var(--text-primary)] tracking-tight">Strategy Chat</h3>
+              <div>
+                <h3 className="text-base md:text-lg font-black text-[var(--text-primary)] tracking-tight leading-none mb-1">Strategy Chat</h3>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">AI Online</span>
+                </div>
+              </div>
             </div>
             <button 
               onClick={() => {
@@ -325,54 +331,63 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
                 setResumeText(null);
                 setFileName(null);
               }}
-              className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest hover:text-red-500 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-[9px] font-black text-[var(--text-tertiary)] uppercase tracking-widest hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/10 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900/20"
             >
-              Clear
+              Reset Session
             </button>
           </div>
 
           {/* Messages */}
           <div 
             ref={scrollRef}
-            className="flex-grow overflow-y-auto p-4 md:p-8 space-y-4 md:space-y-6 no-scrollbar scrolling-touch"
+            className="flex-grow overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 no-scrollbar scrolling-touch"
           >
             {messages.map((msg, i) => (
               <div 
                 key={i} 
                 className={cn(
-                  "flex flex-col max-w-[95%] md:max-w-[90%]",
-                  msg.role === 'user' ? "ml-auto items-end" : "mr-auto items-start"
+                  "flex flex-col group",
+                  msg.role === 'user' ? "ml-auto items-end max-w-[85%] md:max-w-[75%]" : "mr-auto items-start max-w-[95%] md:max-w-[85%]"
                 )}
               >
                 <div className={cn(
-                  "px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] text-sm md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none",
+                  "px-5 md:px-7 py-4 md:py-6 rounded-[24px] md:rounded-[32px] text-sm md:text-base font-medium leading-relaxed shadow-sm prose prose-sm md:prose-base max-w-none transition-all duration-300",
                   msg.role === 'user' 
-                    ? "bg-indigo-600 text-white rounded-tr-none prose-invert" 
-                    : "bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none border border-[var(--border-color)] prose-neutral dark:prose-invert dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-300"
+                    ? "bg-indigo-600 text-white rounded-tr-none prose-invert shadow-indigo-200 dark:shadow-none" 
+                    : "bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-tl-none border border-[var(--border-color)] shadow-sm prose-neutral dark:prose-invert dark:prose-p:text-gray-300 dark:prose-strong:text-white dark:prose-code:text-indigo-300"
                 )}>
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
-                <span className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest mt-2 px-1">
-                  {msg.role === 'user' ? 'You' : 'Morph Assistant'}
-                </span>
+                <div className={cn(
+                  "flex items-center gap-2 mt-2 px-1 opacity-60 group-hover:opacity-100 transition-opacity",
+                  msg.role === 'user' ? "flex-row-reverse" : "flex-row"
+                )}>
+                  <span className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">
+                    {msg.role === 'user' ? 'Career Strategist' : 'Morph AI Assistant'}
+                  </span>
+                  <div className="w-1 h-1 rounded-full bg-[var(--text-tertiary)]" />
+                  <span className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-bold">
+                    {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
             ))}
             {isTyping && (
-              <div className="flex flex-col max-w-[90%] mr-auto items-start">
-                <div className="bg-[var(--bg-secondary)] px-4 md:px-6 py-3 md:py-4 rounded-[20px] md:rounded-[24px] rounded-tl-none border border-[var(--border-color)] flex items-center gap-2">
+              <div className="flex flex-col mr-auto items-start max-w-[90%]">
+                <div className="bg-[var(--bg-secondary)] px-5 md:px-7 py-4 md:py-6 rounded-[24px] md:rounded-[32px] rounded-tl-none border border-[var(--border-color)] flex items-center gap-4 shadow-sm">
                   <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                   </div>
-                  <div className="flex flex-col gap-0.5 md:gap-1">
-                    <span className="text-[10px] md:text-xs font-black text-indigo-400 uppercase tracking-widest">{loadingStatus || 'Analyzing...'}</span>
-                    <div className="w-16 md:w-20 h-0.5 bg-[var(--border-color)] rounded-full overflow-hidden">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{loadingStatus || 'Processing...'}</span>
+                    <div className="w-24 md:w-32 h-1 bg-[var(--border-color)] rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
-                        transition={{ duration: 5, repeat: Infinity }}
-                        className="h-full bg-indigo-400"
+                        transition={{ duration: 3.5, repeat: Infinity }}
+                        className="h-full bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]"
                       />
                     </div>
                   </div>
@@ -381,24 +396,41 @@ Respond using Markdown for better formatting. Use bold for emphasis, and use com
             )}
           </div>
 
-          {/* Input */}
-          <div className="p-4 md:p-6 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/30">
-            <div className="relative">
-              <input
-                type="text"
-                disabled={!resumeText || isTyping}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={resumeText ? "Ask anything..." : "Upload resume first..."}
-                className="w-full pl-5 pr-14 py-4 md:pl-6 md:pr-16 md:py-5 bg-[var(--bg-primary)] rounded-[20px] md:rounded-[24px] border border-[var(--border-color)] focus:border-indigo-600 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/5 outline-none text-sm md:text-base font-medium text-[var(--text-primary)] transition-all disabled:bg-[var(--bg-secondary)] disabled:cursor-not-allowed"
-              />
+          {/* Input Area */}
+          <div className="p-5 md:p-8 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/30 shrink-0">
+            <div className="max-w-4xl mx-auto relative flex items-center gap-2 md:gap-4">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  disabled={!resumeText || isTyping}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder={resumeText ? "Ask for optimization tips..." : "Upload resume to begin..."}
+                  className="w-full pl-6 pr-14 py-4.5 md:pl-8 md:pr-16 md:py-6 bg-[var(--bg-primary)] rounded-[24px] md:rounded-[32px] border border-[var(--border-color)] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 outline-none text-sm md:text-lg font-medium text-[var(--text-primary)] transition-all disabled:opacity-60 shadow-inner placeholder:text-[var(--text-tertiary)]"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <AnimatePresence>
+                    {input && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={() => setInput('')}
+                        className="p-1.5 hover:bg-[var(--bg-secondary)] rounded-full transition-colors text-[var(--text-tertiary)]"
+                      >
+                        <X className="w-4 h-4" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isTyping || !resumeText}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 md:p-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-500/20 dark:shadow-none hover:bg-indigo-700 transition-all disabled:opacity-50"
+                className="p-4 md:p-5 bg-indigo-600 text-white rounded-2xl md:rounded-3xl shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 disabled:scale-100 disabled:shadow-none shrink-0"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
           </div>

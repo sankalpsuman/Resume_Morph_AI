@@ -943,8 +943,52 @@ export default function SmartEditor({ userData }: { userData: any }) {
                             }
                             .new-content { animation: highlight 1s ease-out; }
                             @keyframes highlight { from { background-color: #fef08a; } to { background-color: transparent; } }
+
+                            /* New Scaling approach ONLY for preview */
+                            body {
+                              background: #f1f5f9;
+                              padding: 0 !important;
+                              margin: 0 !important;
+                              display: flex;
+                              flex-direction: column;
+                              align-items: center;
+                              height: 100vh;
+                              overflow-x: hidden !important;
+                              overflow-y: auto !important;
+                            }
+                            #resume-root {
+                              transform-origin: top center;
+                              transition: transform 0.2s ease-out;
+                              width: 794px;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 15px;
+                              padding: 40px 0;
+                              margin: 0 auto;
+                            }
+                            .page {
+                              margin: 0 auto;
+                              box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+                              border-radius: 2px;
+                            }
                           </style>
                           <script>
+                            function updateScale() {
+                              const root = document.getElementById('resume-root');
+                              if (!root) return;
+                              
+                              const containerWidth = document.documentElement.clientWidth;
+                              const targetWidth = 840; 
+                              const scale = Math.min(1, (containerWidth - 10) / targetWidth);
+                              
+                              root.style.transform = "scale(" + scale + ")";
+                              
+                              // Update body height to match scaled content
+                              const scaledHeight = root.offsetHeight * scale;
+                              document.body.style.height = (scaledHeight + 40) + 'px';
+                              document.body.style.overflowY = 'auto';
+                            }
+
                             function resolvePath(obj, path) {
                               if (!path) return undefined;
                               return path.split('.').reduce((acc, part) => acc && acc[part], obj);
@@ -954,63 +998,34 @@ export default function SmartEditor({ userData }: { userData: any }) {
                               const root = document.getElementById('resume-root');
                               if (!root) return;
 
-                              // Use a unique marker to avoid infinite loops
                               if (root.getAttribute('data-paginating') === 'true') return;
                               root.setAttribute('data-paginating', 'true');
 
-                              // 1. Wait for images for accurate sizing
+                              // 1. Wait for images
                               const images = Array.from(root.querySelectorAll('img'));
                               await Promise.all(images.map(img => {
                                 if (img.complete) return Promise.resolve();
                                 return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
                               }));
 
-                              // 2. Flatten
+                              // 2. Flatten all pages back to root for re-pagination
                               const existingPages = Array.from(root.querySelectorAll('.page'));
                               if (existingPages.length > 0) {
-                                const flatContent = document.createDocumentFragment();
+                                const fragment = document.createDocumentFragment();
                                 existingPages.forEach(p => {
-                                  const c = p.querySelector('.content');
-                                  if (c) {
-                                    while (c.firstChild) flatContent.appendChild(c.firstChild);
-                                  }
+                                  const content = p.querySelector('.content') || p;
+                                  while (content.firstChild) fragment.appendChild(content.firstChild);
                                 });
                                 root.innerHTML = '';
-                                root.appendChild(flatContent);
+                                root.appendChild(fragment);
                               }
 
-                              const elements = Array.from(root.children);
+                              const footer = document.querySelector('.resume-footer');
+                              const elements = Array.from(root.childNodes).filter(n => n !== footer);
                               root.innerHTML = '';
 
                               const USABLE_HEIGHT = 1027;
                               const BUFFER = 4;
-
-                              let currentPage = createPage();
-                              root.appendChild(currentPage);
-                              let currentContent = currentPage.querySelector('.content');
-
-                              for (const el of elements) {
-                                if (el instanceof HTMLElement) {
-                                  el.style.breakInside = 'avoid';
-                                  el.style.pageBreakInside = 'avoid';
-                                }
-                                currentContent.appendChild(el);
-
-                                const lastChild = currentContent.lastElementChild;
-                                const currentHeight = lastChild 
-                                  ? Math.ceil(lastChild.getBoundingClientRect().bottom - currentContent.getBoundingClientRect().top) 
-                                  : 0;
-
-                                if (currentHeight > (USABLE_HEIGHT - BUFFER)) {
-                                  if (currentContent.children.length > 1) {
-                                    currentContent.removeChild(el);
-                                    currentPage = createPage();
-                                    root.appendChild(currentPage);
-                                    currentContent = currentPage.querySelector('.content');
-                                    currentContent.appendChild(el);
-                                  }
-                                }
-                              }
 
                               function createPage() {
                                 const p = document.createElement('div');
@@ -1020,11 +1035,38 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                 p.appendChild(c);
                                 return p;
                               }
+
+                              let currentPage = createPage();
+                              root.appendChild(currentPage);
+                              let currentContent = currentPage.querySelector('.content');
+
+                              for (const node of elements) {
+                                if (node.nodeType === 3 && !node.textContent.trim()) continue;
+                                
+                                currentContent.appendChild(node);
+                                
+                                const rect = currentContent.getBoundingClientRect();
+                                const children = currentContent.children;
+                                if (children.length > 0) {
+                                  const lastChild = children[children.length - 1];
+                                  const height = lastChild.getBoundingClientRect().bottom - rect.top;
+
+                                  if (height > (USABLE_HEIGHT - BUFFER) && children.length > 1) {
+                                    currentContent.removeChild(node);
+                                    currentPage = createPage();
+                                    root.appendChild(currentPage);
+                                    currentContent = currentPage.querySelector('.content');
+                                    currentContent.appendChild(node);
+                                  }
+                                }
+                              }
+
+                              if (footer) root.appendChild(footer);
                               
-                              // Release guard with delay
                               setTimeout(() => {
                                 root.removeAttribute('data-paginating');
-                              }, 500);
+                                updateScale();
+                              }, 300);
                             }
 
                             window.addEventListener('message', async (event) => {
@@ -1176,9 +1218,12 @@ export default function SmartEditor({ userData }: { userData: any }) {
                               }
                             }, 500);
 
+                            window.addEventListener('resize', updateScale);
+
                             window.addEventListener('load', () => {
                               setTimeout(() => {
                                 paginate();
+                                updateScale();
                                 window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
                               }, 100);
                             });

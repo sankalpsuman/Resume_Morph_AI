@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { 
   Upload, 
@@ -108,6 +108,10 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
   const [undoStack, setUndoStack] = useState<PortfolioContent[]>([]);
   const [redoStack, setRedoStack] = useState<PortfolioContent[]>([]);
   const [isImproving, setIsImproving] = useState(false);
+
+  useEffect(() => {
+    onFullscreenChange?.(!!portfolio && !isGenerating);
+  }, [portfolio, isGenerating, onFullscreenChange]);
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -852,24 +856,6 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
     return () => window.removeEventListener('resize', checkScreen);
   }, []);
 
-  if (!isLargeScreen) {
-    return (
-      <div className="min-h-[500px] bg-slate-950 flex flex-col items-center justify-center p-12 text-center rounded-[2rem] border border-slate-800">
-        <div className="w-20 h-20 bg-indigo-600/10 rounded-[2.5rem] flex items-center justify-center mb-8 border border-indigo-500/20">
-          <Smartphone className="w-10 h-10 text-indigo-400" />
-        </div>
-        <h2 className="text-3xl font-black text-white mb-4 tracking-tight uppercase">Desktop Studio</h2>
-        <p className="text-slate-400 text-lg font-medium leading-relaxed mb-8 max-w-sm mx-auto">
-          The Portfolio Editor requires the precision of a desktop workspace.
-        </p>
-        <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-indigo-400 text-sm font-bold uppercase tracking-widest animate-pulse">
-          <Sparkles className="w-4 h-4" />
-          Coming Soon for Mobile & Tablet
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative overflow-hidden selection:bg-indigo-100 selection:text-indigo-900 font-sans px-4 py-12 md:py-20 rounded-[32px] md:rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-sm relative">
       {/* Atmospheric Background Gradients */}
@@ -1278,19 +1264,8 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
         {/* Studio Workspace */}
         {portfolio && !isGenerating && (
           <>
-            {/* Mobile/Tablet Placeholder */}
-            <div className="lg:hidden fixed inset-0 top-16 z-[200] bg-white dark:bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center mb-8 animate-bounce">
-                <Monitor className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h2 className="text-2xl font-display font-bold text-slate-900 dark:text-white mb-4">Coming Soon for Mobile & Tablet</h2>
-              <p className="text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
-                The full Studio experience is optimized for desktop. Please switch to a larger screen to build your masterpiece.
-              </p>
-            </div>
-
             {/* Desktop View */}
-            <div className="hidden lg:flex fixed inset-0 top-16 md:top-20 z-[200] bg-[#f2f3f5] dark:bg-slate-950 overflow-hidden flex-col font-sans">
+            <div className="flex fixed inset-0 top-16 md:top-20 z-[200] bg-[#f2f3f5] dark:bg-slate-950 overflow-hidden flex-col font-sans">
             {/* Studio Toolbar */}
             <header className="h-14 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between z-30 shadow-sm shrink-0">
               <div className="flex items-center gap-4">

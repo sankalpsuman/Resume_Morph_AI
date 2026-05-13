@@ -748,7 +748,7 @@ export default function App() {
         "flex-grow relative w-full",
         !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32"
       )}>
-        <div className={cn("max-w-screen-2xl mx-auto px-1 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
+        <div className={cn("max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
           <ResumeBuilder 
             userData={userData} 
             onUpgrade={() => setShowUpgradeModal(true)} 
@@ -890,24 +890,59 @@ export default function App() {
       <AppChatbot />
 
       {/* Global Footer */}
-      <footer className="py-12 border-t border-[var(--border-color)] bg-[var(--bg-primary)]">
-        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-100">
-              <RefreshCw className="text-white w-4 h-4" />
+      <footer className="py-12 md:py-20 border-t border-[var(--border-color)] bg-[var(--bg-primary)] px-4">
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-10 md:gap-12">
+          {/* Top Section: Logo & Links */}
+          <div className="w-full flex flex-col md:flex-row items-center md:items-start justify-between gap-12">
+            <div className="flex flex-col items-center md:items-start gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
+                  <RefreshCw className="text-white w-5 h-5" />
+                </div>
+                <span className="font-display font-black text-2xl tracking-tighter text-[var(--text-primary)]">Resume Morph</span>
+              </div>
+              <p className="text-sm text-[var(--text-secondary)] font-medium text-center md:text-left max-w-xs leading-relaxed">
+                Empowering careers through AI-architected visual storytelling. Built for the modern professional.
+              </p>
             </div>
-            <span className="font-black text-lg tracking-tight text-[var(--text-primary)]">Resume Morph</span>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-12 gap-y-8 text-center md:text-left">
+              {[
+                { title: 'Product', links: ['Builder', 'Analyzer', 'Tracker', 'Assistant'] },
+                { title: 'Company', links: ['About', 'Careers', 'Contact', 'Blog'] },
+                { title: 'Legal', links: ['Privacy', 'Terms', 'Cookies', 'Security'] },
+                { title: 'Support', links: ['Help Center', 'Feedback', 'Status', 'API'] },
+              ].map((group) => (
+                <div key={group.title} className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{group.title}</h4>
+                  <ul className="space-y-3">
+                    {group.links.map(link => (
+                      <li key={link}>
+                        <button onClick={() => handleTabChange(link.toLowerCase() as any)} className="text-xs font-bold text-[var(--text-secondary)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors whitespace-nowrap">
+                          {link}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="text-sm text-[var(--text-tertiary)] font-medium text-center md:text-left">
-            © 2026 Resume Morph. Built with passion by <button onClick={() => window.dispatchEvent(new CustomEvent('open-creator-about'))} className="text-indigo-600 hover:underline font-bold">Sankalp Suman</button>.
-          </p>
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)] px-3 py-1 border border-[var(--border-color)] rounded-full">v1.0.1</span>
+
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent" />
+
+          {/* Bottom Section: Legal & Version */}
+          <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 pb-12 md:pb-0">
+            <p className="text-[10px] sm:text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-center md:text-left">
+              © 2026 Resume Morph. Crafted by <button onClick={() => window.dispatchEvent(new CustomEvent('open-creator-about'))} className="text-indigo-600 hover:underline">Sankalp Suman</button>. All rights reserved.
+            </p>
             <div className="flex items-center gap-6">
-              <button onClick={() => handleTabChange('feedback')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Feedback</button>
-              <button onClick={() => handleTabChange('privacy')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Privacy</button>
-              <button onClick={() => handleTabChange('about')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">About</button>
-              <button onClick={() => handleTabChange('contact')} className="text-sm font-bold text-[var(--text-secondary)] hover:text-indigo-600 transition-colors">Contact</button>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/10 rounded-full border border-indigo-100 dark:border-indigo-900/20">v1.0.1 PRO</span>
+              <div className="flex items-center gap-4">
+                <button className="w-8 h-8 rounded-full border border-[var(--border-color)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-indigo-600 hover:border-indigo-600 transition-all">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -85,6 +85,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strictLayout, setStrictLayout] = useState(true);
@@ -1306,32 +1307,31 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           )}
         </div>
       </div>
-
-      <main className="max-w-[1440px] mx-auto px-1 sm:px-4 md:px-8 py-4">
+      <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
-        <div className="mb-8 md:mb-12">
+        <div className="mb-6 md:mb-12">
           <div className={cn(
-            "flex flex-col lg:flex-row items-center gap-6 md:gap-8 bg-[var(--bg-primary)] border rounded-3xl md:rounded-[32px] p-5 md:p-8 shadow-sm transition-colors",
+            "flex flex-col lg:flex-row items-stretch lg:items-center gap-4 md:gap-8 bg-[var(--bg-primary)] border rounded-[24px] md:rounded-[32px] p-4 md:p-8 shadow-sm transition-colors",
             isLimitReached ? "border-rose-200 dark:border-rose-900/30" : "border-[var(--border-color)]"
           )}>
-            <div className="flex items-center gap-4 md:gap-5 w-full lg:w-auto">
+            <div className="flex items-center gap-4 md:gap-5">
               <div className={cn(
-                "w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[22px] flex items-center justify-center shadow-xl transition-all shrink-0",
+                "w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-[22px] flex items-center justify-center shadow-lg transition-all shrink-0",
                 isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
               )}>
-                <Zap className="w-6 h-6 md:w-7 md:h-7 text-white fill-white" />
+                <Zap className="w-5 h-5 md:w-7 md:h-7 text-white fill-white" />
               </div>
               <div className="flex-grow">
-                <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-1">Morph Engine Status</p>
-                <div className="flex items-center gap-3">
+                <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-0.5 md:mb-1">Morph Engine Status</p>
+                <div className="flex items-center gap-2 md:gap-3">
                   <span className={cn(
-                    "text-xl md:text-2xl font-black tracking-tight",
+                    "text-lg md:text-2xl font-black tracking-tight",
                     isLimitReached ? "text-rose-600" : "text-[var(--text-primary)]"
                   )}>
                     {planLimit === Infinity ? 'Unlimited' : `${usedMorphs} / ${planLimit}`}
                   </span>
                   <span className={cn(
-                    "px-2 py-0.5 md:px-3 md:py-1 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest border transition-colors",
+                    "px-2 py-0.5 md:px-3 md:py-1 rounded-lg md:rounded-xl text-[7px] md:text-[10px] font-black uppercase tracking-widest border transition-colors",
                     isLimitReached 
                       ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" 
                       : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30"
@@ -1347,29 +1347,29 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             
             <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
             
-            <div className="flex items-center justify-between w-full lg:w-auto gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2.5 rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
+            <div className="flex items-center justify-between gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2 md:py-2.5 rounded-[16px] md:rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                  "w-7 h-7 md:w-8 md:h-8 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all",
                   strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
                 )}>
-                  <Lock className="w-4 h-4" />
+                  <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[9px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
-                  <span className="text-[7px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
+                <div className="flex flex-col text-left">
+                  <span className="text-[8px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
+                  <span className="text-[6px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
                 </div>
               </div>
               <button 
                 onClick={() => setStrictLayout(!strictLayout)}
                 className={cn(
-                  "w-10 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
+                  "w-9 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
                   strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
                 )}
               >
                 <motion.div 
                   initial={false}
-                  animate={{ x: strictLayout ? (window.innerWidth < 768 ? 20 : 24) : 4 }}
+                  animate={{ x: strictLayout ? (window.innerWidth < 768 ? 18 : 24) : 4 }}
                   className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
                 />
               </button>
@@ -1377,17 +1377,17 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
 
             <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
             
-            <div className="w-full lg:flex-grow lg:max-w-md">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <p className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
+            <div className="lg:flex-grow lg:max-w-md">
+              <div className="flex items-center justify-between mb-1.5 md:mb-3">
+                <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
                 <p className={cn(
-                  "text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]",
+                  "text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]",
                   isLimitReached ? "text-rose-600" : "text-indigo-600"
                 )}>
                   {planLimit === Infinity ? '∞' : Math.max(0, (planLimit as number) - usedMorphs)} Morphs Left
                 </p>
               </div>
-              <div className="w-full h-2.5 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
+              <div className="w-full h-2 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
@@ -1404,7 +1404,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             {planLimit !== Infinity && usedMorphs >= (planLimit as number) && (
               <button 
                 onClick={onUpgrade}
-                className="w-full lg:w-auto px-6 md:px-8 py-4 bg-indigo-600 text-white rounded-xl md:rounded-[20px] text-[10px] md:text-sm font-black uppercase tracking-widest md:tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
+                className="w-full lg:w-auto px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-xl md:rounded-[20px] text-xs md:text-sm font-black uppercase tracking-widest md:tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
               >
                 <Zap className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
                 Upgrade Now
@@ -1412,8 +1412,39 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             )}
           </div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start px-2 sm:px-0">          {/* Left Column: Controls */}
-          <div className="lg:col-span-4 xl:col-span-3 space-y-6 md:space-y-8">
+        <div className="flex lg:hidden mb-6 bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border-color)] shadow-sm">
+          <button 
+            onClick={() => setActiveMobileTab('edit')}
+            className={cn(
+              "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+              activeMobileTab === 'edit' 
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                : "text-[var(--text-tertiary)] hover:text-indigo-600"
+            )}
+          >
+            <Settings className="w-4 h-4" />
+            Editor
+          </button>
+          <button 
+            onClick={() => setActiveMobileTab('preview')}
+            className={cn(
+              "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
+              activeMobileTab === 'preview' 
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                : "text-[var(--text-tertiary)] hover:text-indigo-600"
+            )}
+          >
+            <Eye className="w-4 h-4" />
+            Preview
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start px-4 sm:px-0">
+          {/* Left Column: Controls */}
+          <div className={cn(
+            "lg:col-span-4 xl:col-span-3 space-y-6 md:space-y-8",
+            activeMobileTab !== 'edit' && "hidden lg:block"
+          )}>
             <div className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10">
               
               <section>
@@ -1553,7 +1584,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       "w-full h-32 p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[24px] text-sm text-[var(--text-primary)] font-medium focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-[var(--bg-primary)] transition-all resize-none placeholder:text-[var(--text-tertiary)]",
                       jobDescription && "border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-900/10"
                     )}
-                  />
+                  ></textarea>
                 </div>
 
                 {generatedHtml && jobDescription && (
@@ -1706,100 +1737,79 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
 
           {/* Right Column: Preview */}
           <div className={cn(
-            "transition-all duration-700 ease-in-out w-full",
+            "transition-all duration-700 ease-in-out w-full mt-8 lg:mt-0",
             isPreviewFull 
-              ? "fixed inset-0 z-[200] bg-[var(--bg-primary)] p-4 md:p-8 overflow-y-auto" 
-              : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32"
+              ? "fixed inset-0 z-[500] bg-[var(--bg-primary)] p-0 sm:p-4 md:p-8 overflow-y-auto" 
+              : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32",
+            !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:block"
           )}>
             <div className={cn(
-              "bg-[var(--bg-primary)] rounded-[32px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
-              isPreviewFull ? "min-h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" : "h-[85vh] lg:h-[calc(100vh-140px)] min-h-[700px] w-full"
+              "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
+              isPreviewFull 
+                ? "min-h-screen sm:min-h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
+                : "h-[70vh] sm:h-[85vh] lg:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[700px] w-full"
             )}>
-              <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)]">
-                <div className="flex items-center gap-3 md:gap-6">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
-                    <span className="text-[10px] md:text-xs font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Preview</span>
+              <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">
+                <div className="flex items-center gap-2 md:gap-6 min-w-0">
+                  <div className="flex items-center gap-2 md:gap-3 shrink-0">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500" />
+                    <span className="text-[9px] md:text-xs font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] md:tracking-[0.2em]">Preview</span>
                   </div>
                   
                   {atsScore !== null && (
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center gap-2 md:gap-3 pl-3 md:pl-6 border-l border-[var(--border-color)]"
+                      className="flex items-center gap-2 md:gap-3 pl-2 md:pl-6 border-l border-[var(--border-color)] min-w-0"
                     >
                       <div className={cn(
-                        "px-2 md:px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2",
+                        "px-2 md:px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 md:gap-2 shrink-0",
                         atsScore >= 80 ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : 
                         atsScore >= 50 ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400" : 
                         "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
                       )}>
                         ATS: {atsScore}%
                       </div>
-                      {atsFeedback && (
-                        <span className="hidden sm:inline text-[10px] font-bold text-[var(--text-tertiary)] truncate max-w-[100px] md:max-w-[200px]" title={atsFeedback}>
-                          {atsFeedback}
-                        </span>
-                      )}
-                      {atsScore < 100 && (
-                        <button
-                          onClick={handleMaximizeAts}
-                          disabled={isGenerating || isPlanning}
-                          title="Let AI optimize your resume structure for high ATS compatibility"
-                          className="px-2 md:px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1 md:gap-1.5 shadow-lg shadow-indigo-100 disabled:opacity-50"
-                        >
-                          {isPlanning ? (
-                            <Loader2 className="w-2 h-2 md:w-2.5 md:h-2.5 animate-spin" />
-                          ) : (
-                            <Zap className="w-2 h-2 md:w-2.5 md:h-2.5 fill-white" />
-                          )}
-                          <span className="hidden xs:inline">{isPlanning ? "Analyzing..." : "Maximize"}</span>
-                        </button>
-                      )}
+                      <button
+                        onClick={handleMaximizeAts}
+                        disabled={isGenerating || isPlanning}
+                        title="Optimize resume structure"
+                        className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all shadow-sm shrink-0"
+                      >
+                        {isPlanning ? (
+                          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <Zap className="w-2.5 h-2.5 fill-white" />
+                        )}
+                      </button>
                     </motion.div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-2">
                     {generatedHtml && (
                     <button 
                       onClick={handleShare}
-                      title="Generate a public link for your resume"
-                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
+                      title="Share link"
+                      className="p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
                     >
-                      <Globe className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Share Link</span>
+                      <Globe className="w-4 h-4" />
                     </button>
                   )}
                   {generatedHtml && (
                     <button 
                       onClick={() => setIsPreviewFull(!isPreviewFull)}
                       title={isPreviewFull ? "Exit fullscreen" : "Full View"}
-                      className="flex items-center gap-2 px-3 md:px-4 py-1.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
+                      className="p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
                     >
-                      {isPreviewFull ? (
-                        <>
-                          <Minimize2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">Exit Full View</span>
-                        </>
-                      ) : (
-                        <>
-                          <Maximize2 className="w-3 h-3" />
-                          <span className="hidden sm:inline">Full View</span>
-                        </>
-                      )}
+                      {isPreviewFull ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
                   )}
-                  <div className="hidden sm:flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-red-400 transition-colors" />
-                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-yellow-400 transition-colors" />
-                    <div className="w-3 h-3 rounded-full bg-[var(--border-color)] group-hover:bg-green-400 transition-colors" />
-                  </div>
                 </div>
               </div>
 
               <div className={cn(
-                "flex-1 p-0 relative min-h-0 bg-[var(--bg-secondary)] flex flex-col",
-                isPreviewFull ? "fixed inset-0 z-[500] p-4 md:p-8 bg-black/40 backdrop-blur-sm flex items-center justify-center" : "overflow-hidden"
+                "flex-1 relative min-h-0 bg-[var(--bg-secondary)] flex flex-col",
+                isPreviewFull ? "p-4 md:p-8" : "p-0"
               )}>
                 {isPreviewFull && (
                    <motion.div 
@@ -1807,15 +1817,13 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                      animate={{ opacity: 1 }}
                      exit={{ opacity: 0 }}
                      onClick={() => setIsPreviewFull(false)}
-                     className="absolute inset-0 z-[-1]"
+                     className="absolute inset-0 z-[-1] bg-black/40 backdrop-blur-sm"
                    />
                 )}
 
                 <div className={cn(
-                  "bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden transition-all duration-500 mx-auto relative",
-                  isPreviewFull 
-                    ? "w-full max-w-[1200px] h-full rounded-[32px] md:rounded-[48px]" 
-                    : "w-full h-full rounded-[32px] md:rounded-[48px]"
+                  "bg-[var(--bg-primary)] border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden transition-all duration-500 mx-auto relative h-full w-full",
+                  isPreviewFull ? "rounded-[32px] md:rounded-[48px] border" : "rounded-none border-t md:border-t-0"
                 )}>
                   <AnimatePresence mode="wait">
                     {isGuestBooting ? (
@@ -1933,7 +1941,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                           className="w-full h-full border-none bg-slate-50 transition-all duration-300"
                           onLoad={() => setIsPreviewReady(true)}
                           srcDoc={previewHtml}
-                        />
+                        ></iframe>
 
                         {!isPreviewReady && (
                           <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
@@ -1967,7 +1975,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       </div>
     </div>
   </div>
-</main>
 
       <AnimatePresence>
         {showPlanModal && (
@@ -2215,7 +2222,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Tell us what you think... (optional)"
                   className="w-full h-32 px-6 py-4 bg-[var(--bg-secondary)] border-2 border-transparent focus:border-indigo-600 focus:bg-[var(--bg-primary)] rounded-[24px] text-sm font-medium transition-all outline-none resize-none mb-8 text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
-                />
+                ></textarea>
 
                 <div className="flex flex-col gap-3">
                   <button
@@ -2340,7 +2347,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   onChange={(e) => setLinkedinText(e.target.value)}
                   placeholder="Paste your 'About', 'Experience', and 'Skills' from LinkedIn profile..."
                   className="w-full h-40 sm:h-60 p-4 sm:p-6 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[1.5rem] sm:rounded-[32px] text-[var(--text-primary)] text-sm font-medium focus:ring-4 focus:ring-blue-500/5 focus:bg-[var(--bg-primary)] outline-none resize-none transition-all placeholder:text-[var(--text-tertiary)]"
-                />
+                ></textarea>
                 
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <button
@@ -2477,6 +2484,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
           </motion.div>
         )}
       </AnimatePresence>
+      </main>
     </div>
   );
 }

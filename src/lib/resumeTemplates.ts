@@ -37,6 +37,9 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    html {
+      overflow-x: hidden;
+    }
     body { 
       font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
       margin: 0; 
@@ -87,34 +90,36 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     /* New Scaling approach ONLY for preview */
     .preview-mode body {
       background: #f1f5f9;
-      padding: 40px 0;
-      display: block;
-      height: auto;
-      min-height: 100vh;
-      overflow-y: auto;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
     }
     .preview-mode #resume-preview {
-      margin: 0 auto;
+      transform-origin: top center;
+      transition: transform 0.2s ease-out;
       width: 794px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px;
+      padding: 40px 0;
+      margin: 0 auto;
     }
     .preview-mode .page {
       margin: 0 auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       border-radius: 2px;
       page-break-after: always;
-      height: auto; /* Allow growth for measurement */
-    }
-    .preview-mode .page-finished {
-      height: 1123px;
-      overflow: hidden;
     }
 
     @media print {
       @page { margin: 0; size: A4; }
-      body { margin: 0; padding: 0; background: white; }
+      body { margin: 0; padding: 0; background: white; overflow: visible !important; height: auto !important; }
+      #resume-preview { transform: none !important; width: 794px !important; padding: 0 !important; }
       .page { 
         margin: 0; 
         box-shadow: none; 
@@ -142,12 +147,29 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   </style>
 </head>
 <body class="${previewMode ? 'preview-mode' : ''}">
-  <div id="resume-preview">
+  <div id="resume-preview" style="opacity: 0">
     ${contentHtml}
     ${resumeFooter}
   </div>
   ${isGuest ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
   <script>
+    function updateScale() {
+      if (!document.body.classList.contains('preview-mode')) return;
+      const root = document.getElementById('resume-preview');
+      if (!root) return;
+      
+      const containerWidth = document.documentElement.clientWidth;
+      const targetWidth = 840; // 794 + some breathing room
+      const scale = Math.min(1, (containerWidth - 10) / targetWidth);
+      
+      root.style.transform = "scale(" + scale + ")";
+      
+      // Update body height to match scaled content so scrolling works
+      const scaledHeight = root.offsetHeight * scale;
+      document.body.style.height = (scaledHeight + 40) + 'px';
+      document.body.style.overflowY = 'auto';
+    }
+
     async function paginate() {
       const root = document.getElementById('resume-preview');
       if (!root) return;
@@ -159,91 +181,83 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         const USABLE_HEIGHT = 1027; 
         const footer = document.querySelector('.resume-footer');
         
-        // 1. Initial Wrap: If no .page exists, wrap all root children (except footer) into a single page
-        const existingPages = root.querySelectorAll('.page');
-        if (existingPages.length === 0) {
-          const wrapperPage = document.createElement('div');
-          wrapperPage.className = 'page';
-          const content = document.createElement('div');
-          content.className = 'content';
-          
-          const nodes = Array.from(root.childNodes);
-          nodes.forEach(node => {
-            if (node !== footer && node !== wrapperPage) {
-              content.appendChild(node);
-            }
+        // 1. Flatten all pages to get a clean stream of elements
+        const existingPages = Array.from(root.querySelectorAll('.page'));
+        if (existingPages.length > 0) {
+          const fragment = document.createDocumentFragment();
+          existingPages.forEach(p => {
+             const content = p.querySelector('.content') || p;
+             while(content.firstChild) fragment.appendChild(content.firstChild);
           });
-          
-          wrapperPage.appendChild(content);
-          root.prepend(wrapperPage);
+          root.innerHTML = '';
+          root.appendChild(fragment);
+          if (footer) root.appendChild(footer);
+        } else if (!root.querySelector('.page')) {
+           // Initial wrap
+           const contentNodes = Array.from(root.childNodes).filter(n => n !== footer);
+           const p = createPageTemplate();
+           const c = p.querySelector('.content') || p;
+           contentNodes.forEach(n => c.appendChild(n));
+           root.prepend(p);
         }
 
-        // 2. Multi-page Flow Logic
-        let pageIndex = 0;
-        let safetyCounter = 0;
-        
-        // Cache the first page's structure and classes to use as template for new pages
-        const firstPage = root.querySelector('.page');
-        if (!firstPage) return; // Should not happen after wrap logic
+        function createPageTemplate() {
+          const p = document.createElement('div');
+          p.className = 'page';
+          const c = document.createElement('div');
+          c.className = 'content';
+          p.appendChild(c);
+          return p;
+        }
 
-        while (pageIndex < root.querySelectorAll('.page').length && safetyCounter < 50) {
-          safetyCounter++;
-          const currentPage = root.querySelectorAll('.page')[pageIndex];
-          const content = currentPage.querySelector('.content') || currentPage;
+        const elements = Array.from(root.childNodes).filter(n => !n.classList?.contains('page') && n !== footer);
+        root.innerHTML = '';
+        
+        let currentPage = createPageTemplate();
+        root.appendChild(currentPage);
+        let currentContent = currentPage.querySelector('.content');
+
+        // Distribution logic
+        elements.forEach(node => {
+          if (node.nodeType === 3 && !node.textContent.trim()) return; // Skip empty text
           
-          currentPage.style.height = 'auto';
-          currentPage.style.overflow = 'visible';
+          currentContent.appendChild(node);
           
-          if (content.scrollHeight > USABLE_HEIGHT + 2) {
-            let nextPage = root.querySelectorAll('.page')[pageIndex + 1];
-            if (!nextPage) {
-              // CLONE TEMPLATE: Clone the first page but empty its content area
-              nextPage = firstPage.cloneNode(true);
-              nextPage.classList.remove('page-finished');
-              const nextContent = nextPage.querySelector('.content') || nextPage;
-              nextContent.innerHTML = ''; // Clear cloned content
-              
-              if (footer) {
-                root.insertBefore(nextPage, footer);
-              } else {
-                root.appendChild(nextPage);
-              }
-            }
-            
-            const nextContent = nextPage.querySelector('.content') || nextPage;
-            const children = Array.from(content.children);
-            
-            // Move items that cause overflow to the next container
-            for (let j = children.length - 1; j >= 0; j--) {
-              const child = children[j];
-              nextContent.insertBefore(child, nextContent.firstChild);
-              
-              if (content.scrollHeight <= USABLE_HEIGHT) {
-                break;
-              }
+          const rect = currentContent.getBoundingClientRect();
+          const children = currentContent.children;
+          if (children.length > 0) {
+            const lastChild = children[children.length - 1];
+            const bottom = lastChild.getBoundingClientRect().bottom;
+            const top = rect.top;
+            const height = bottom - top;
+
+            if (height > USABLE_HEIGHT && children.length > 1) {
+              currentContent.removeChild(node);
+              currentPage = createPageTemplate();
+              root.appendChild(currentPage);
+              currentContent = currentPage.querySelector('.content');
+              currentContent.appendChild(node);
             }
           }
-          
-          currentPage.classList.add('page-finished');
-          currentPage.style.height = ''; 
-          currentPage.style.overflow = '';
-          
-          pageIndex++;
-        }
+        });
+
+        if (footer) root.appendChild(footer);
 
         // 3. Update Page Indicators
         const allPages = root.querySelectorAll('.page');
         allPages.forEach((pg, i) => {
           pg.setAttribute('data-page', 'Page ' + (i + 1) + ' of ' + allPages.length);
-          // If there's a visible page number element, update its text
           const pageNumEl = pg.querySelector('.page-number');
           if (pageNumEl) pageNumEl.textContent = (i + 1) + ' / ' + allPages.length;
         });
+
+        updateScale();
       } catch (err) {
         console.error("Pagination error:", err);
       } finally {
         window._paginating = false;
-        root.style.opacity = '1';
+        const root = document.getElementById('resume-preview');
+        if (root) root.style.opacity = '1';
       }
     }
 
@@ -253,8 +267,11 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       // Delay slightly to ensure fonts and layouts are settled
       setTimeout(paginate, 100);
       
-      // Visibility lock
-      document.getElementById('resume-preview').style.opacity = '1';
+      // Listen for window resizes
+      window.addEventListener('resize', updateScale);
+      
+      // Initial scale attempt
+      updateScale();
     });
   </script>
 </body>
