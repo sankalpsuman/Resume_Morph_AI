@@ -15,17 +15,24 @@ export async function uploadWithRetry(
       return;
     } catch (error: any) {
       attempt++;
-      // If we already hit retry-limit-exceeded, the SDK internal retries failed.
-      // We only retry our wrapper if it's NOT a retry-limit-exceeded,
-      // as that error indicates we've already spent the maxOperationRetryTime.
+      
+      const isRetryLimit = error.code === 'storage/retry-limit-exceeded' || 
+                         error.message?.includes('retry-limit-exceeded');
+                         
+      if (isRetryLimit) {
+        console.warn(`[Storage] Retry limit reached for ${storageRef.name}. This often indicates network/firewall restrictions in the preview environment.`);
+        // We throw but with a cleaner message
+        throw new Error(`Storage operation timed out. Data was still saved to Firestore history.`);
+      }
+
       const isRetryable = error.code === 'storage/unknown' || 
                          error.code === 'storage/server-file-wrong-size' ||
                          error.code === 'storage/cannot-slice-blob' ||
                          error.message?.toLowerCase().includes('network');
       
-      if (!isRetryable || attempt > maxRetries || error.code === 'storage/retry-limit-exceeded') {
+      if (!isRetryable || attempt > maxRetries) {
         const dataSize = data ? (typeof data === 'string' ? data.length : 'unknown') : 0;
-        console.error(`Storage upload failed after ${attempt} attempts (Size: ${dataSize} bytes):`, error);
+        console.error(`Storage upload failed after ${attempt} attempts (Size: ${dataSize} bytes):`, error.code || error.message);
         throw error;
       }
       
@@ -54,14 +61,20 @@ export async function deleteWithRetry(
       }
 
       attempt++;
+      
+      const isRetryLimit = error.code === 'storage/retry-limit-exceeded' || 
+                         error.message?.includes('retry-limit-exceeded');
+
+      if (isRetryLimit) {
+        console.warn(`[Storage] Delete operation timed out for ${storageRef.name}.`);
+        return; // For delete, we treat timeout as "best effort reached"
+      }
+
       const isRetryable = error.code === 'storage/unknown' ||
                          error.message?.includes('retry');
       
-      if (!isRetryable || attempt > maxRetries || error.code === 'storage/retry-limit-exceeded') {
-        // If it's a delete operation and it's hanging, we might want to just log it 
-        // and proceed so the user's UI isn't blocked by a cleanup task.
-        console.error(`Storage delete failed after ${attempt} attempts:`, error);
-        // We log but don't necessarily want to block the whole app flow if it's just cleanup
+      if (!isRetryable || attempt > maxRetries) {
+        console.error(`Storage delete failed after ${attempt} attempts:`, error.code || error.message);
         return; 
       }
       

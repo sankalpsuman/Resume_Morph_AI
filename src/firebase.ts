@@ -28,10 +28,11 @@ export const db = initializeFirestore(app, {
   // Use a shorter timeout to fail-fast and retry if needed
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
-export const storage = getStorage(app);
+export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
 // Increase global storage timeout/retry to handle flaky connections, but not so long that it hangs.
-storage.maxOperationRetryTime = 60000; // 1 minute
-storage.maxUploadRetryTime = 60000; 
+// We reduce this from 60s to 15s to fail-fast in restricted environments.
+storage.maxOperationRetryTime = 15000; 
+storage.maxUploadRetryTime = 15000; 
 
 // Connection check as per guidelines - moved to a non-blocking lazy check
 let connectionTested = false;

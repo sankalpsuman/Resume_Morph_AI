@@ -338,9 +338,16 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       }
 
       // Parallelize Storage and Firestore updates
-      // We don't strictly need to await Storage upload for the UI to feel "saved"
-      // because the HTML is already in Firestore.
-      uploadWithRetry(resumeRef, html, 'raw', { contentType: 'text/html' }).catch(err => console.error("Background storage upload failed:", err));
+      // Note: Storage upload often fails in restricted preview environments, 
+      // but we still have the full HTML saved in Firestore history as primary backup.
+      uploadWithRetry(resumeRef, html, 'raw', { contentType: 'text/html' })
+        .then(() => console.log("Background storage sync complete."))
+        .catch(err => {
+          // Silent catch for background task if it's a timeout, as we have Firestore backup
+          if (!err.message?.includes('timed out')) {
+            console.error("Background storage upload failed:", err);
+          }
+        });
       
       await updateDoc(userRef, {
         resumeHistory: updatedHistory,
