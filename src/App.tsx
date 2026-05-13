@@ -398,16 +398,10 @@ export default function App() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       
-      console.log('DEBUG: Auth Instance (App):', auth);
-      console.log('DEBUG: Provider Instance (App):', provider);
-      
-      if (!auth || typeof auth.signOut !== 'function') {
-        throw new Error('INTERNAL_AUTH_INVALID');
+      if (!auth) {
+        throw new Error('Auth instance not initialized');
       }
 
-      // Ensure connection to backend
-      await ensureConnection();
-      
       console.log('Attempting login with Google popup (trigger)...');
       const result = await signInWithPopup(auth, provider);
       if (result.user) {
@@ -415,13 +409,12 @@ export default function App() {
         setUser(result.user);
       }
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      if (error.code === 'auth/popup-blocked') {
+        alert("The login popup was blocked by your browser. Please allow popups for this site and try again.");
+      } else if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         console.warn('Login popup closed by user or cancelled');
-        return;
-      }
-      console.error('Login error (trigger):', error);
-      if (error.code === 'auth/argument-error') {
-        console.error('CRITICAL: Argument Error detected in App.tsx. Likely Auth/Provider version mismatch.');
+      } else {
+        console.error('Login error (trigger):', error);
       }
     }
   };

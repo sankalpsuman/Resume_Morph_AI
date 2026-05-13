@@ -16,6 +16,7 @@ import {
   checkMatch,
   conversationalEdit
 } from '../lib/gemini';
+import { wrapResumeHtml } from '../lib/resumeTemplates';
 import mammoth from 'mammoth';
 import { jsPDF } from 'jspdf';
 
@@ -334,6 +335,11 @@ export default function SmartEditor({ userData }: { userData: any }) {
       
       const blueprint = await analyzeLayout(base64, file.type);
       setReferenceFile({ base64, mime: file.type, blueprint });
+      
+      // Force refresh after new design is dropped to apply cloning immediately
+      if (resumeData) {
+        setTimeout(() => refreshPreview(), 100);
+      }
     } catch (err: any) {
       setError("Failed to analyze design reference.");
     } finally {
@@ -867,6 +873,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
                       <html>
                         <head>
                           <script src="https://cdn.tailwindcss.com"></script>
+                          <script src="https://unpkg.com/lucide@latest"></script>
                           <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
                           <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
                           <style>
@@ -1056,7 +1063,10 @@ export default function SmartEditor({ userData }: { userData: any }) {
                                 });
 
                                 // Repaginate if data changed
-                                setTimeout(paginate, 100);
+                                setTimeout(() => {
+                                  if (window.lucide) window.lucide.createIcons();
+                                  paginate();
+                                }, 100);
                               }
 
                                if (event.data.type === 'CAPTURE_CANVAS') {

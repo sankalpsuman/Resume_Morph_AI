@@ -15,16 +15,15 @@ export async function uploadWithRetry(
       return;
     } catch (error: any) {
       attempt++;
-      // If we already hit retry-limit-exceeded, it means the SDK internal retries failed.
-      // We check for other retryable codes or if it's the first time we see retry-limit-exceeded.
-      const isRetryable = error.code === 'storage/retry-limit-exceeded' || 
-                         error.code === 'storage/unknown' || 
+      // If we already hit retry-limit-exceeded, the SDK internal retries failed.
+      // We only retry our wrapper if it's NOT a retry-limit-exceeded,
+      // as that error indicates we've already spent the maxOperationRetryTime.
+      const isRetryable = error.code === 'storage/unknown' || 
                          error.code === 'storage/server-file-wrong-size' ||
                          error.code === 'storage/cannot-slice-blob' ||
-                         error.message?.toLowerCase().includes('retry') ||
                          error.message?.toLowerCase().includes('network');
       
-      if (!isRetryable || attempt > maxRetries) {
+      if (!isRetryable || attempt > maxRetries || error.code === 'storage/retry-limit-exceeded') {
         const dataSize = data ? (typeof data === 'string' ? data.length : 'unknown') : 0;
         console.error(`Storage upload failed after ${attempt} attempts (Size: ${dataSize} bytes):`, error);
         throw error;
@@ -55,11 +54,10 @@ export async function deleteWithRetry(
       }
 
       attempt++;
-      const isRetryable = error.code === 'storage/retry-limit-exceeded' || 
-                         error.code === 'storage/unknown' ||
+      const isRetryable = error.code === 'storage/unknown' ||
                          error.message?.includes('retry');
       
-      if (!isRetryable || attempt > maxRetries) {
+      if (!isRetryable || attempt > maxRetries || error.code === 'storage/retry-limit-exceeded') {
         // If it's a delete operation and it's hanging, we might want to just log it 
         // and proceed so the user's UI isn't blocked by a cleanup task.
         console.error(`Storage delete failed after ${attempt} attempts:`, error);

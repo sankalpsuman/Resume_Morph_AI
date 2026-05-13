@@ -87,7 +87,9 @@ export default function Feedback() {
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+      if (error.code === 'auth/popup-blocked') {
+        alert("The login popup was blocked by your browser. Please allow popups for this site and try again.");
+      } else if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         console.log('Login popup closed or cancelled');
       } else {
         console.error('Login failed:', error);

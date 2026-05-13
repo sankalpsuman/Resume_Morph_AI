@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
-  RefreshCw, FileCode, FileType, Files, ShieldCheck, Target,
+  RefreshCw, FileCode, FileType, Files, ShieldCheck, Target, Layers,
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
 import { wrapResumeHtml } from '../lib/resumeTemplates';
@@ -87,7 +88,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [strictLayout, setStrictLayout] = useState(true);
-  const [lengthMode, setLengthMode] = useState<'1-page' | '2-page' | 'executive'>('1-page');
+  const [lengthMode, setLengthMode] = useState<'1-page' | '2-page' | 'executive' | 'no-limit'>('no-limit');
   const [linkedinText, setLinkedinText] = useState('');
   const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
 
@@ -136,11 +137,43 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   const previewRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  const previewHtml = useMemo(() => {
+    if (!generatedHtml) return '';
+    return wrapResumeHtml(generatedHtml, { 
+      name: resumeMetadata?.name, 
+      isGuest: !user, 
+      previewMode: true, 
+      isPremium 
+    });
+  }, [generatedHtml, resumeMetadata?.name, user, isPremium]);
+
+  // Safety timeout for preview ready state
+  useEffect(() => {
+    if (generatedHtml && !isPreviewReady) {
+      const timer = setTimeout(() => {
+        setIsPreviewReady(true);
+      }, 3000); // Reduced timeout
+      return () => clearTimeout(timer);
+    }
+  }, [generatedHtml, isPreviewReady]);
+
+  useEffect(() => {
+    // When generatedHtml changes, reset ready state to show loader briefly
+    if (generatedHtml) {
+      setIsPreviewReady(false);
+    }
+  }, [generatedHtml]);
+
   const onDropReference = async (acceptedFiles: File[]) => {
     if (!checkUsageLimits('morph')) return;
 
     const file = acceptedFiles[0];
     if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File is too large (max 10MB). Please upload a smaller file.");
+      return;
+    }
 
     // Supported formats check
     const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -203,6 +236,11 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
 
     const file = acceptedFiles[0];
     if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File is too large (max 10MB). Please upload a smaller file.");
+      return;
+    }
 
     // Supported formats check
     const isWord = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -363,16 +401,27 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
   };
 
   const handleAiError = (err: any, fallback: string) => {
-    console.error(err);
-    if (err.message === "API_KEY_MISSING") {
+    console.error("AI Error Details:", err);
+    const message = err?.message || "";
+    
+    if (message === "API_KEY_MISSING") {
       return "AI configuration is missing. Please contact support.";
     }
-    if (err.message === "QUOTA_EXCEEDED") {
-      return "Daily AI limit reached. Please try again later.";
+    if (message === "QUOTA_EXCEEDED" || message.includes("429")) {
+      return "Daily AI limit reached or service is busy. Please try again later.";
     }
-    if (err.message === "AI_CALL_TIMEOUT") {
+    if (message === "AI_CALL_TIMEOUT") {
       return "The Morph Engine is overloaded. Please try again in a few moments.";
     }
+    
+    // If it's one of our custom descriptive errors, show it
+    if (message.includes("Failed to process resume DNA") || 
+        message.includes("Parsing Error") || 
+        message.includes("CLONING_FAILED") ||
+        message.includes("INSUFFICIENT_DNA")) {
+      return message;
+    }
+
     return fallback;
   };
 
@@ -461,24 +510,30 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     setError(null);
     
     try {
-      let currentLayout = layoutAnalysis;
-      if (!currentLayout && (referenceFile.base64 || referenceFile.text)) {
-        setGenerationStatus('Scanning reference blueprint...');
-        if (referenceFile.text) {
-          currentLayout = await analyzeLayout(undefined, undefined, referenceFile.text);
-        } else if (referenceFile.base64) {
-          currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
-        }
-        setLayoutAnalysis(currentLayout);
+      setGenerationStatus('Scanning reference & extracting facts...');
+      
+      const analysisPromise = (!layoutAnalysis && (referenceFile.base64 || referenceFile.text))
+        ? analyzeLayout(referenceFile.base64, referenceFile.type, referenceFile.text)
+        : Promise.resolve(layoutAnalysis);
+        
+      const extractionPromise = (!contentFile.text && contentFile.base64)
+        ? extractTextFromAny(contentFile.base64, contentFile.type).catch(() => null)
+        : Promise.resolve(contentFile.text);
+
+      const [finalLayout, finalText] = await Promise.all([analysisPromise, extractionPromise]);
+      
+      if (finalLayout) setLayoutAnalysis(finalLayout);
+      if (finalText && !contentFile.text) {
+        setContentFile(prev => prev ? { ...prev, text: finalText } : null);
       }
 
       setGenerationStatus('Forensic mapping content to DNA...');
       const result = await generateResume(
         { base64: referenceFile.base64, mimeType: referenceFile.type, text: referenceFile.text },
-        { base64: contentFile.base64, mimeType: contentFile.type, text: contentFile.text },
+        { base64: contentFile.base64, mimeType: contentFile.type, text: finalText || contentFile.text },
         jobDescription,
         optimizeForAts,
-        currentLayout,
+        finalLayout,
         strictLayout,
         { lengthMode }
       );
@@ -523,7 +578,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         currentLayout = await analyzeLayout(referenceFile.base64.split(',')[1], referenceFile.type);
       }
 
-      if (!currentLayout || Object.keys(currentLayout).length < 5) {
+      // Quality check on the manifest string
+      if (!currentLayout || currentLayout.length < 50) {
         throw new Error("INSUFFICIENT_DNA_QUALITY");
       }
 
@@ -792,25 +848,52 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       const pageHeight = 297;
       
       // Calculate how many A4 pages we need based on the captured height
-      // The captured target is 794px wide. Scale it to fit 210mm.
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
+      
+      // The content is rendered at 794px width (standard for A4 at 96dpi)
+      // We scaled the capture to 2x (scale: 2), so canvasWidth is 1588px.
       const pxPerPage = (canvasWidth / pageWidth) * pageHeight;
-      const pagesCount = Math.ceil(canvasHeight / pxPerPage) || 1;
+      const pagesCount = Math.ceil(canvasHeight / pxPerPage);
       
       const imgWidth = pageWidth;
       const imgHeight = (canvasHeight * pageWidth) / canvasWidth;
+      
+      // Safety check: if canvas is too small or broken, imgData will be "data:,"
       const imgData = canvas.toDataURL('image/png', 1.0);
       
+      if (!imgData || imgData.length < 100) {
+        throw new Error("Could not capture resume image. Please try again.");
+      }
+      
       for (let i = 0; i < pagesCount; i++) {
-        if (i > 0) pdf.addPage();
         const position = -i * pageHeight;
+        if (i > 0) pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       }
       
       pdf.save(getFileName('pdf'));
     } catch (err) {
       console.error("PDF download failed:", err);
+    }
+  };
+
+  const handleDirectPrint = () => {
+    if (!user) {
+      setShowLoginPrompt(true);
+      setIsLoginPendingForDownload(true);
+      return;
+    }
+    if (!iframeRef.current) return;
+    
+    try {
+      const iframe = iframeRef.current;
+      if (iframe.contentWindow) {
+        iframe.contentWindow.print();
+        setShowDownloadMenu(false);
+      }
+    } catch (err) {
+      console.error("Print failed:", err);
     }
   };
 
@@ -867,88 +950,89 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         });
       }));
 
-      // 2. Identify capture target
       const target = iframeDoc.getElementById('resume-preview') || 
-                     iframeDoc.querySelector('.resume-page') || 
+                     iframeDoc.querySelector('.page') ||
                      iframeDoc.body;
 
-      // 3. Stabilization delay for rendering engine
-      await new Promise(r => setTimeout(r, 300));
+      if (!target) throw new Error("Capture target not found");
+      
+      // 2. Temporarily expand height and remove scaling for capture
+      const originalBodyOverflow = iframeDoc.body.style.overflow;
+      const originalBodyHeight = iframeDoc.body.style.height;
+      iframeDoc.body.style.overflow = 'visible';
+      iframeDoc.body.style.height = 'auto';
 
-      // 4. Capture with html2canvas using optimized settings
-      const canvas = await html2canvas(target as HTMLElement, {
-        scale: 2, // High resolution capture
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        imageTimeout: 0,
-        removeContainer: true,
-        onclone: (clonedDoc) => {
-          // ENSURE PIXEL-PERFECT PARITY BY REMOVING UI DECORATIONS
-          
-          // Force layout to 1:1 scale by removing scaling transforms
-          const scaler = clonedDoc.getElementById('scaling-container');
-          if (scaler) {
-            scaler.style.transform = 'none';
-            scaler.style.transition = 'none';
-            scaler.style.width = '794px';
-            scaler.style.margin = '0';
-            scaler.style.padding = '0';
-            scaler.style.opacity = '1';
-            scaler.style.position = 'relative';
-          }
-          
-          const preview = clonedDoc.getElementById('resume-preview');
-          if (preview) {
-             // CRITICAL: Remove gaps between pages so slicing in PDF is seamless
-             preview.style.gap = '0';
-             preview.style.padding = '0';
-             preview.style.margin = '0';
-             preview.style.boxShadow = 'none';
-             preview.style.border = 'none';
-             preview.style.background = 'white';
-             preview.style.display = 'flex';
-             preview.style.flexDirection = 'column';
-          }
-          
-          // Hide pagination UI elements that shouldn't be in the PDF
-          const styleTag = clonedDoc.createElement('style');
-          styleTag.innerHTML = `
-            .page::before, .page::after { display: none !important; opacity: 0 !important; }
-            .page { 
-              margin: 0 !important; 
-              box-shadow: none !important; 
-              border: none !important; 
-              border-radius: 0 !important;
-              page-break-after: always !important;
-            }
-            .resume-footer { 
-              margin-bottom: 0 !important; 
-              padding-bottom: 20px !important;
-              border-top: none !important;
-            }
-          `;
-          clonedDoc.head.appendChild(styleTag);
-          
-          // Force standard text rendering
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach(el => {
-            const style = (el as HTMLElement).style;
-            style.textRendering = 'geometricPrecision';
-            (style as any).webkitFontSmoothing = 'antialiased';
+      // Ensure full rendering before capture
+      await new Promise(r => setTimeout(r, 1000)); 
+
+      let canvas: HTMLCanvasElement | null = null;
+      
+      // We prioritize html2canvas for PDF/Image capture of complex layouts with absolute positioning
+      try {
+        canvas = await html2canvas(target as HTMLElement, {
+          scale: 2, // High res
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 15000,
+          removeContainer: true,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: 850,
+          onclone: (clonedDoc) => {
+            const clonedTarget = clonedDoc.getElementById('resume-preview') || clonedDoc.body;
+            clonedTarget.style.display = 'block';
+            clonedTarget.style.width = '794px';
+            clonedTarget.style.height = 'auto';
+            clonedTarget.style.overflow = 'visible';
+            clonedTarget.style.background = 'white';
+            clonedTarget.classList.remove('preview-mode');
+
+            // Find and style all pages
+            const pages = clonedDoc.querySelectorAll('.page');
+            pages.forEach((p: any) => {
+               p.style.margin = '0';
+               p.style.boxShadow = 'none';
+               p.style.border = 'none';
+               p.style.display = 'block';
+            });
             
-            // Fix potential underline rendering bugs in html2canvas
-            if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
-              style.textDecoration = 'none';
-              style.textDecorationLine = 'none';
-              style.borderBottom = '1px solid currentColor';
-              style.display = style.display === 'inline' ? 'inline-block' : style.display;
-              style.paddingBottom = '1px';
-            }
+            const styleTag = clonedDoc.createElement('style');
+            styleTag.innerHTML = `
+              .page::before, .page::after { display: none !important; opacity: 0 !important; }
+              .page { 
+                margin: 0 !important; 
+                box-shadow: none !important; 
+                border: none !important; 
+                border-radius: 0 !important;
+                page-break-after: always !important;
+                display: block !important;
+                visibility: visible !important;
+                float: none !important;
+                overflow: visible !important;
+              }
+              .resume-footer { display: block !important; }
+            `;
+            clonedDoc.head.appendChild(styleTag);
+          }
+        });
+      } catch (h2cErr) {
+        console.warn("html2canvas failed, trying html-to-image", h2cErr);
+        try {
+          canvas = await toCanvas(target as HTMLElement, {
+            backgroundColor: '#ffffff',
+            pixelRatio: 2,
+            skipAutoScale: true,
           });
+        } catch (imgErr) {
+          console.error("Both capture methods failed", imgErr);
         }
-      });
+      }
+
+      // Restore iframe state
+      iframeDoc.body.style.overflow = originalBodyOverflow;
+      iframeDoc.body.style.height = originalBodyHeight;
 
       return canvas;
     } catch (err) {
@@ -1535,11 +1619,12 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                     <div className="w-8 h-8 rounded-xl bg-amber-600 flex items-center justify-center text-white text-sm font-black shadow-lg shadow-amber-100 dark:shadow-none">3</div>
                     <h2 className="font-black text-xl tracking-tight text-[var(--text-primary)]">Target Length</h2>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 bg-[var(--bg-tertiary)] p-1.5 rounded-[22px] border border-[var(--border-color)]">
+                  <div className="grid grid-cols-4 gap-2 bg-[var(--bg-tertiary)] p-1.5 rounded-[22px] border border-[var(--border-color)]">
                     {[
                       { id: '1-page', label: 'Classic', icon: FileText, desc: '1 Page' },
                       { id: '2-page', label: 'Detail', icon: Files, desc: '2 Pages' },
-                      { id: 'executive', label: 'Impact', icon: ShieldCheck, desc: 'Exec' }
+                      { id: 'executive', label: 'Impact', icon: ShieldCheck, desc: 'Exec' },
+                      { id: 'no-limit', label: 'Full', icon: Layers, desc: 'No Limit' }
                     ].map((mode) => (
                       <button
                         key={mode.id}
@@ -1616,8 +1701,8 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                   {error}
                 </motion.div>
               )}
-            </div>
           </div>
+        </div>
 
           {/* Right Column: Preview */}
           <div className={cn(
@@ -1713,33 +1798,34 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
               </div>
 
               <div className={cn(
-                "flex-1 p-0 bg-white relative min-h-0",
-                isPreviewFull ? "h-auto" : "overflow-hidden"
+                "flex-1 p-0 relative min-h-0 bg-[var(--bg-secondary)] flex flex-col",
+                isPreviewFull ? "fixed inset-0 z-[500] p-4 md:p-8 bg-black/40 backdrop-blur-sm flex items-center justify-center" : "overflow-hidden"
               )}>
-
-
-                {/* Watermark for guests */}
-                {!user && generatedHtml && (
-                  <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none opacity-[0.05] rotate-[-15deg] select-none scale-150 overflow-hidden">
-                    <div className="flex flex-col items-center">
-                      <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
-                      <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
-                      <div className="mt-20 flex flex-col items-center">
-                        <h1 className="text-9xl font-black uppercase">Morph Engine</h1>
-                        <h2 className="text-4xl font-black uppercase tracking-widest mt-4">Draft Preview</h2>
-                      </div>
-                    </div>
-                  </div>
+                {isPreviewFull && (
+                   <motion.div 
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     onClick={() => setIsPreviewFull(false)}
+                     className="absolute inset-0 z-[-1]"
+                   />
                 )}
-                <AnimatePresence mode="wait">
-                  {isGuestBooting ? (
-                    <motion.div
-                      key="guest-booting"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 z-[200] bg-indigo-600 flex flex-col items-center justify-center p-6 text-white"
-                    >
+
+                <div className={cn(
+                  "bg-[var(--bg-primary)] border border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden transition-all duration-500 mx-auto relative",
+                  isPreviewFull 
+                    ? "w-full max-w-[1200px] h-full rounded-[32px] md:rounded-[48px]" 
+                    : "w-full h-full rounded-[32px] md:rounded-[48px]"
+                )}>
+                  <AnimatePresence mode="wait">
+                    {isGuestBooting ? (
+                      <motion.div
+                        key="guest-booting"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-[200] bg-indigo-600 flex flex-col items-center justify-center p-6 text-white"
+                      >
                       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
                       
                       <motion.div
@@ -1820,84 +1906,42 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       </div>
                     </motion.div>
                   ) : generatedHtml ? (
-                    <div className={cn(
-                      "relative flex flex-col bg-[var(--bg-secondary)] overflow-hidden transition-all duration-300",
-                      isPreviewFull 
-                        ? "h-[calc(100vh-160px)] md:h-[calc(100vh-200px)]" 
-                        : "h-full"
-                    )}>
-                      {/* Modern Preview Workbench Toolbar */}
-                      <div className="h-12 border-b border-[var(--border-color)] bg-[var(--bg-primary)] flex items-center justify-between px-4 z-20 shadow-sm shrink-0">
-                        <div className="flex items-center gap-3 md:gap-4">
-                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
-                            <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                            <span className="text-[10px] font-black uppercase tracking-tight text-indigo-600 dark:text-indigo-400">Workbench</span>
-                          </div>
-                          
-                          <div className="h-4 w-[1px] bg-[var(--border-color)] hidden md:block" />
-                          
-                          <button
-                            onClick={handleGenerate}
-                            disabled={isGenerating || isAnalyzing}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-indigo-100 disabled:opacity-50"
-                          >
-                            <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
-                            <span className="hidden sm:inline">Regenerate</span>
-                          </button>
-
-                          <div className="h-4 w-[1px] bg-[var(--border-color)]" />
-                          
-                          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] p-1 rounded-xl border border-[var(--border-color)] overflow-x-auto no-scrollbar">
-                            {[
-                              { id: 'fit-width', label: 'Fit Width', icon: Maximize2 },
-                              { id: 'fit-page', label: 'Fit Page', icon: Minimize2 },
-                              { id: 'actual', label: '100%', icon: MousePointerClick }
-                            ].map((mode) => (
-                              <button
-                                key={mode.id}
-                                onClick={() => {
-                                  // Send message to iframe to change zoom mode
-                                  const iframe = iframeRef.current;
-                                  if (iframe && iframe.contentWindow) {
-                                    iframe.contentWindow.postMessage({ type: 'SET_ZOOM_MODE', mode: mode.id }, '*');
-                                  }
-                                }}
-                                className="px-2 py-1 hover:bg-[var(--bg-primary)] rounded-md text-[9px] font-black uppercase tracking-tighter text-[var(--text-tertiary)] hover:text-indigo-600 transition-all flex items-center gap-1"
-                              >
-                                <mode.icon className="w-3 h-3" />
-                                <span className="hidden md:inline">{mode.label}</span>
-                              </button>
-                            ))}
-                          </div>
+                    <div className="relative flex-1 flex flex-col min-h-0 bg-slate-50">
+                      {/* Simplified Preview Toolbar */}
+                      <div className="h-10 border-b border-slate-200 bg-white flex items-center justify-between px-4 z-20 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                          <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">Resume Preview</span>
                         </div>
                         
-                        <div className="flex items-center gap-4">
-                           <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg">
-                            <Zap className="w-3 h-3 text-amber-500" />
-                            <span className="text-[10px] font-black tracking-tight text-[var(--text-secondary)] uppercase">Live Rendering</span>
-                          </div>
-                          
-                          <button 
-                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-[var(--text-tertiary)] transition-colors border border-transparent hover:border-[var(--border-color)]"
-                            title="Force Refresh Workspace"
-                            onClick={() => {
-                              const iframe = iframeRef.current;
-                              if (iframe && iframe.contentWindow) {
-                                iframe.contentWindow.location.reload();
-                              }
-                            }}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
                           >
-                            <RefreshCw className="w-3.5 h-3.5" />
+                            <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                            <span>Regenerate</span>
                           </button>
                         </div>
                       </div>
 
-                      <motion.iframe 
-                        key={generatedHtml ? 'active-preview' : 'empty-preview'}
-                        ref={iframeRef}
-                        className="w-full h-full border-none bg-white font-sans"
-                        srcDoc={wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: !user, previewMode: true, isPremium })}
-                      />
+                      <div className="flex-1 overflow-hidden relative">
+                        <iframe 
+                          key={generatedHtml}
+                          ref={iframeRef}
+                          className="w-full h-full border-none bg-slate-50 transition-all duration-300"
+                          onLoad={() => setIsPreviewReady(true)}
+                          srcDoc={previewHtml}
+                        />
+
+                        {!isPreviewReady && (
+                          <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
+                            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Resume...</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <motion.div 
@@ -1917,13 +1961,13 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </div>
-            </div>
+            </AnimatePresence>
           </div>
-
         </div>
-      </main>
+      </div>
+    </div>
+  </div>
+</main>
 
       <AnimatePresence>
         {showPlanModal && (
@@ -2040,6 +2084,18 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                     className="absolute bottom-full left-0 mb-4 w-64 bg-[var(--bg-primary)] rounded-[32px] shadow-2xl border border-[var(--border-color)] p-3 z-20 overflow-hidden"
                   >
                     <div className="grid grid-cols-1 gap-1">
+                      <button 
+                        onClick={() => { handleDirectPrint(); setShowDownloadMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl flex items-center gap-3 transition-colors border border-dashed border-indigo-200 dark:border-indigo-800"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                          <Zap className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-indigo-600 dark:text-indigo-400 text-xs text-glow">Fast Print / PDF</span>
+                          <span className="text-[8px] text-indigo-400 uppercase tracking-widest truncate">Instant High-Quality</span>
+                        </div>
+                      </button>
                       <button 
                         onClick={() => { handleDownloadPDF(); setShowDownloadMenu(false); }}
                         className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
