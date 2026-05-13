@@ -449,7 +449,7 @@ export async function generateResume(
     GOAL: Transform the data from "USER CONTENT" into the visual layout of "MASTER REFERENCE".
     
     CLONING RULES:
-    1. REPLICATE THE GRID: Match column splits (e.g. 25/75 or 33/66) exactly.
+    1. REPLICATE THE GRID: Match column splits (e.g. 25/75 or 33/66) exactly. Put layout-defining classes (bg, padding variation, layout flex/grid) on the .page element.
     2. TYPOGRAPHIC DNA: Mirror font weights, letter spacing, and line heights.
     3. DATA PRESERVATION: Render EVERY single experience entry, skill, and certification. DO NOT summarize or omit anything.
     
@@ -457,7 +457,8 @@ export async function generateResume(
     
     PIXEL-PERFECT RENDER:
     - Wrapper: <div class="page" data-page="Page X of Y"><div class="content">[CONTENT]</div></div>.
-    - If content is long, do NOT truncate. The frontend will handle pagination. 
+    - If a layout requires a sidebar, you can put the grid structure directly on the .page element, but ensure content area still uses class="content".
+    - If content is long, do NOT truncate. The frontend will handle pagination by cloning the page structure. 
     - Use Tailwind classes ONLY.
     
     ${optimizationPrompt}

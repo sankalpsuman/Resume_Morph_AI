@@ -182,6 +182,10 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         let pageIndex = 0;
         let safetyCounter = 0;
         
+        // Cache the first page's structure and classes to use as template for new pages
+        const firstPage = root.querySelector('.page');
+        if (!firstPage) return; // Should not happen after wrap logic
+
         while (pageIndex < root.querySelectorAll('.page').length && safetyCounter < 50) {
           safetyCounter++;
           const currentPage = root.querySelectorAll('.page')[pageIndex];
@@ -193,11 +197,11 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           if (content.scrollHeight > USABLE_HEIGHT + 2) {
             let nextPage = root.querySelectorAll('.page')[pageIndex + 1];
             if (!nextPage) {
-              nextPage = document.createElement('div');
-              nextPage.className = 'page';
-              const nextContent = document.createElement('div');
-              nextContent.className = 'content';
-              nextPage.appendChild(nextContent);
+              // CLONE TEMPLATE: Clone the first page but empty its content area
+              nextPage = firstPage.cloneNode(true);
+              nextPage.classList.remove('page-finished');
+              const nextContent = nextPage.querySelector('.content') || nextPage;
+              nextContent.innerHTML = ''; // Clear cloned content
               
               if (footer) {
                 root.insertBefore(nextPage, footer);
@@ -209,6 +213,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
             const nextContent = nextPage.querySelector('.content') || nextPage;
             const children = Array.from(content.children);
             
+            // Move items that cause overflow to the next container
             for (let j = children.length - 1; j >= 0; j--) {
               const child = children[j];
               nextContent.insertBefore(child, nextContent.firstChild);
@@ -225,6 +230,15 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           
           pageIndex++;
         }
+
+        // 3. Update Page Indicators
+        const allPages = root.querySelectorAll('.page');
+        allPages.forEach((pg, i) => {
+          pg.setAttribute('data-page', 'Page ' + (i + 1) + ' of ' + allPages.length);
+          // If there's a visible page number element, update its text
+          const pageNumEl = pg.querySelector('.page-number');
+          if (pageNumEl) pageNumEl.textContent = (i + 1) + ' / ' + allPages.length;
+        });
       } catch (err) {
         console.error("Pagination error:", err);
       } finally {
