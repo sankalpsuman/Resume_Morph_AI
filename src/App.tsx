@@ -39,7 +39,11 @@ type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker'
 import { PLANS } from './constants';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('builder');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const path = window.location.pathname.replace(/^\//, '') as Tab;
+    const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+    return validTabs.includes(path) ? path : 'builder';
+  });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -228,7 +232,18 @@ export default function App() {
       }
     };
     window.addEventListener('set-tab', handleSetTab);
-    return () => window.removeEventListener('set-tab', handleSetTab);
+    
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/^\//, '') as Tab;
+      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+      setActiveTab(validTabs.includes(path) ? path : 'builder');
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('set-tab', handleSetTab);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []); 
 
   useEffect(() => {
@@ -425,6 +440,12 @@ export default function App() {
     setIsResourcesOpen(false);
     setIsUserDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Update URL without full page reload
+    const newPath = tab === 'builder' ? '/' : `/${tab}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState({ tab }, '', newPath);
+    }
   };
 
   // Removed redundant theme effects (consolidated globally above)
