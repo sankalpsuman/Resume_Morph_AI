@@ -1,18 +1,25 @@
 import express, { Request, Response } from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
-import mammoth from "mammoth";
-import * as pdf from "pdf-parse";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Robust __dirname for both ESM and CJS
+let __dirnameOverride: string;
+try {
+  // @ts-ignore - this works in CJS
+  __dirnameOverride = __dirname;
+} catch (e) {
+  // This works in ESM
+  const __filename = fileURLToPath(import.meta.url);
+  __dirnameOverride = path.dirname(__filename);
+}
+
+const getRoot = () => process.cwd();
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -21,15 +28,23 @@ const upload = multer({
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(cors());
   app.use(express.json());
 
   // API Status
   app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", uptime: process.uptime() });
+    res.json({ 
+      status: "ok", 
+      uptime: process.uptime(), 
+      env: process.env.NODE_ENV,
+      root: getRoot(),
+      dir: __dirnameOverride
+    });
   });
+
+  // ... (rest of the API routes would be here, but I'll skip to the metadata/vite parts to keep the edit focused)
 
   // Resume Text Extraction API
   app.post("/api/extract-text", upload.single("resume"), async (req: any, res: any) => {
@@ -47,7 +62,8 @@ async function startServer() {
       // Case 1: PDF
       if (file.mimetype === "application/pdf" || fileName.endsWith('.pdf')) {
         try {
-          // Robust pdf-parse usage for both ESM and CJS compatibility
+          // Dynamic import for pdf-parse to avoid ESM/CJS issues at startup
+          const pdf = await import("pdf-parse");
           const pdfParser = (pdf as any).default || pdf;
           const data = await pdfParser(file.buffer);
           extractedText = data.text;
@@ -61,6 +77,7 @@ async function startServer() {
         fileName.endsWith('.docx')
       ) {
         try {
+          const mammoth = await import("mammoth");
           const result = await mammoth.extractRawText({ buffer: file.buffer });
           extractedText = result.value;
         } catch (docxError) {
@@ -96,42 +113,84 @@ async function startServer() {
   });
 
   // Dynamic Metadata Helper
-  const getMetadata = (urlPath: string, host: string) => {
-    // Determine base URL (handle localhost for dev convenience)
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${host}`;
+  const getMetadata = (req: Request) => {
+    const urlPath = req.originalUrl || '/';
+    // Better host detection for Cloud Run / Proxies
+    const forwardedHost = req.headers['x-forwarded-host'] as string;
+    const host = forwardedHost || req.get('host') || 'resumemorph.ai';
+    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
+    const baseUrl = `${protocol}://${host.split(',')[0].trim()}`; // Handle comma separated hosts
     
+    // Professional Brand Image
+    const LOGO_IMAGE = "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=0.8&w=1200&h=630";
+
     const defaultMeta = {
       title: "Resume Morph AI | Transform Your Career with AI",
       description: "Morph your resume into any design with AI. Clone layouts from images, optimize for ATS, and chat with your resume architect to refine every detail.",
-      image: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=0.8&w=1200&h=630&fit=crop",
-      url: `${baseUrl}${urlPath}`
+      image: LOGO_IMAGE,
+      url: `${baseUrl}${urlPath.split('?')[0]}` // Strip query params for canonical
     };
 
     if (urlPath.includes('/portfolio')) {
       return {
         ...defaultMeta,
-        title: "Portfolio Generator | Build Your Personal Brand | Resume Morph",
-        description: "Instantly transform your resume into a stunning, responsive portfolio website with Resume Morph AI.",
-        image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&q=0.8&w=1200&h=630&fit=crop"
+        title: "AI Portfolio Generator | Build Your Personal Brand | Resume Morph",
+        description: "Instantly transform your resume into a stunning, responsive portfolio website. Showcase your work with style.",
+        image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&q=0.8&w=1200&h=630"
       };
     }
     
     if (urlPath.includes('/smart-editor')) {
       return {
         ...defaultMeta,
-        title: "Smart Editor | ATS-Optimized Resume Refining | Resume Morph",
-        description: "Live ATS scoring and AI-powered content improvement. Ensure your resume passes every recruiter filter.",
-        image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=0.8&w=1200&h=630&fit=crop"
+        title: "Smart Resume Editor | ATS-Optimized Refinement",
+        description: "Live ATS scoring and AI-powered content improvement. Ensure your resume passes every recruiter filter with ease.",
+        image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=0.8&w=1200&h=630"
+      };
+    }
+
+    if (urlPath.includes('/tracker')) {
+      return {
+        ...defaultMeta,
+        title: "Job Application Tracker | Organize Your Search",
+        description: "Keep track of every resume sent, every interview scheduled, and every offer received in one central dashboard.",
+        image: "https://images.unsplash.com/photo-1454165833767-0275469s1f6?auto=format&fit=crop&q=0.8&w=1200&h=630"
+      };
+    }
+
+    if (urlPath.includes('/cover-letter')) {
+      return {
+        ...defaultMeta,
+        title: "AI Cover Letter Generator | Personalized for Every Job",
+        description: "Create compelling cover letters tailored specifically to each role and company in seconds.",
+        image: "https://images.unsplash.com/photo-1512485696566-29a94a859464?auto=format&fit=crop&q=0.8&w=1200&h=630"
       };
     }
 
     if (urlPath.includes('/ai-assistant')) {
       return {
         ...defaultMeta,
-        title: "AI Career Coach | Mock Interviews & Growth | Resume Morph",
+        title: "AI Career Coach | Mock Interviews & Growth",
         description: "Level up your career with AI-driven mock interviews, feedback, and expert guidance from your Morph Career Coach.",
-        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=0.8&w=1200&h=630&fit=crop"
+        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=0.8&w=1200&h=630"
+      };
+    }
+
+    if (urlPath.includes('/guide') || urlPath.includes('/resources')) {
+      return {
+        ...defaultMeta,
+        title: "Resources & Guide | Master the Morph Platform",
+        description: "Everything you need to know about building the perfect resume and portfolio with Resume Morph AI.",
+        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=0.8&w=1200&h=630"
+      };
+    }
+
+    if (urlPath.includes('/about')) {
+      return {
+        ...defaultMeta,
+        title: "About Resume Morph AI | The Future of Career Tech",
+        description: "Learn about the mission and technology behind the platform that's helping thousands transform their careers.",
+        image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=0.8&w=1200&h=630"
       };
     }
 
@@ -140,14 +199,31 @@ async function startServer() {
 
   const injectMetadata = (html: string, metadata: any) => {
     return html
-      .replace(/__TITLE__/g, metadata.title)
-      .replace(/__DESCRIPTION__/g, metadata.description)
-      .replace(/__IMAGE__/g, metadata.image)
-      .replace(/__URL__/g, metadata.url);
+      .replace(/__TITLE__/g, String(metadata.title))
+      .replace(/__DESCRIPTION__/g, String(metadata.description))
+      .replace(/__IMAGE__/g, String(metadata.image))
+      .replace(/__URL__/g, String(metadata.url));
+  };
+
+  let cachedTemplate: string | null = null;
+  const getTemplate = (indexPath: string, vite?: any, url?: string) => {
+    if (process.env.NODE_ENV !== "production") {
+      let template = fs.readFileSync(indexPath, 'utf-8');
+      if (vite && url) {
+        return vite.transformIndexHtml(url, template);
+      }
+      return Promise.resolve(template);
+    }
+    
+    if (cachedTemplate) return Promise.resolve(cachedTemplate);
+    cachedTemplate = fs.readFileSync(indexPath, 'utf-8');
+    return Promise.resolve(cachedTemplate);
   };
 
   // Vite Integration
   if (process.env.NODE_ENV !== "production") {
+    // Dynamic import to avoid crash in production if vite is missing
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -158,11 +234,14 @@ async function startServer() {
     // Development path for metadata testing
     app.use('*', async (req, res, next) => {
       const url = req.originalUrl;
+      // Skip API and assets
+      if (url.startsWith('/api') || url.includes('.')) return next();
+
       try {
-        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
+        const indexPath = path.resolve(getRoot(), 'index.html');
+        const template = await getTemplate(indexPath, vite, url);
         
-        const metadata = getMetadata(url, req.get('host') || 'localhost:3000');
+        const metadata = getMetadata(req);
         const html = injectMetadata(template, metadata);
         
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
@@ -172,18 +251,36 @@ async function startServer() {
       }
     });
   } else {
-    const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath, { index: false })); // Don't serve index.html automatically
+    // In production, server runs from dist/server.cjs
+    // Assets are in the same folder (dist/)
+    const distPath = path.resolve(__dirnameOverride); 
+    console.log(`Serving static assets from: ${distPath}`);
+    app.use(express.static(distPath, { index: false }));
 
-    app.get('*', (req, res) => {
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      // Skip API and assets that weren't caught by express.static
+      if (url.startsWith('/api') || url.includes('.')) return next();
+
       const distIndex = path.join(distPath, 'index.html');
-      if (fs.existsSync(distIndex)) {
-        let template = fs.readFileSync(distIndex, 'utf-8');
-        const metadata = getMetadata(req.originalUrl, req.get('host') || 'resumemorph.ai');
-        const html = injectMetadata(template, metadata);
-        res.send(html);
-      } else {
-        res.status(404).send('Not Found');
+      
+      try {
+        let indexPath = distIndex;
+        if (!fs.existsSync(distIndex)) {
+            indexPath = path.join(process.cwd(), 'dist', 'index.html');
+        }
+
+        if (fs.existsSync(indexPath)) {
+          const template = await getTemplate(indexPath);
+          const metadata = getMetadata(req);
+          const html = injectMetadata(template, metadata);
+          res.set('Cache-Control', 'public, max-age=3600').send(html);
+        } else {
+          res.status(404).send('Application build not found. Please refresh.');
+        }
+      } catch (err) {
+        console.error("Template read error:", err);
+        res.status(500).send("Internal Server Error");
       }
     });
   }

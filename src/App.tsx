@@ -4,16 +4,21 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import ResumeBuilder from './components/ResumeBuilder';
-import About from './components/About';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import Contact from './components/Contact';
-import Feedback from './components/Feedback';
-import PortfolioGenerator from './components/PortfolioGenerator';
-import Login from './components/Login';
-import SmartEditor from './components/SmartEditor';
-import CoverLetterGenerator from './components/CoverLetterGenerator';
-import ApplyTracker from './components/ApplyTracker';
+const ResumeBuilder = React.lazy(() => import('./components/ResumeBuilder'));
+const About = React.lazy(() => import('./components/About'));
+const PrivacyPolicy = React.lazy(() => import('./components/PrivacyPolicy'));
+const Contact = React.lazy(() => import('./components/Contact'));
+const Feedback = React.lazy(() => import('./components/Feedback'));
+const PortfolioGenerator = React.lazy(() => import('./components/PortfolioGenerator'));
+const Login = React.lazy(() => import('./components/Login'));
+const SmartEditor = React.lazy(() => import('./components/SmartEditor'));
+const CoverLetterGenerator = React.lazy(() => import('./components/CoverLetterGenerator'));
+const ApplyTracker = React.lazy(() => import('./components/ApplyTracker'));
+const AccountModal = React.lazy(() => import('./components/AccountModal'));
+const UserGuide = React.lazy(() => import('./components/UserGuide'));
+const Resources = React.lazy(() => import('./components/Resources'));
+const ResumeAIAssistant = React.lazy(() => import('./components/ResumeAIAssistant'));
+
 import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy, LogIn } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -22,15 +27,11 @@ import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from
 import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc, getDocFromServer } from 'firebase/firestore';
 import { ref } from 'firebase/storage';
 import { deleteWithRetry } from './lib/storage';
-import AccountModal from './components/AccountModal';
 import AdminPanel from './components/AdminPanel';
-import UserGuide from './components/UserGuide';
 import PremiumModal from './components/PremiumModal';
 import CreatorWelcomeModal from './components/CreatorWelcomeModal';
 import InteractiveTour from './components/InteractiveTour';
-import ResumeAIAssistant from './components/ResumeAIAssistant';
 import AppChatbot from './components/AppChatbot';
-import Resources from './components/Resources';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon } from 'lucide-react';
 
@@ -82,6 +83,18 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const path = window.location.pathname.replace(/^\//, '') as Tab;
+      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+      const targetTab = validTabs.includes(path) ? path : 'builder';
+      setActiveTab(targetTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
@@ -769,63 +782,106 @@ export default function App() {
         "flex-grow relative w-full",
         !isPortfolioFullscreen && "pt-20 md:pt-28 pb-32"
       )}>
-        <div className={cn("max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'builder' && "hidden")}>
-          <ResumeBuilder 
-            userData={userData} 
-            onUpgrade={() => setShowUpgradeModal(true)} 
-            user={user}
-            onLogin={triggerLogin}
-          />
-        </div>
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+          </div>
+        }>
+          {activeTab === 'builder' && (
+            <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+              <ResumeBuilder 
+                userData={userData} 
+                onUpgrade={() => setShowUpgradeModal(true)} 
+                user={user}
+                onLogin={triggerLogin}
+              />
+            </div>
+          )}
 
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'ai-assistant' && "hidden")}>
-          <ResumeAIAssistant />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'smart-editor' && "hidden")}>
-          <SmartEditor userData={userData} />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'cover-letter' && "hidden")}>
-          <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.originalText || ""} />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'tracker' && "hidden")}>
-          <ApplyTracker user={user} />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'portfolio' && "hidden")}>
-          <PortfolioGenerator 
-            onFullscreenChange={setIsPortfolioFullscreen} 
-          />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-0 sm:px-6 lg:px-8", activeTab !== 'guide' && "hidden")}>
-          <UserGuide />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'about' && "hidden")}>
-          <About />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'privacy' && "hidden")}>
-          <PrivacyPolicy />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'contact' && "hidden")}>
-          <Contact />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'feedback' && "hidden")}>
-          <Feedback />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", activeTab !== 'resources' && "hidden")}>
-          <Resources onTabChange={handleTabChange} />
-        </div>
-        <div className={cn("max-w-7xl mx-auto px-0 sm:px-6 lg:px-8", activeTab !== 'account' && "hidden")}>
-          <AccountModal 
-            isOpen={true} 
-            onClose={() => handleTabChange('builder')} 
-            user={user}
-            userData={userData}
-            onLogout={handleLogout}
-            onUpgrade={() => setShowUpgradeModal(true)}
-            onOpenAdmin={() => setIsAdminOpen(true)}
-            onDeleteResume={handleDeleteResume}
-            isTabMode={true}
-          />
-        </div>
+          {activeTab === 'ai-assistant' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <ResumeAIAssistant />
+            </div>
+          )}
+          
+          {activeTab === 'smart-editor' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <SmartEditor userData={userData} />
+            </div>
+          )}
+          
+          {activeTab === 'cover-letter' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.originalText || ""} />
+            </div>
+          )}
+          
+          {activeTab === 'tracker' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <ApplyTracker user={user} />
+            </div>
+          )}
+          
+          {activeTab === 'portfolio' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <PortfolioGenerator 
+                onFullscreenChange={setIsPortfolioFullscreen} 
+              />
+            </div>
+          )}
+          
+          {activeTab === 'guide' && (
+            <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
+              <UserGuide />
+            </div>
+          )}
+          
+          {activeTab === 'about' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <About />
+            </div>
+          )}
+          
+          {activeTab === 'privacy' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <PrivacyPolicy />
+            </div>
+          )}
+          
+          {activeTab === 'contact' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Contact />
+            </div>
+          )}
+          
+          {activeTab === 'feedback' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Feedback />
+            </div>
+          )}
+          
+          {activeTab === 'resources' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Resources onTabChange={handleTabChange} />
+            </div>
+          )}
+          
+          {activeTab === 'account' && (
+            <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
+              <AccountModal 
+                isOpen={true} 
+                onClose={() => handleTabChange('builder')} 
+                user={user}
+                userData={userData}
+                onLogout={handleLogout}
+                onUpgrade={() => setShowUpgradeModal(true)}
+                onOpenAdmin={() => setIsAdminOpen(true)}
+                onDeleteResume={handleDeleteResume}
+                isTabMode={true}
+              />
+            </div>
+          )}
+        </React.Suspense>
       </main>
 
       {/* Bottom Navigation for Mobile */}

@@ -17,8 +17,10 @@ import {
   conversationalEdit
 } from '../lib/gemini';
 import { wrapResumeHtml } from '../lib/resumeTemplates';
-import mammoth from 'mammoth';
-import { jsPDF } from 'jspdf';
+// Dynamic imports to reduce initial bundle size
+const loadMammoth = () => import('mammoth').then(m => m.default || m);
+const loadJsPDF = () => import('jspdf').then(m => m.jsPDF || m.default?.jsPDF || m);
+const loadHtml2Canvas = () => import('html2canvas').then(m => m.default || m);
 
 interface ResumeData {
   personalInfo: {
@@ -70,7 +72,13 @@ interface CustomMessage {
   timestamp: number;
 }
 
-export default function SmartEditor({ userData }: { userData: any }) {
+function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: { 
+  userData: any, 
+  user?: any, 
+  onUpgrade: () => void,
+  onLogin?: () => void,
+  isAdmin?: boolean
+}) {
   const isPremium = userData?.plan && userData.plan !== 'free';
   
   const [step, setStep] = useState<'import' | 'studio'>('import');
@@ -292,6 +300,7 @@ export default function SmartEditor({ userData }: { userData: any }) {
 
       if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await loadMammoth();
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
       } else if (file.type === 'text/plain') {
@@ -386,7 +395,8 @@ export default function SmartEditor({ userData }: { userData: any }) {
           }
 
           const imgData = event.data.imgData;
-          const pdf = new jsPDF('p', 'mm', 'a4');
+          const jsPDF = await loadJsPDF();
+      const pdf = new jsPDF('p', 'mm', 'a4');
           const pageWidth = 210;
           const pageHeight = 297;
           
@@ -1681,3 +1691,5 @@ function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) =>
     </div>
   );
 }
+
+export default memo(SmartEditor);

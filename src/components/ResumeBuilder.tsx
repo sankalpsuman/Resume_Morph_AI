@@ -6,12 +6,12 @@ import {
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { toCanvas } from 'html-to-image';
-import { jsPDF } from 'jspdf';
-import { analyzeLayout, generateResume, extractTextFromAny, getOptimizationPlan, checkMatch } from '../lib/gemini';
-import { wrapResumeHtml } from '../lib/resumeTemplates';
-import mammoth from 'mammoth';
+// Dynamic imports for heavy libraries
+// These will be loaded on demand to reduce initial bundle size
+const loadMammoth = () => import('mammoth').then(m => m.default || m);
+const loadHtml2Canvas = () => import('html2canvas').then(m => m.default || m);
+const loadJsPDF = () => import('jspdf').then(m => m.jsPDF || m.default?.jsPDF || m);
+const loadHtmlToImage = () => import('html-to-image');
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { auth, db, storage } from '../firebase';
@@ -19,6 +19,14 @@ import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increm
 import { ref, uploadString } from 'firebase/storage';
 import { uploadWithRetry, deleteWithRetry } from '../lib/storage';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
+import { 
+  analyzeLayout, 
+  extractTextFromAny, 
+  generateResume, 
+  checkMatch, 
+  getOptimizationPlan 
+} from '../lib/gemini';
+import { wrapResumeHtml } from '../lib/resumeTemplates';
 
 import { PLANS } from '../constants';
 
@@ -36,7 +44,152 @@ interface ResumeBuilderProps {
   onLogin?: () => void;
 }
 
-export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProps) {
+const StatsBar = React.memo(({ 
+  isLimitReached, 
+  usedMorphs, 
+  planLimit, 
+  progress, 
+  userData, 
+  strictLayout, 
+  setStrictLayout, 
+  onUpgrade 
+}: { 
+  isLimitReached: boolean, 
+  usedMorphs: number, 
+  planLimit: number | string, 
+  progress: number, 
+  userData: any, 
+  strictLayout: boolean, 
+  setStrictLayout: (val: boolean) => void,
+  onUpgrade: () => void
+}) => {
+  return (
+    <div className={cn(
+      "flex flex-col lg:flex-row items-stretch lg:items-center gap-4 md:gap-8 bg-[var(--bg-primary)] border rounded-[24px] md:rounded-[32px] p-4 md:p-8 shadow-sm transition-colors",
+      isLimitReached ? "border-rose-200 dark:border-rose-900/30" : "border-[var(--border-color)]"
+    )}>
+      <div className="flex items-center gap-4 md:gap-5">
+        <div className={cn(
+          "w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-[22px] flex items-center justify-center shadow-lg transition-all shrink-0",
+          isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
+        )}>
+          <Zap className="w-5 h-5 md:w-7 md:h-7 text-white fill-white" />
+        </div>
+        <div className="flex-grow">
+          <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-0.5 md:mb-1">Morph Engine Status</p>
+          <div className="flex items-center gap-2 md:gap-3">
+            <span className={cn(
+              "text-lg md:text-2xl font-black tracking-tight",
+              isLimitReached ? "text-rose-600" : "text-[var(--text-primary)]"
+            )}>
+              {planLimit === Infinity ? 'Unlimited' : `${usedMorphs} / ${planLimit}`}
+            </span>
+            <span className={cn(
+              "px-2 py-0.5 md:px-3 md:py-1 rounded-lg md:rounded-xl text-[7px] md:text-[10px] font-black uppercase tracking-widest border transition-colors",
+              isLimitReached 
+                ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" 
+                : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30"
+            )}>
+              {(() => {
+                const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
+                return `${currentPlan.name} Plan`;
+              })()}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
+      
+      <div className="flex items-center justify-between gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2 md:py-2.5 rounded-[16px] md:rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-7 h-7 md:w-8 md:h-8 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all",
+            strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
+          )}>
+            <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="text-[8px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
+            <span className="text-[6px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
+          </div>
+        </div>
+        <button 
+          onClick={() => setStrictLayout(!strictLayout)}
+          className={cn(
+            "w-9 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
+            strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
+          )}
+        >
+          <motion.div 
+            initial={false}
+            animate={{ x: strictLayout ? (window.innerWidth < 768 ? 18 : 24) : 4 }}
+            className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
+          />
+        </button>
+      </div>
+
+      <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
+      
+      <div className="lg:flex-grow lg:max-w-md">
+        <div className="flex items-center justify-between mb-1.5 md:mb-3">
+          <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
+          <p className={cn(
+            "text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]",
+            isLimitReached ? "text-rose-600" : "text-indigo-600"
+          )}>
+            {planLimit === Infinity ? '∞' : Math.max(0, (planLimit as number) - usedMorphs)} Morphs Left
+          </p>
+        </div>
+        <div className="w-full h-2 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
+            className={cn(
+              "h-full rounded-full transition-colors",
+              isLimitReached 
+                ? "bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]" 
+                : "bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+            )}
+          />
+        </div>
+      </div>
+
+      {planLimit !== Infinity && usedMorphs >= (planLimit as number) && (
+        <button 
+          onClick={onUpgrade}
+          className="lg:ml-4 py-4 md:py-5 px-6 md:px-10 bg-[var(--bg-primary)] border-2 border-indigo-600 text-indigo-600 rounded-[20px] md:rounded-[24px] text-xs font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-xl shadow-indigo-100 dark:shadow-none shrink-0"
+        >
+          Upgrade Now
+        </button>
+      )}
+    </div>
+  );
+});
+
+const ResumeIframe = React.memo(React.forwardRef<HTMLIFrameElement, { html: string, onLoad: () => void, isReady: boolean }>(({ html, onLoad, isReady }, ref) => {
+  return (
+    <div className="flex-1 overflow-hidden relative">
+      <iframe 
+        key={html.length} 
+        ref={ref}
+        className="w-full h-full border-none bg-slate-50 transition-all duration-300"
+        onLoad={onLoad}
+        srcDoc={html}
+        title="Resume Preview Internal"
+      ></iframe>
+
+      {!isReady && (
+        <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Resume...</p>
+        </div>
+      )}
+    </div>
+  );
+}));
+
+function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProps) {
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
     return localStorage.getItem('hasUsedFreeMorph') === 'true';
   });
@@ -192,6 +345,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       let text = '';
       if (isWord) {
         const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await loadMammoth();
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
       } else if (isText) {
@@ -212,8 +366,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
             if (contentType && contentType.includes("application/json")) {
               const data = await response.json();
               text = data.text;
-            } else {
-              console.warn("Server preferred HTML/Text over JSON. Likely a session check.");
             }
           }
         } catch (fetchErr) {
@@ -259,6 +411,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       let text = '';
       if (isWord) {
         const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await loadMammoth();
         const result = await mammoth.extractRawText({ arrayBuffer });
         text = result.value;
       } else if (isText) {
@@ -341,7 +494,6 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       // Note: Storage upload often fails in restricted preview environments, 
       // but we still have the full HTML saved in Firestore history as primary backup.
       uploadWithRetry(resumeRef, html, 'raw', { contentType: 'text/html' })
-        .then(() => console.log("Background storage sync complete."))
         .catch(err => {
           // Silent catch for background task if it's a timeout, as we have Firestore backup
           if (!err.message?.includes('timed out')) {
@@ -851,6 +1003,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
     if (!canvas) return;
 
     try {
+      const jsPDF = await loadJsPDF();
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
       const pageHeight = 297;
@@ -970,15 +1123,16 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       iframeDoc.body.style.overflow = 'visible';
       iframeDoc.body.style.height = 'auto';
 
-      // Ensure full rendering before capture
-      await new Promise(r => setTimeout(r, 1000)); 
+      // Ensure full rendering before capture - reduced delay for better responsiveness
+      await new Promise(r => setTimeout(r, 200)); 
 
       let canvas: HTMLCanvasElement | null = null;
       
       // We prioritize html2canvas for PDF/Image capture of complex layouts with absolute positioning
       try {
+        const html2canvas = await loadHtml2Canvas();
         canvas = await html2canvas(target as HTMLElement, {
-          scale: 2, // High res
+          scale: 1.5, // Balanced quality and performance (down from 2)
           useCORS: true,
           allowTaint: false,
           backgroundColor: '#ffffff',
@@ -1028,6 +1182,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       } catch (h2cErr) {
         console.warn("html2canvas failed, trying html-to-image", h2cErr);
         try {
+          const { toCanvas } = await loadHtmlToImage();
           canvas = await toCanvas(target as HTMLElement, {
             backgroundColor: '#ffffff',
             pixelRatio: 2,
@@ -1097,6 +1252,7 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
         return;
       }
 
+      const jsPDF = await loadJsPDF();
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
       const pageHeight = 297;
@@ -1317,107 +1473,16 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
       <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
         <div className="mb-6 md:mb-12">
-          <div className={cn(
-            "flex flex-col lg:flex-row items-stretch lg:items-center gap-4 md:gap-8 bg-[var(--bg-primary)] border rounded-[24px] md:rounded-[32px] p-4 md:p-8 shadow-sm transition-colors",
-            isLimitReached ? "border-rose-200 dark:border-rose-900/30" : "border-[var(--border-color)]"
-          )}>
-            <div className="flex items-center gap-4 md:gap-5">
-              <div className={cn(
-                "w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-[22px] flex items-center justify-center shadow-lg transition-all shrink-0",
-                isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
-              )}>
-                <Zap className="w-5 h-5 md:w-7 md:h-7 text-white fill-white" />
-              </div>
-              <div className="flex-grow">
-                <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-0.5 md:mb-1">Morph Engine Status</p>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <span className={cn(
-                    "text-lg md:text-2xl font-black tracking-tight",
-                    isLimitReached ? "text-rose-600" : "text-[var(--text-primary)]"
-                  )}>
-                    {planLimit === Infinity ? 'Unlimited' : `${usedMorphs} / ${planLimit}`}
-                  </span>
-                  <span className={cn(
-                    "px-2 py-0.5 md:px-3 md:py-1 rounded-lg md:rounded-xl text-[7px] md:text-[10px] font-black uppercase tracking-widest border transition-colors",
-                    isLimitReached 
-                      ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" 
-                      : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/30"
-                  )}>
-                    {(() => {
-                      const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
-                      return `${currentPlan.name} Plan`;
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
-            
-            <div className="flex items-center justify-between gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2 md:py-2.5 rounded-[16px] md:rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-7 h-7 md:w-8 md:h-8 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all",
-                  strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
-                )}>
-                  <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-[8px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
-                  <span className="text-[6px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
-                </div>
-              </div>
-              <button 
-                onClick={() => setStrictLayout(!strictLayout)}
-                className={cn(
-                  "w-9 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
-                  strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
-                )}
-              >
-                <motion.div 
-                  initial={false}
-                  animate={{ x: strictLayout ? (window.innerWidth < 768 ? 18 : 24) : 4 }}
-                  className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
-                />
-              </button>
-            </div>
-
-            <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
-            
-            <div className="lg:flex-grow lg:max-w-md">
-              <div className="flex items-center justify-between mb-1.5 md:mb-3">
-                <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em]">Credits</p>
-                <p className={cn(
-                  "text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]",
-                  isLimitReached ? "text-rose-600" : "text-indigo-600"
-                )}>
-                  {planLimit === Infinity ? '∞' : Math.max(0, (planLimit as number) - usedMorphs)} Morphs Left
-                </p>
-              </div>
-              <div className="w-full h-2 md:h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-color)] shadow-inner">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${planLimit === Infinity ? 0 : progress}%` }}
-                  className={cn(
-                    "h-full rounded-full transition-colors",
-                    isLimitReached 
-                      ? "bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.4)]" 
-                      : "bg-indigo-600 shadow-[0_0_15px_rgba(79,70,229,0.4)]"
-                  )}
-                />
-              </div>
-            </div>
-
-            {planLimit !== Infinity && usedMorphs >= (planLimit as number) && (
-              <button 
-                onClick={onUpgrade}
-                className="w-full lg:w-auto px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-xl md:rounded-[20px] text-xs md:text-sm font-black uppercase tracking-widest md:tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group"
-              >
-                <Zap className="w-4 h-4 fill-white group-hover:scale-110 transition-transform" />
-                Upgrade Now
-              </button>
-            )}
-          </div>
+          <StatsBar 
+            isLimitReached={isLimitReached}
+            usedMorphs={usedMorphs}
+            planLimit={planLimit}
+            progress={progress}
+            userData={userData}
+            strictLayout={strictLayout}
+            setStrictLayout={setStrictLayout}
+            onUpgrade={onUpgrade}
+          />
         </div>
         <div className="flex lg:hidden mb-6 bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border-color)] shadow-sm">
           <button 
@@ -1941,22 +2006,12 @@ export default function ResumeBuilder({ userData, onUpgrade, user, onLogin }: Re
                         </div>
                       </div>
 
-                      <div className="flex-1 overflow-hidden relative">
-                        <iframe 
-                          key={generatedHtml}
-                          ref={iframeRef}
-                          className="w-full h-full border-none bg-slate-50 transition-all duration-300"
-                          onLoad={() => setIsPreviewReady(true)}
-                          srcDoc={previewHtml}
-                        ></iframe>
-
-                        {!isPreviewReady && (
-                          <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
-                            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Resume...</p>
-                          </div>
-                        )}
-                      </div>
+                      <ResumeIframe 
+                        html={previewHtml} 
+                        onLoad={() => setIsPreviewReady(true)} 
+                        isReady={isPreviewReady} 
+                        ref={iframeRef}
+                      />
                     </div>
                   ) : (
                     <motion.div 
@@ -2564,3 +2619,5 @@ function Dropzone({ onDrop, isProcessing, file, label, color, disabled, id }: {
     </div>
   );
 }
+
+export default memo(ResumeBuilder);
