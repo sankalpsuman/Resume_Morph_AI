@@ -69,6 +69,16 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       word-spacing: normal;
       page-break-after: always;
     }
+    /* PDF Consistency Overrides */
+    .page * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    /* Prevent section headers and blocks from splitting weirdly */
+    .section-title, h1, h2, h3, .experience-item, .education-item, .project-item, .skill-item {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
     .content {
       width: 100%;
       height: 100%;
@@ -178,13 +188,54 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       window._paginating = true;
 
       try {
-        const USABLE_HEIGHT = 1027; 
+        const USABLE_HEIGHT = 1050; // Increased slightly for better fit
         const footer = document.querySelector('.resume-footer');
         
-        // 1. Flatten all pages to get a clean stream of elements
+        // 1. Identify first page blueprint to preserve layout structure (classes, sidebar vs main)
+        const firstPage = root.querySelector('.page');
+        const pageClasses = firstPage ? firstPage.className : 'page';
+        const contentClasses = firstPage?.querySelector('.content')?.className || 'content';
+        
+        // 2. Decide if we need to flatten
         const existingPages = Array.from(root.querySelectorAll('.page'));
+        
+        // Check if any existing page is overfull - if so, we need to handle it
+        let isAnyPageOverfull = false;
+        existingPages.forEach(p => {
+          if (p.offsetHeight > (USABLE_HEIGHT + 50)) isAnyPageOverfull = true;
+        });
+
+        if (existingPages.length > 1 && !isAnyPageOverfull) {
+          // AI handled pagination and no single page is massively overfull
+          if (window.lucide) window.lucide.createIcons();
+          updateScale();
+          window._paginating = false;
+          root.style.opacity = '1';
+          return;
+        }
+
+        // Check for complex layouts (sidebars, grids) 
+        const firstPageContent = firstPage?.querySelector('.content') || firstPage;
+        const hasComplexLayout = firstPageContent && (
+          firstPageContent.classList.contains('flex') || 
+          firstPageContent.classList.contains('grid') ||
+          Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar') || c.classList.contains('main-column'))
+        );
+
+        if (hasComplexLayout) {
+          // If it's a complex layout and it's long, we usually rely on the AI to paginate.
+          // However, if the AI failed and gave us one giant page, we'll allow it to scroll
+          // and let the PDF exporter handle the slicing. 
+          // BUT - for clean preview, we ensure it's at least visible.
+          if (window.lucide) window.lucide.createIcons();
+          updateScale();
+          window._paginating = false;
+          root.style.opacity = '1';
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
         if (existingPages.length > 0) {
-          const fragment = document.createDocumentFragment();
           existingPages.forEach(p => {
              const content = p.querySelector('.content') || p;
              while(content.firstChild) fragment.appendChild(content.firstChild);
@@ -192,20 +243,18 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           root.innerHTML = '';
           root.appendChild(fragment);
           if (footer) root.appendChild(footer);
-        } else if (!root.querySelector('.page')) {
-           // Initial wrap
+        } else {
            const contentNodes = Array.from(root.childNodes).filter(n => n !== footer);
-           const p = createPageTemplate();
-           const c = p.querySelector('.content') || p;
-           contentNodes.forEach(n => c.appendChild(n));
-           root.prepend(p);
+           root.innerHTML = '';
+           contentNodes.forEach(n => fragment.appendChild(n));
+           root.appendChild(fragment);
         }
 
         function createPageTemplate() {
           const p = document.createElement('div');
-          p.className = 'page';
+          p.className = pageClasses;
           const c = document.createElement('div');
-          c.className = 'content';
+          c.className = contentClasses;
           p.appendChild(c);
           return p;
         }
@@ -215,7 +264,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         
         let currentPage = createPageTemplate();
         root.appendChild(currentPage);
-        let currentContent = currentPage.querySelector('.content');
+        let currentContent = currentPage.querySelector('.content') || currentPage;
 
         // Distribution logic
         elements.forEach(node => {
@@ -223,19 +272,19 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           
           currentContent.appendChild(node);
           
-          const rect = currentContent.getBoundingClientRect();
+          // Check for overflow
           const children = currentContent.children;
           if (children.length > 0) {
             const lastChild = children[children.length - 1];
-            const bottom = lastChild.getBoundingClientRect().bottom;
-            const top = rect.top;
-            const height = bottom - top;
+            const contentRect = currentContent.getBoundingClientRect();
+            const childRect = lastChild.getBoundingClientRect();
+            const height = childRect.bottom - contentRect.top;
 
             if (height > USABLE_HEIGHT && children.length > 1) {
               currentContent.removeChild(node);
               currentPage = createPageTemplate();
               root.appendChild(currentPage);
-              currentContent = currentPage.querySelector('.content');
+              currentContent = currentPage.querySelector('.content') || currentPage;
               currentContent.appendChild(node);
             }
           }

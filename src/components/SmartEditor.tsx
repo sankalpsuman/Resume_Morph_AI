@@ -19,8 +19,8 @@ import {
 import { wrapResumeHtml } from '../lib/resumeTemplates';
 // Dynamic imports to reduce initial bundle size
 const loadMammoth = () => import('mammoth').then(m => m.default || m);
-const loadJsPDF = () => import('jspdf').then(m => m.jsPDF || m.default?.jsPDF || m);
-const loadHtml2Canvas = () => import('html2canvas').then(m => m.default || m);
+const loadJsPDF = () => import('jspdf').then(m => (m as any).jsPDF || (m as any).default?.jsPDF || (m as any).default || m);
+const loadHtml2Canvas = () => import('html2canvas').then(m => (m as any).default || m);
 
 interface ResumeData {
   personalInfo: {
@@ -365,7 +365,8 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
         styles, 
         referenceFile?.blueprint || null,
         referenceFile?.base64 || null,
-        referenceFile?.mime || null
+        referenceFile?.mime || null,
+        targetJd
       );
       setGeneratedHtml(result.html);
     } catch (err) {
@@ -802,6 +803,8 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                     setJdMatch={setJdMatch}
                     targetJd={targetJd}
                     setTargetJd={setTargetJd}
+                    onRefresh={refreshPreview}
+                    isRefreshing={isRefreshing}
                   />
                 </motion.div>
               )}
@@ -1018,9 +1021,44 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                                 return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
                               }));
 
-                              // 2. Flatten all pages back to root for re-pagination
-                              const existingPages = Array.from(root.querySelectorAll('.page'));
-                              if (existingPages.length > 0) {
+                              // Blueprint capture
+                              const firstPage = root.querySelector('.page');
+                              const pageClasses = firstPage ? firstPage.className : 'page';
+                              const contentClasses = firstPage?.querySelector('.content')?.className || 'content';
+
+                               // 2. Decide if we need to flatten
+                               const existingPages = Array.from(root.querySelectorAll('.page'));
+                               
+                               // Check if any existing page is overfull
+                               let isAnyPageOverfull = false;
+                               existingPages.forEach(p => {
+                                 if (p.offsetHeight > (USABLE_HEIGHT + 50)) isAnyPageOverfull = true;
+                               });
+
+                               if (existingPages.length > 1 && !isAnyPageOverfull) {
+                                 // AI handled pagination correctly
+                                 if (window.lucide) window.lucide.createIcons();
+                                 root.removeAttribute('data-paginating');
+                                 updateScale();
+                                 return;
+                               }
+
+                               // Check for complex layouts
+                               const firstPageContent = firstPage?.querySelector('.content') || firstPage;
+                               const hasComplexLayout = firstPageContent && (
+                                 firstPageContent.classList.contains('flex') || 
+                                 firstPageContent.classList.contains('grid') ||
+                                 Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar') || c.classList.contains('main-column'))
+                               );
+
+                               if (hasComplexLayout && !isAnyPageOverfull) {
+                                 if (window.lucide) window.lucide.createIcons();
+                                 root.removeAttribute('data-paginating');
+                                 updateScale();
+                                 return;
+                               }
+
+                               if (existingPages.length > 0) {
                                 const fragment = document.createDocumentFragment();
                                 existingPages.forEach(p => {
                                   const content = p.querySelector('.content') || p;
@@ -1034,38 +1072,38 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                               const elements = Array.from(root.childNodes).filter(n => n !== footer);
                               root.innerHTML = '';
 
-                              const USABLE_HEIGHT = 1027;
+                              const USABLE_HEIGHT = 1050;
                               const BUFFER = 4;
 
                               function createPage() {
                                 const p = document.createElement('div');
-                                p.className = 'page';
+                                p.className = pageClasses;
                                 const c = document.createElement('div');
-                                c.className = 'content';
+                                c.className = contentClasses;
                                 p.appendChild(c);
                                 return p;
                               }
 
                               let currentPage = createPage();
                               root.appendChild(currentPage);
-                              let currentContent = currentPage.querySelector('.content');
+                              let currentContent = currentPage.querySelector('.content') || currentPage;
 
                               for (const node of elements) {
                                 if (node.nodeType === 3 && !node.textContent.trim()) continue;
                                 
                                 currentContent.appendChild(node);
                                 
-                                const rect = currentContent.getBoundingClientRect();
+                                const contentRect = currentContent.getBoundingClientRect();
                                 const children = currentContent.children;
                                 if (children.length > 0) {
                                   const lastChild = children[children.length - 1];
-                                  const height = lastChild.getBoundingClientRect().bottom - rect.top;
+                                  const height = lastChild.getBoundingClientRect().bottom - contentRect.top;
 
                                   if (height > (USABLE_HEIGHT - BUFFER) && children.length > 1) {
                                     currentContent.removeChild(node);
                                     currentPage = createPage();
                                     root.appendChild(currentPage);
-                                    currentContent = currentPage.querySelector('.content');
+                                    currentContent = currentPage.querySelector('.content') || currentPage;
                                     currentContent.appendChild(node);
                                   }
                                 }
@@ -1481,7 +1519,7 @@ const DesignSection = memo(({ styles, setStyles }: any) => {
   );
 });
 
-const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch, setJdMatch, targetJd, setTargetJd }: any) => {
+const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch, setJdMatch, targetJd, setTargetJd, onRefresh, isRefreshing }: any) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
 
@@ -1616,14 +1654,27 @@ const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch,
                 placeholder="Paste the job description here..."
                 className="w-full h-40 p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-3xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] transition-all outline-none resize-none text-[var(--text-primary)]"
               />
-              <button 
-                onClick={runJdMatch}
-                disabled={isMatching || !targetJd}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 dark:shadow-none"
-              >
-                {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-                Match Keyword Density
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={runJdMatch}
+                  disabled={isMatching || !targetJd}
+                  className="py-4 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[var(--bg-secondary)] transition-all flex items-center justify-center gap-3 shadow-sm"
+                >
+                  {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
+                  Match Score
+                </button>
+                <button 
+                  onClick={() => {
+                    // This will trigger the refreshPreview which now uses targetJd
+                    onRefresh();
+                  }}
+                  disabled={isRefreshing || !targetJd}
+                  className="py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl"
+                >
+                  {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Smart Tailor
+                </button>
+              </div>
             </div>
 
             {jdMatch && (

@@ -346,19 +346,20 @@ export async function getOptimizationPlan(userContent: string, jobDescription?: 
       } catch (e) { /* ignore and use original */ }
     }
 
-    const prompt = `Expert ATS Strategist.
+    const prompt = `Expert ATS Strategist & Career Consultant.
     
     ${TOON.getSystemInstruction()}
     
     CONTENT (TOON): ${content}
     TARGET: ${jobDescription || "Standard High-Level Professional"}
     
-    TASK: Propose specific changes to make this resume 100% ATS friendly.
+    TASK: Propose 3-5 high-impact, strategic changes to optimize this resume for the specific target role.
     
     RULES:
-    1. List 3-5 high-impact changes.
-    2. Focus on: Keyword alignment, Heading standardization, Bullet point rephrasing, and Structure.
-    3. Be concise.
+    1. SMART ANALYSIS: Don't just list keywords. Identify GAPS between the user's experience and the JD requirements.
+    2. CONTENT RECOMMENDATIONS: Suggest adding specific skills, quantifying certain achievements, or rephrasing roles to match the required seniority/expertise level.
+    3. STRUCTURAL ADVICE: Suggest if sections need reordering for better impact.
+    4. Be specific and actionable.
     
     OUTPUT: JSON array of strings.
     
@@ -401,10 +402,12 @@ export async function generateResume(
     
     // 1. Content Optimization Prompt
     const optimizationPrompt = jobDescription 
-      ? `\n\nCONTENT MAPPING & AI OPTIMIZATION:
-      1. Map USER DATA into the target sections with high semantic accuracy.
-      2. Rewrite bullet points to include keywords from the JOB DESCRIPTION while preserving all factual data.
-      3. Focus on ACHIEVEMENTS and impact (metrics if possible).`
+      ? `\n\nCONTENT MAPPING & SUPREME AI TAILORING:
+      1. Map USER DATA into the design structure with 100% factual fidelity.
+      2. REWRITE & OPTIMIZE: Deeply analyze the JOB DESCRIPTION and smartly modify bullet points, summaries, and skills to align with the role.
+      3. ADD VALUE: If the original content is weak, use professional judgment to expand on achievements that would be relevant to this specific JD (while staying truthful to the user's role).
+      4. STRATEGIC POSITIONING: Reorder bullet points or skills so the most relevant ones appear first.
+      5. TONE: Match the tone of the JD (e.g., technical, creative, leadership-focused).`
       : "\n\nCONTENT MAPPING: Map USER DATA into the structural containers defined by the reference visual.";
 
     // 2. Structural Cloning Protocol
@@ -451,7 +454,9 @@ export async function generateResume(
     PIXEL-PERFECT RENDER:
     - Wrapper: <div class="page" data-page="Page X of Y"><div class="content">[CONTENT]</div></div>.
     - If a layout requires a sidebar, you can put the grid structure directly on the .page element, but ensure content area still uses class="content".
-    - If content is long, do NOT truncate. The frontend will handle pagination by cloning the page structure. 
+    - MULTI-PAGE OUTPUT (REQUIRED): If the content is long, YOU MUST output multiple <div class="page"> blocks.
+    - HEIGHT LIMIT: Each <div class="page"> MUST contain approximately 1000px - 1100px height of content. If content exceeds this, start a new <div class="page">.
+    - CONTINUITY: For 2-column layouts, the sidebar must be replicated on every page if the user expected it to be continuous, OR you can have the sidebar on Page 1 only and Page 2 as full width. MATCH THE MASTER REFERENCE'S STYLE.
     - Use Tailwind classes ONLY.
     
     ${optimizationPrompt}
@@ -1045,15 +1050,24 @@ export async function generateResumeFromData(
   styles: any,
   referenceLayout: string | null = null,
   referenceBase64: string | null = null,
-  referenceMime: string | null = null
+  referenceMime: string | null = null,
+  jobDescription: string = ""
 ) {
   return withRetry(async (ai) => {
     const model = "gemini-3.1-pro-preview";
     const parts: any[] = [];
     
-    // THE BUG FIX: Actually include the data and styles in the prompt!
     const dataToon = TOON.stringify(data, 'USER_DATA');
     const stylesToon = TOON.stringify(styles, 'DESIGN_TOKENS_OVERRIDE');
+
+    const optimizationPrompt = jobDescription 
+      ? `\n\nCONTENT MAPPING & SUPREME AI TAILORING:
+      1. Map USER DATA into the design structure with 100% factual fidelity.
+      2. REWRITE & OPTIMIZE: Deeply analyze the JOB DESCRIPTION and smartly modify bullet points, summaries, and skills to align with the role.
+      3. ADD VALUE: If the original content is weak, use professional judgment to expand on achievements that would be relevant to this specific JD (while staying truthful to the user's role).
+      4. STRATEGIC POSITIONING: Reorder bullet points or skills so the most relevant ones appear first.
+      5. TONE: Match the tone of the JD (e.g., technical, creative, leadership-focused).`
+      : "\n\nCONTENT MAPPING: Map USER DATA into the structural containers defined by the reference visual.";
 
     const prompt = `SUPREME FRONT-END DESIGN ENGINEER & CLONE ARCHITECT.
     
@@ -1089,6 +1103,13 @@ export async function generateResumeFromData(
     
     PIXEL-PERFECT RENDER:
     - Wrapper: <div class="page" data-page="Page X of Y"><div class="content">[CONTENT]</div></div>.
+    - MULTI-PAGE AI PAGINATION (MANDATORY):
+      - If content is long, you MUST split it into multiple <div class="page"> elements yourself. 
+      - Each page should have roughly 1000px height of content. 
+      - 2-COLUMN CONTINUITY (CRITICAL): If using a sidebar layout, you MUST replicate the sidebar container structure on EVERY page. If the sidebar has a background color, it must look continuous from page to page.
+      - DO NOT rely on the frontend to paginate; the AI is the architect of the page breaks.
+    
+    ${optimizationPrompt}
     
     USER_DATA (TOON):
     ${dataToon}
@@ -1097,6 +1118,8 @@ export async function generateResumeFromData(
     ${stylesToon}
     
     ${referenceLayout ? `### REFERENCE LAYOUT MANIFEST:\n${referenceLayout}` : ''}
+    
+    ${jobDescription ? `### TARGET JOB FOR TAILORING:\n${jobDescription}` : ''}
     
     Output ONLY JSON with the "html" key.`;
 

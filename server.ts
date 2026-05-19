@@ -119,7 +119,7 @@ async function startServer() {
     const forwardedHost = req.headers['x-forwarded-host'] as string;
     const host = forwardedHost || req.get('host') || 'resumemorph.ai';
     const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
-    const baseUrl = `${protocol}://${host.split(',')[0].trim()}`; // Handle comma separated hosts
+    const baseUrl = `${protocol}://${host.split(',')[0].trim()}`.replace(/\/+$/, ""); // Ensure no trailing slash
     
     // Professional Brand Image
     const LOGO_IMAGE = "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=0.8&w=1200&h=630";
@@ -128,7 +128,7 @@ async function startServer() {
       title: "Resume Morph AI | Transform Your Career with AI",
       description: "Morph your resume into any design with AI. Clone layouts from images, optimize for ATS, and chat with your resume architect to refine every detail.",
       image: LOGO_IMAGE,
-      url: `${baseUrl}${urlPath.split('?')[0]}` // Strip query params for canonical
+      url: `${baseUrl}${urlPath.split('?')[0]}`.replace(/\/+$/, "") || baseUrl // Construct canonical URL safely
     };
 
     if (urlPath.includes('/portfolio')) {
@@ -154,7 +154,7 @@ async function startServer() {
         ...defaultMeta,
         title: "Job Application Tracker | Organize Your Search",
         description: "Keep track of every resume sent, every interview scheduled, and every offer received in one central dashboard.",
-        image: "https://images.unsplash.com/photo-1454165833767-0275469s1f6?auto=format&fit=crop&q=0.8&w=1200&h=630"
+        image: "https://images.unsplash.com/photo-1454165833767-027546981f6?auto=format&fit=crop&q=0.8&w=1200&h=630"
       };
     }
 
@@ -199,10 +199,10 @@ async function startServer() {
 
   const injectMetadata = (html: string, metadata: any) => {
     return html
-      .replace(/__TITLE__/g, String(metadata.title))
-      .replace(/__DESCRIPTION__/g, String(metadata.description))
-      .replace(/__IMAGE__/g, String(metadata.image))
-      .replace(/__URL__/g, String(metadata.url));
+      .replace(/__TITLE__/g, () => String(metadata.title))
+      .replace(/__DESCRIPTION__/g, () => String(metadata.description))
+      .replace(/__IMAGE__/g, () => String(metadata.image))
+      .replace(/__URL__/g, () => String(metadata.url));
   };
 
   let cachedTemplate: string | null = null;

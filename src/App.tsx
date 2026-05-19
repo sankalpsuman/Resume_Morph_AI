@@ -806,7 +806,13 @@ export default function App() {
           
           {activeTab === 'smart-editor' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <SmartEditor userData={userData} />
+              <SmartEditor 
+                userData={userData} 
+                user={user}
+                onUpgrade={() => setShowUpgradeModal(true)}
+                onLogin={triggerLogin}
+                isAdmin={isAdmin}
+              />
             </div>
           )}
           

@@ -9,8 +9,8 @@ import {
 // Dynamic imports for heavy libraries
 // These will be loaded on demand to reduce initial bundle size
 const loadMammoth = () => import('mammoth').then(m => m.default || m);
-const loadHtml2Canvas = () => import('html2canvas').then(m => m.default || m);
-const loadJsPDF = () => import('jspdf').then(m => m.jsPDF || m.default?.jsPDF || m);
+const loadHtml2Canvas = () => import('html2canvas').then(m => (m as any).default || m);
+const loadJsPDF = () => import('jspdf').then(m => (m as any).jsPDF || (m as any).default?.jsPDF || (m as any).default || m);
 const loadHtmlToImage = () => import('html-to-image');
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -990,6 +990,117 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
     setShowDownloadMenu(false);
   };
 
+  const capturePagesAsPDF = async () => {
+    const iframe = iframeRef.current;
+    if (!iframe) return null;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) throw new Error("Preview doc inaccessible");
+    const iframeWin = iframe.contentWindow;
+    if (!iframeWin) throw new Error("Preview window inaccessible");
+
+    // 1. Wait for everything to be ready (fonts, images, etc.)
+    if (iframeWin.document.fonts) {
+      await iframeWin.document.fonts.ready;
+    }
+
+    const images = Array.from(iframeDoc.querySelectorAll('img'));
+    await Promise.all(images.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
+
+    // 2. Identify all pages
+    const pages = Array.from(iframeDoc.querySelectorAll('.page'));
+    if (pages.length === 0) throw new Error("No pages found");
+
+    // 3. IMPORTANT: Reset scale transform temporarily for exact 1:1 capture
+    const root = iframeDoc.getElementById('resume-preview');
+    const originalTransform = root?.style.transform || '';
+    if (root) root.style.transform = 'none';
+
+    // Wait a moment for layout to settle after removing transform
+    await new Promise(r => setTimeout(r, 300));
+
+    try {
+      const html2canvas = await loadHtml2Canvas();
+      const jsPDF = await loadJsPDF();
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+      
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const standardA4HeightPx = 1123; // at 96dpi
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        // Capture individual page at high scale
+        const canvas = await html2canvas(page, {
+          scale: 3, // Very high quality for text sharpness
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 20000,
+          removeContainer: true,
+          windowWidth: 794,
+          onclone: (clonedDoc) => {
+             // Ensure no margins or shadows bleed into the capture
+             const clonedPage = clonedDoc.querySelectorAll('.page')[i] as HTMLElement;
+             if (clonedPage) {
+                clonedPage.style.margin = '0';
+                clonedPage.style.boxShadow = 'none';
+                clonedPage.style.border = 'none';
+             }
+          }
+        });
+
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        
+        // Calculate standard height at the current scale
+        // canvas.width is scaled from 794px. So scale = canvas.width / 794.
+        const currentScale = imgWidth / 794;
+        const scaledA4Height = Math.floor(standardA4HeightPx * currentScale);
+        
+        // Determine how many PDF pages this captured element spans
+        const pagesNeeded = Math.ceil(imgHeight / (scaledA4Height - 1)); // -1 to avoid tiny overlaps
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        
+        for (let p = 0; p < pagesNeeded; p++) {
+          if (i > 0 || p > 0) pdf.addPage();
+          
+          // Slice and add to PDF
+          // position is target Y coordinate in PDF
+          const position = -(p * pageHeight);
+          
+          // Use the ratio to ensure height matches
+          const pdfImgHeight = (imgHeight * pageWidth) / imgWidth;
+          
+          pdf.addImage(imgData, 'PNG', 0, position, pageWidth, pdfImgHeight, undefined, 'FAST');
+        }
+        
+        // Free memory
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      
+      return pdf;
+    } finally {
+      // Restore transform
+      if (root) root.style.transform = originalTransform;
+    }
+  };
+
   const handleDownloadPDF = async () => {
     if (isExporting) return;
     if (!user) {
@@ -998,44 +1109,18 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       return;
     }
     setShowDownloadMenu(false);
+    setIsExporting(true);
     
-    const canvas = await captureResume();
-    if (!canvas) return;
-
     try {
-      const jsPDF = await loadJsPDF();
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      
-      // Calculate how many A4 pages we need based on the captured height
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      
-      // The content is rendered at 794px width (standard for A4 at 96dpi)
-      // We scaled the capture to 2x (scale: 2), so canvasWidth is 1588px.
-      const pxPerPage = (canvasWidth / pageWidth) * pageHeight;
-      const pagesCount = Math.ceil(canvasHeight / pxPerPage);
-      
-      const imgWidth = pageWidth;
-      const imgHeight = (canvasHeight * pageWidth) / canvasWidth;
-      
-      // Safety check: if canvas is too small or broken, imgData will be "data:,"
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      
-      if (!imgData || imgData.length < 100) {
-        throw new Error("Could not capture resume image. Please try again.");
+      const pdf = await capturePagesAsPDF();
+      if (pdf) {
+        pdf.save(getFileName('pdf'));
       }
-      
-      for (let i = 0; i < pagesCount; i++) {
-        const position = -i * pageHeight;
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      }
-      
-      pdf.save(getFileName('pdf'));
     } catch (err) {
       console.error("PDF download failed:", err);
+      setError("High-quality PDF export failed. Please try printing to PDF instead.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -1097,7 +1182,6 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) throw new Error("Preview doc inaccessible");
 
-      // 1. Ensure all assets are fully loaded
       if (iframe.contentWindow?.document.fonts) {
         await iframe.contentWindow.document.fonts.ready;
       }
@@ -1111,93 +1195,35 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
         });
       }));
 
-      const target = iframeDoc.getElementById('resume-preview') || 
-                     iframeDoc.querySelector('.page') ||
-                     iframeDoc.body;
-
+      const target = iframeDoc.getElementById('resume-preview') || iframeDoc.body;
       if (!target) throw new Error("Capture target not found");
       
-      // 2. Temporarily expand height and remove scaling for capture
+      const root = iframeDoc.getElementById('resume-preview');
+      const originalTransform = root?.style.transform || '';
+      if (root) root.style.transform = 'none';
+
       const originalBodyOverflow = iframeDoc.body.style.overflow;
       const originalBodyHeight = iframeDoc.body.style.height;
       iframeDoc.body.style.overflow = 'visible';
       iframeDoc.body.style.height = 'auto';
 
-      // Ensure full rendering before capture - reduced delay for better responsiveness
-      await new Promise(r => setTimeout(r, 200)); 
-
-      let canvas: HTMLCanvasElement | null = null;
-      
-      // We prioritize html2canvas for PDF/Image capture of complex layouts with absolute positioning
       try {
         const html2canvas = await loadHtml2Canvas();
-        canvas = await html2canvas(target as HTMLElement, {
-          scale: 1.5, // Balanced quality and performance (down from 2)
+        return await html2canvas(target as HTMLElement, {
+          scale: 3,
           useCORS: true,
           allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
-          imageTimeout: 15000,
+          imageTimeout: 20000,
           removeContainer: true,
-          scrollX: 0,
-          scrollY: 0,
-          windowWidth: 850,
-          onclone: (clonedDoc) => {
-            const clonedTarget = clonedDoc.getElementById('resume-preview') || clonedDoc.body;
-            clonedTarget.style.display = 'block';
-            clonedTarget.style.width = '794px';
-            clonedTarget.style.height = 'auto';
-            clonedTarget.style.overflow = 'visible';
-            clonedTarget.style.background = 'white';
-            clonedTarget.classList.remove('preview-mode');
-
-            // Find and style all pages
-            const pages = clonedDoc.querySelectorAll('.page');
-            pages.forEach((p: any) => {
-               p.style.margin = '0';
-               p.style.boxShadow = 'none';
-               p.style.border = 'none';
-               p.style.display = 'block';
-            });
-            
-            const styleTag = clonedDoc.createElement('style');
-            styleTag.innerHTML = `
-              .page::before, .page::after { display: none !important; opacity: 0 !important; }
-              .page { 
-                margin: 0 !important; 
-                box-shadow: none !important; 
-                border: none !important; 
-                border-radius: 0 !important;
-                page-break-after: always !important;
-                display: block !important;
-                visibility: visible !important;
-                float: none !important;
-                overflow: visible !important;
-              }
-              .resume-footer { display: block !important; }
-            `;
-            clonedDoc.head.appendChild(styleTag);
-          }
+          windowWidth: 794,
         });
-      } catch (h2cErr) {
-        console.warn("html2canvas failed, trying html-to-image", h2cErr);
-        try {
-          const { toCanvas } = await loadHtmlToImage();
-          canvas = await toCanvas(target as HTMLElement, {
-            backgroundColor: '#ffffff',
-            pixelRatio: 2,
-            skipAutoScale: true,
-          });
-        } catch (imgErr) {
-          console.error("Both capture methods failed", imgErr);
-        }
+      } finally {
+        iframeDoc.body.style.overflow = originalBodyOverflow;
+        iframeDoc.body.style.height = originalBodyHeight;
+        if (root) root.style.transform = originalTransform;
       }
-
-      // Restore iframe state
-      iframeDoc.body.style.overflow = originalBodyOverflow;
-      iframeDoc.body.style.height = originalBodyHeight;
-
-      return canvas;
     } catch (err) {
       console.error("Capture failed:", err);
       return null;
@@ -1237,6 +1263,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   };
 
   const handleShareWhatsApp = async () => {
+    if (isExporting) return;
     if (!user) {
       setShowLoginPrompt(true);
       setIsLoginPendingForDownload(true);
@@ -1246,27 +1273,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
     setIsExporting(true);
 
     try {
-      const canvas = await captureResume();
-      if (!canvas) {
+      const pdf = await capturePagesAsPDF();
+      if (!pdf) {
         setIsExporting(false);
         return;
-      }
-
-      const jsPDF = await loadJsPDF();
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = 210;
-      const pageHeight = 297;
-      
-      const shareScale = canvas.width / 794;
-      const pagesCount = Math.round(canvas.height / (1123 * shareScale)) || 1;
-      const imgWidth = pageWidth;
-      const imgHeight = pagesCount * pageHeight; 
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      
-      for (let i = 0; i < pagesCount; i++) {
-        const position = -i * pageHeight;
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       }
 
       const pdfBlob = pdf.output('blob');
