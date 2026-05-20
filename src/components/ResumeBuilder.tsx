@@ -520,7 +520,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const checkUsageLimits = (actionType: 'morph' | 'check') => {
     if (!userData) return true;
 
-    if (actionType === 'morph' && userData.morphCount === 1 && !userData.hasReviewed) {
+    const hasSubmittedFeedback = userData.hasReviewed || localStorage.getItem('morph_user_submitted_feedback') === 'true';
+
+    if (actionType === 'morph' && userData.morphCount === 1 && !hasSubmittedFeedback) {
       setShowFeedbackModal(true);
       return false;
     }
@@ -639,6 +641,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       await updateDoc(userRef, {
         hasReviewed: true
       });
+
+      // 3. Mark in local storage to prevent redundancy
+      localStorage.setItem('morph_user_submitted_feedback', 'true');
 
       setShowFeedbackModal(false);
       // Now user can try morphing again

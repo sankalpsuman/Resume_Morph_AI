@@ -1,26 +1,21 @@
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
-  Upload, Zap, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, 
-  Layout, Type, Palette, Trash2, Plus, ArrowLeft, 
-  Download, Printer, Eye, Target, 
-  ChevronRight, ChevronDown, Save, RefreshCw, X, MessageSquare, Send, Bot, User, Share2
+  Upload, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, 
+  ArrowLeft, Download, RefreshCw, X, Send, Bot, User, 
+  Undo2, Redo2, MessageSquare, Check, Eye, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, compressImage } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { 
-  analyzeLayout, 
   generateResumeFromData, 
   parseResumeToData, 
-  getOptimizationPlan, 
-  checkMatch,
   conversationalEdit
 } from '../lib/gemini';
-import { wrapResumeHtml } from '../lib/resumeTemplates';
-// Dynamic imports to reduce initial bundle size
+
+// Dynamic imports for heavy libraries to keep bundle optimized
 const loadMammoth = () => import('mammoth').then(m => m.default || m);
 const loadJsPDF = () => import('jspdf').then(m => (m as any).jsPDF || (m as any).default?.jsPDF || (m as any).default || m);
-const loadHtml2Canvas = () => import('html2canvas').then(m => (m as any).default || m);
 
 interface ResumeData {
   personalInfo: {
@@ -48,23 +43,6 @@ interface EditorStyles {
   headingStyle: string;
 }
 
-const FONTS = [
-  { name: 'Inter', value: 'Inter, sans-serif' },
-  { name: 'Playfair Display', value: 'Playfair Display, serif' },
-  { name: 'Space Grotesk', value: 'Space Grotesk, sans-serif' },
-  { name: 'JetBrains Mono', value: 'JetBrains Mono, monospace' },
-  { name: 'Roboto', value: 'Roboto, sans-serif' }
-];
-
-const COLORS = [
-  { name: 'Indigo', value: '#4f46e5' },
-  { name: 'Sky', value: '#0ea5e9' },
-  { name: 'Slate', value: '#334155' },
-  { name: 'Rose', value: '#e11d48' },
-  { name: 'Emerald', value: '#10b981' },
-  { name: 'Amber', value: '#f59e0b' }
-];
-
 interface CustomMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -73,230 +51,140 @@ interface CustomMessage {
 }
 
 function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: { 
-  userData: any, 
-  user?: any, 
-  onUpgrade: () => void,
-  onLogin?: () => void,
-  isAdmin?: boolean
+  userData: any;
+  user?: any;
+  onUpgrade: () => void;
+  onLogin?: () => void;
+  isAdmin?: boolean;
 }) {
   const isPremium = userData?.plan && userData.plan !== 'free';
-  
+
+  // Step state
   const [step, setStep] = useState<'import' | 'studio'>('import');
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Extracting semantic patterns from your resume...");
   const [error, setError] = useState<string | null>(null);
-  
-  // Tab State
-  const [activeTab, setActiveTab] = useState<'chat' | 'analyze' | 'design'>('chat');
-  const [mobileMode, setMobileMode] = useState<'edit' | 'preview'>('edit');
-  
-  // Chat State
-  const [messages, setMessages] = useState<CustomMessage[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: "Hello! I'm your AI Resume Architect. I've successfully imported your resume. You can tell me to do things like 'Update my current role to Senior Lead', 'Add a project about a chat application', or 'Make my summary more result-oriented'. What would you like to do first?",
-      timestamp: Date.now()
-    }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
-  
-  // Data States
-  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
-  const [debouncedData, setDebouncedData] = useState<ResumeData | null>(null);
-  
-  // Debounce resumeData changes
-  useEffect(() => {
-    if (!resumeData) return;
-    const timer = setTimeout(() => {
-      setDebouncedData(resumeData);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [resumeData]);
 
+  // Core Data & Visual defaults
+  const [resumeData, setResumeData] = useState<ResumeData | null>(null);
   const [styles, setStyles] = useState<EditorStyles>({
     fontFamily: 'Inter',
     primaryColor: '#4f46e5',
     fontSize: 'normal',
-    spacing: 'comfortable',
+    spacing: 'normal',
     headingStyle: 'bold'
   });
-  
-  // Reference Design State
-  const [referenceFile, setReferenceFile] = useState<{ base64: string; mime: string; blueprint: string } | null>(null);
-  const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
-  
-  const [sectionConfig, setSectionConfig] = useState([
-    { id: 'Summary', name: 'Summary', visible: true },
-    { id: 'Experience', name: 'Experience', visible: true },
-    { id: 'Projects', name: 'Projects', visible: true },
-    { id: 'Education', name: 'Education', visible: true },
-    { id: 'Skills', name: 'Skills', visible: true },
-    { id: 'Certifications', name: 'Certifications', visible: true },
-  ]);
-  
-  // Real-time Preview Sync Effect (Zero-Lag Content & Style)
-  useEffect(() => {
-    const syncData = () => {
-      if (resumeData && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ 
-          type: 'SYNC_DATA', 
-          data: resumeData,
-          styles: styles,
-          sections: sectionConfig
-        }, '*');
-      }
-    };
 
-    syncData();
-    
-    // Listen for IFRAME_READY to resync
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'IFRAME_READY') {
-        syncData();
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [resumeData, styles, sectionConfig]);
-  
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  
-  // Analysis States
-  const [atsAnalysis, setAtsAnalysis] = useState<any>(null);
-  const [jdMatch, setJdMatch] = useState<any>(null);
-  const [targetJd, setTargetJd] = useState('');
-  
-  // Auto-save logic
-  useEffect(() => {
-    if (resumeData && step === 'studio') {
-      const draft = {
-        data: resumeData,
-        styles,
-        sections: sectionConfig,
-        step,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('resume_morph_draft', JSON.stringify(draft));
-    }
-  }, [resumeData, styles, sectionConfig, step]);
+  // Undo/Redo historical stacks
+  const [resumeHistory, setResumeHistory] = useState<ResumeData[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Load draft logic
-  useEffect(() => {
-    const saved = localStorage.getItem('resume_morph_draft');
-    if (saved) {
-      try {
-        const draft = JSON.parse(saved);
-        // Only load if it's recent (e.g. 24 hours)
-        if (Date.now() - draft.timestamp < 24 * 60 * 60 * 1000) {
-          setResumeData(draft.data);
-          setStyles(draft.styles);
-          setSectionConfig(draft.sections);
-          setStep(draft.step || 'studio');
-        }
-      } catch (e) {
-        console.error("Failed to load draft", e);
-      }
-    }
-  }, []);
+  // Apply/Preview modes
+  const [pendingResumeData, setPendingResumeData] = useState<ResumeData | null>(null);
+  const [pendingChangesSummary, setPendingChangesSummary] = useState<string[]>([]);
 
-  // Initial preview generation when data is available
-  useEffect(() => {
-    if (resumeData && step === 'studio' && !generatedHtml && !loading) {
-      refreshPreview();
-    }
-  }, [resumeData, step, generatedHtml]);
+  // Mobile viewport toggle ('edit' = chat box, 'preview' = output canvas)
+  const [mobileMode, setMobileMode] = useState<'edit' | 'preview'>('preview');
 
+  // Chat State
   const [userMessage, setUserMessage] = useState('');
-  
-  const [isLocked, setIsLocked] = useState(false);
-
-  const handleSave = useCallback(() => {
-    setIsLocked(true);
-    setActiveTab('analyze');
-    
-    window.dispatchEvent(new CustomEvent('resume-saved', { 
-      detail: { name: resumeData?.personalInfo.name } 
-    }));
-  }, [resumeData]);
-
-  const shareToWhatsApp = () => {
-    if (!resumeData) return;
-    const text = encodeURIComponent(`Check out my resume for ${resumeData.personalInfo.name}! Generated by AI Resume Architect.`);
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://wa.me/?text=${text}%20${url}`, '_blank');
-  };
-
-  const handleSendMessage = useCallback(async () => {
-    if (!userMessage.trim() || isTyping || !resumeData || isLocked) return;
-    
-    const userMsg: CustomMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: userMessage.trim(),
+  const [isTyping, setIsTyping] = useState(false);
+  const [messages, setMessages] = useState<CustomMessage[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: "Hello! I'm your AI Resume Architect. I have parsed your source resume structure. You can command me to do things like: 'Enhance the professional tone of my summary', 'Update my location to Seattle', or 'Format the overall styling with a modern teal accent'. Let me know what you would like to change!",
       timestamp: Date.now()
-    };
-    
-    setMessages(prev => [...prev, userMsg]);
-    setUserMessage('');
-    setIsTyping(true);
-    
-    try {
-      const result = await conversationalEdit(resumeData, userMsg.content);
-      
-      if (result.status === 'clarification_needed') {
-        const assistantMsg: CustomMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: result.message || "I need a bit more information to help you with that. Could you please specify what exactly you'd like to update?",
-          timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, assistantMsg]);
-        return;
-      }
-
-      if (result.updated_resume) {
-        setResumeData(result.updated_resume);
-        // Full refresh to ensure structural changes are reflected
-        setTimeout(() => refreshPreview(), 100);
-      }
-      
-      const assistantMsg: CustomMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: result.finalized 
-          ? "Your resume has been finalized! I've applied all your changes and frozen the content for export. You can now download your resume using the buttons below."
-          : (result.message || "I've updated your resume based on your request. You can see the changes in the preview. Is there anything else you'd like to modify?"),
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, assistantMsg]);
-
-      if (result.finalized) {
-        handleSave();
-      }
-
-    } catch (e: any) {
-      const errorMsg: CustomMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I'm sorry, I encountered an error while trying to process that. Please try rephrasing your request.",
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setIsTyping(false);
     }
-  }, [userMessage, isTyping, resumeData, isLocked, handleSave]);
+  ]);
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [generatedHtml, setGeneratedHtml] = useState<string>('');
+  
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Helper to commit state step to active undo timeline
+  const commitResumeData = useCallback((newData: ResumeData) => {
+    setResumeData(newData);
+    const newHistory = resumeHistory.slice(0, historyIndex + 1);
+    const updatedHistory = [...newHistory, newData];
+    setResumeHistory(updatedHistory);
+    setHistoryIndex(updatedHistory.length - 1);
+
+    // Persist draft backup in local storage
+    try {
+      localStorage.setItem('morph_smart_draft_simple', JSON.stringify({
+        data: newData,
+        styles,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.warn("Failed to backup local draft", e);
+    }
+  }, [resumeHistory, historyIndex, styles]);
+
+  // Undo triggers
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      setHistoryIndex(prevIndex);
+      setResumeData(resumeHistory[prevIndex]);
+      setPendingResumeData(null); // discards unapplied edits
+    }
+  }, [historyIndex, resumeHistory]);
+
+  // Redo triggers
+  const handleRedo = useCallback(() => {
+    if (historyIndex < resumeHistory.length - 1) {
+      const nextIndex = historyIndex + 1;
+      setHistoryIndex(nextIndex);
+      setResumeData(resumeHistory[nextIndex]);
+      setPendingResumeData(null); // discards unapplied edits
+    }
+  }, [historyIndex, resumeHistory]);
+
+  // Synchronise state changes to the preview iframe
+  useEffect(() => {
+    if (!iframeRef.current) return;
+    const iframeWindow = iframeRef.current.contentWindow;
+    if (!iframeWindow) return;
+
+    // Use preview data if pending exists, else steady-state committed data
+    const activeData = pendingResumeData || resumeData;
+    if (!activeData) return;
+
+    iframeWindow.postMessage({
+      type: 'SYNC_DATA',
+      data: activeData,
+      styles: styles
+    }, '*');
+  }, [resumeData, pendingResumeData, styles]);
+
+  // Auto-scroll the chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  // Parse file and load resume state
+  const handleParseAndLoad = async (parsedData: any) => {
+    setResumeData(parsedData);
+    setResumeHistory([parsedData]);
+    setHistoryIndex(0);
+    setStep('studio');
+    window.dispatchEvent(new CustomEvent('morph-success'));
+    setTimeout(() => refreshPreview(parsedData), 100);
+  };
 
   const onDropResume = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     setLoading(true);
+    setLoadingMessage("Parsing document sections & building structural tree...");
     setError(null);
     try {
       const file = acceptedFiles[0];
-      let base64 = "";
-      let text = "";
+      let text = '';
+      let base64 = '';
 
       if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const arrayBuffer = await file.arrayBuffer();
@@ -314,74 +202,59 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
       });
 
       const parsed = await parseResumeToData({ base64, mimeType: file.type, text });
-      setResumeData(parsed);
-      setStep('studio');
-      
-      window.dispatchEvent(new CustomEvent('morph-success'));
-
-      setTimeout(() => refreshPreview(), 100);
+      await handleParseAndLoad(parsed);
     } catch (err: any) {
-      setError(err.message || "Failed to parse resume.");
+      setError(err.message || "Failed to process your file. Please double check file contents or try importing with copy-paste.");
     } finally {
       setLoading(false);
     }
   };
 
-  const onDropReference = async (acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return;
+  const selectExistingResume = async (existingResume: any) => {
     setLoading(true);
+    setLoadingMessage(`Importing "${existingResume.name}" into Smart Editor...`);
+    setError(null);
     try {
-      const file = acceptedFiles[0];
-      let base64 = await new Promise<string>((res) => {
-        const reader = new FileReader();
-        reader.onloadend = () => res(reader.result as string);
-        reader.readAsDataURL(file);
-      });
-      
-      if (file.type.startsWith('image/')) {
-        base64 = await compressImage(base64, 1024);
-      }
-      
-      const blueprint = await analyzeLayout(base64, file.type);
-      setReferenceFile({ base64, mime: file.type, blueprint });
-      
-      // Force refresh after new design is dropped to apply cloning immediately
-      if (resumeData) {
-        setTimeout(() => refreshPreview(), 100);
-      }
+      const originalText = existingResume.originalText || existingResume.html || "";
+      const parsed = await parseResumeToData({ base64: "", mimeType: "text/plain", text: originalText });
+      await handleParseAndLoad(parsed);
     } catch (err: any) {
-      setError("Failed to analyze design reference.");
+      setError("Failed to transform selected resume layout. Please upload a physical file.");
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshPreview = async () => {
-    if (!resumeData) return;
+  const refreshPreview = async (overrideData?: ResumeData) => {
+    const dataToUse = overrideData || pendingResumeData || resumeData;
+    if (!dataToUse) return;
     setIsRefreshing(true);
     try {
+      // Direct high fidelity rendering
       const result = await generateResumeFromData(
-        resumeData, 
+        dataToUse, 
         styles, 
-        referenceFile?.blueprint || null,
-        referenceFile?.base64 || null,
-        referenceFile?.mime || null,
-        targetJd
+        null,
+        null,
+        null,
+        ""
       );
       setGeneratedHtml(result.html);
     } catch (err) {
-      console.error("Preview refresh failed", err);
+      console.error("Preview render pipeline failed:", err);
     } finally {
       setIsRefreshing(false);
     }
   };
 
+  // Export & Download PDF triggers
   const downloadPdf = async () => {
     if (!iframeRef.current) return;
     const iframeWindow = iframeRef.current.contentWindow;
     if (!iframeWindow) return;
 
     setLoading(true);
+    setLoadingMessage("Converting vector layout to standard A4 PDF pages...");
     try {
       const requestId = Date.now().toString();
       
@@ -390,7 +263,7 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
           window.removeEventListener('message', handleMessage);
           
           if (event.data.error) {
-            setError("Failed to capture resume. Please try again.");
+            setError("PDF capture timed out. Please refresh visual layout.");
             setLoading(false);
             return;
           }
@@ -401,18 +274,18 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
           const pageWidth = 210;
           const pageHeight = 297;
           
-          const edScale = event.data.width / 794;
-          const pagesCount = Math.ceil(event.data.height / (1123 * edScale)) || 1;
+          const scaleOffset = event.data.width / 794;
+          const pagesCount = Math.ceil(event.data.height / (1123 * scaleOffset)) || 1;
           const imgWidth = pageWidth;
           const imgHeight = pagesCount * pageHeight;
           
           for (let i = 0; i < pagesCount; i++) {
-            const position = -i * pageHeight;
+            const pos = -i * pageHeight;
             if (i > 0) pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+            pdf.addImage(imgData, 'PNG', 0, pos, imgWidth, imgHeight, undefined, 'FAST');
           }
           
-          pdf.save(`${resumeData?.personalInfo.name || 'resume'}_premium.pdf`);
+          pdf.save(`${resumeData?.personalInfo?.name || 'resume'}_smart.pdf`);
           setLoading(false);
         }
       };
@@ -423,223 +296,220 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
       setTimeout(() => {
         window.removeEventListener('message', handleMessage);
         if (loading) setLoading(false);
-      }, 10000);
+      }, 8000);
 
     } catch (err) {
-      console.error("Download error:", err);
-      setError("Download failed. Please try again.");
+      console.error("PDF engine crash", err);
+      setError("Failed to compile pdf download.");
       setLoading(false);
     }
   };
 
-  const updatePersonalInfo = (field: string, value: string) => {
-    if (!resumeData) return;
-    setResumeData(prev => prev ? ({
+  // Stream text typing style to look high grade and magical
+  const animateBotResponse = (messageText: string, changes: string[], updatedResume: ResumeData) => {
+    setIsTyping(false);
+    setPendingResumeData(updatedResume);
+    setPendingChangesSummary(changes && changes.length > 0 ? changes : ["Structural updates"]);
+
+    const words = messageText.split(' ');
+    const tempMsgId = Math.random().toString();
+    
+    setMessages(prev => [
       ...prev,
-      personalInfo: { ...prev.personalInfo, [field]: value }
-    }) : null);
+      {
+        id: tempMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: Date.now()
+      }
+    ]);
+
+    let wordIdx = 0;
+    const typingInterval = setInterval(() => {
+      if (wordIdx < words.length) {
+        const chunk = words.slice(0, wordIdx + 1).join(' ');
+        setMessages(prev => prev.map(m => m.id === tempMsgId ? { ...m, content: chunk } : m));
+        wordIdx++;
+      } else {
+        clearInterval(typingInterval);
+        // Sync generated canvas view for newly proposed draft
+        refreshPreview(updatedResume);
+      }
+    }, 35);
   };
 
-  const updateProject = (index: number, field: string, value: any) => {
-    if (!resumeData) return;
-    setResumeData(prev => {
-      if (!prev) return null;
-      const newProj = [...(prev.projects || [])];
-      newProj[index] = { ...newProj[index], [field]: value };
-      return { ...prev, projects: newProj };
-    });
-  };
+  // Main conversational action sender
+  const handleSendMessage = async (customText?: string) => {
+    const rawVal = customText || userMessage;
+    if (!rawVal.trim() || !resumeData) return;
 
-  const addProject = () => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      projects: [...(prev.projects || []), { name: '', description: '', tech: '', link: '' }]
-    }) : null);
-  };
+    const queryMessage: CustomMessage = {
+      id: Math.random().toString(),
+      role: 'user',
+      content: rawVal,
+      timestamp: Date.now()
+    };
 
-  const updateExperience = (index: number, field: string, value: any) => {
-    if (!resumeData) return;
-    setResumeData(prev => {
-      if (!prev) return null;
-      const newExp = [...(prev.experience || [])];
-      newExp[index] = { ...newExp[index], [field]: value };
-      return { ...prev, experience: newExp };
-    });
-  };
+    setMessages(prev => [...prev, queryMessage]);
+    if (!customText) setUserMessage('');
+    setIsTyping(true);
 
-  const updateEducation = (index: number, field: string, value: any) => {
-    if (!resumeData) return;
-    setResumeData(prev => {
-      if (!prev) return null;
-      const newEdu = [...(prev.education || [])];
-      newEdu[index] = { ...newEdu[index], [field]: value };
-      return { ...prev, education: newEdu };
-    });
-  };
-
-  const updateSkills = (value: string[]) => {
-    if (!resumeData) return;
-    setResumeData(prev => prev ? ({ ...prev, skills: value }) : null);
-  };
-
-  const addExperience = () => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      experience: [...(prev.experience || []), { company: '', role: '', dates: '', bullets: [''] }]
-    }) : null);
-  };
-
-  const addEducation = () => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      education: [...(prev.education || []), { school: '', degree: '', dates: '' }]
-    }) : null);
-  };
-
-  const removeExperience = (index: number) => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      experience: prev.experience.filter((_, i) => i !== index)
-    }) : null);
-  };
-
-  const removeEducation = (index: number) => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index)
-    }) : null);
-  };
-
-  const removeProject = (index: number) => {
-    setResumeData(prev => prev ? ({
-      ...prev,
-      projects: prev.projects.filter((_, i) => i !== index)
-    }) : null);
-  };
-
-  const optimizeSummary = async () => {
-    if (!resumeData?.summary) return;
-    setLoading(true);
     try {
-      // Create a dummy prompt for summary optimization
-      const plan = await getOptimizationPlan(resumeData.summary, "General Professional Improvement");
-      // Actually we'll use a specific prompt here if needed, but for now let's simulate with existing logic or a new call
-      // For brevity, I'll just keep the structure
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      const parentDataState = pendingResumeData || resumeData;
+      const historyContext = messages.slice(-5).map(m => ({ role: m.role, content: m.content }));
+
+      // Send to the live Gemini agent inside gemini.ts
+      const response = await conversationalEdit(parentDataState, rawVal, historyContext);
+
+      if (response.status === 'editing' || response.status === 'final') {
+        const updated = response.updated_resume;
+        const note = response.message || "I completed those updates in the temporary draft view!";
+        const changesList = response.changes_applied || [];
+
+        animateBotResponse(note, changesList, updated);
+      } else {
+        setIsTyping(false);
+        setMessages(prev => [
+          ...prev,
+          {
+            id: Math.random().toString(),
+            role: 'assistant',
+            content: response.message || "I didn't capture that requirement fully. Could you rephrase it slightly?",
+            timestamp: Date.now()
+          }
+        ]);
+      }
+    } catch (e: any) {
+      setIsTyping(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Math.random().toString(),
+          role: 'assistant',
+          content: e.message || "I ran into a problem rendering those updates. Let's try another approach!",
+          timestamp: Date.now()
+        }
+      ]);
     }
+  };
+
+  // Commit proposed pendingChanges
+  const handleConfirmChanges = () => {
+    if (!pendingResumeData) return;
+    const sumText = pendingChangesSummary.join(", ") || "Conversational smart updates";
+    commitResumeData(pendingResumeData);
+    setPendingResumeData(null);
+    setPendingChangesSummary([]);
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(),
+        role: 'assistant',
+        content: `✅ Successfully committed updates: ${sumText}`,
+        timestamp: Date.now()
+      }
+    ]);
+  };
+
+  // Revert preview draft proposal
+  const handleRollbackDraft = () => {
+    setPendingResumeData(null);
+    setPendingChangesSummary([]);
+    
+    // Reset layout view to baseline
+    setTimeout(() => refreshPreview(resumeData || undefined), 100);
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Math.random().toString(),
+        role: 'assistant',
+        content: `❌ Reverted the temporary draft layout. Your changes have been discarded.`,
+        timestamp: Date.now()
+      }
+    ]);
   };
 
   if (step === 'import') {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8 md:py-20">
+      <div className="max-w-5xl mx-auto px-4 py-12 md:py-20 text-sans">
         <AnimatePresence mode="wait">
           {loading ? (
             <motion.div 
-              key="loading"
-              initial={{ opacity: 0, scale: 0.9 }}
+              key="loading-screen"
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.1 }}
-              className="flex flex-col items-center justify-center min-h-[500px] text-center space-y-8"
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 py-12"
             >
               <div className="relative">
-                <div className="w-32 h-32 rounded-full border-4 border-indigo-100 dark:border-indigo-900/30 animate-pulse" />
-                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 text-indigo-600 animate-spin" />
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl"
-                />
+                <div className="w-24 h-24 rounded-full border-4 border-indigo-100 dark:border-indigo-950 animate-pulse" />
+                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-indigo-600 animate-spin" />
               </div>
-              <div className="space-y-3">
-                <h2 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">AI Engine Processing...</h2>
-                <p className="text-[var(--text-secondary)] font-medium max-w-sm mx-auto">Extracting architectural data and semantic patterns from your resume.</p>
-              </div>
-              <div className="flex gap-2">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    animate={{
-                      scale: [1, 1.5, 1],
-                      opacity: [0.5, 1, 0.5]
-                    }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      delay: i * 0.2
-                    }}
-                    className="w-2 h-2 bg-indigo-600 rounded-full"
-                  />
-                ))}
+              <div className="space-y-2">
+                <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">AI Agent Working</h2>
+                <p className="text-sm text-[var(--text-secondary)] font-medium max-w-xs mx-auto leading-relaxed">{loadingMessage}</p>
               </div>
             </motion.div>
           ) : (
             <motion.div
-              key="content"
-              initial={{ opacity: 0, y: 20 }}
+              key="import-screen"
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-[40px] bg-[var(--bg-primary)] border border-[var(--border-color)] p-8 md:p-20 shadow-sm relative overflow-hidden"
+              className="rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-color)] p-6 md:p-12 shadow-sm relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full -mr-48 -mt-48 blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500/5 rounded-full -ml-48 -mb-48 blur-3xl pointer-events-none" />
-              
-              <div className="text-center mb-16 relative z-10">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="inline-flex items-center gap-3 px-6 py-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 shadow-sm border border-indigo-500/20"
-                >
-                  <Sparkles className="w-4 h-4 fill-indigo-600 dark:fill-indigo-400" />
-                  Premium Studio Mode
-                </motion.div>
-                <h1 className="text-5xl md:text-8xl font-black text-[var(--text-primary)] mb-6 tracking-tighter leading-none">
-                  Resume <span className="text-indigo-600">Studio.</span>
+              <div className="text-center mb-8">
+                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-extrabold uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/50 mb-3 select-none">
+                  <Sparkles className="w-3.5 h-3.5 fill-indigo-600 dark:fill-indigo-450" />
+                  Interactive Smart Canvas
+                </span>
+                <h1 className="text-3xl md:text-5xl font-black text-[var(--text-primary)] mb-3 tracking-tighter">
+                  Smart AI <span className="text-indigo-600">Editor</span>
                 </h1>
-                <p className="text-[var(--text-secondary)] text-lg md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
-                  The ultimate professional editor. Import your resume, clone any design, and customize every pixel with AI precision.
+                <p className="text-[var(--text-secondary)] text-sm md:text-base max-w-xl mx-auto font-medium leading-relaxed">
+                  Upload your resume, preview live, and instruct the assistant verbally to rewrite accomplishments, restructure sections, or update layouts.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 max-w-5xl mx-auto relative z-10">
-                {/* Step 1: Upload Source */}
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black shadow-lg shadow-indigo-500/20 dark:shadow-none">1</div>
-                    <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Structure Source</h2>
-                  </div>
-                  <Dropzone onDrop={onDropResume} loading={loading} label="Upload your current resume" icon={<FileText className="w-10 h-10" />} />
-                </motion.div>
-
-                {/* Step 2: Upload Design Reference (Optional) */}
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className="w-10 h-10 rounded-2xl bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center font-black shadow-lg">2</div>
-                    <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Design Pattern</h2>
-                  </div>
-                  <Dropzone onDrop={onDropReference} loading={loading} label="Reference a layout (Optional)" icon={<Layout className="w-10 h-10" />} />
-                  {referenceFile && (
-                    <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-2xl flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-xs font-bold text-green-700 dark:text-green-400">Visual Pattern Analyzed Successfully</span>
-                    </div>
-                  )}
-                </motion.div>
+              {/* Minimal Clean Single Dragzone */}
+              <div className="max-w-xl mx-auto mb-8">
+                <Dropzone onDrop={onDropResume} loading={loading} />
               </div>
 
+              {/* Saved Resume History Shortcuts */}
+              {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
+                <div className="max-w-xl mx-auto border-t border-[var(--border-color)] pt-8 mt-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] text-center mb-4">
+                    Or select an existing draft
+                  </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    {userData.resumeHistory.map((res: any) => (
+                      <button
+                        key={res.id}
+                        onClick={() => selectExistingResume(res)}
+                        className="flex items-center justify-between p-4 bg-[var(--bg-secondary)] hover:bg-indigo-55/15 hover:border-indigo-400 rounded-2xl border border-[var(--border-color)] transition-all group text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-50 dark:bg-slate-900 rounded-xl text-indigo-600">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-[var(--text-primary)] mb-0.5 group-hover:text-indigo-600">{res.name}</p>
+                            <p className="text-[10px] text-[var(--text-tertiary)] font-semibold">{new Date(res.timestamp).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)] group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {error && (
-                <div className="mt-12 p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800 rounded-[28px] max-w-2xl mx-auto flex items-center gap-4 text-red-600 dark:text-red-400">
-                  <AlertCircle className="w-6 h-6 shrink-0" />
-                  <p className="text-sm font-black">{error}</p>
+                <div className="mt-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 rounded-xl max-w-md mx-auto flex items-center gap-3 text-red-600 dark:text-red-400">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <p className="text-xs font-semibold">{error}</p>
                 </div>
               )}
             </motion.div>
@@ -650,756 +520,356 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] bg-[var(--bg-secondary)] flex flex-col overflow-hidden">
-      {/* Local Context Header */}
-      <div className="h-16 bg-[var(--bg-primary)]/50 backdrop-blur-md border-b border-[var(--border-color)] flex items-center justify-between px-8 md:px-12 shrink-0 z-30">
-        <div className="flex items-center gap-6">
+    <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] bg-[var(--bg-secondary)] flex flex-col overflow-hidden text-sans select-text">
+      {/* Visual Top Bar Menu */}
+      <div className="h-14 bg-[var(--bg-primary)] border-b border-[var(--border-color)] flex items-center justify-between px-4 sm:px-6 shrink-0 z-30 shadow-subtle">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setStep('import')}
-            title="Go back to the import screen to upload a different resume"
-            className="flex items-center gap-2 px-4 py-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-secondary)] hover:text-indigo-600 group"
+            className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-secondary)] hover:text-indigo-600 group"
           >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-xs font-black uppercase tracking-widest leading-none">Studio</span>
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wider leading-none">Back</span>
           </button>
-          <div className="h-6 w-px bg-[var(--border-color)]" />
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Live Editor</span>
+          <div className="h-4 w-px bg-[var(--border-color)]" />
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-wider text-[var(--text-secondary)]">{resumeData?.personalInfo?.name || 'Smart Session'}</span>
           </div>
         </div>
 
+        {/* Action controls for timeline and manual refresh */}
         <div className="flex items-center gap-2">
-          <button 
-            onClick={refreshPreview}
-            disabled={isRefreshing}
-            title="Synchronize changes"
-            className="p-2.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-xl hover:bg-[var(--bg-primary)] transition-all border border-[var(--border-color)]"
+          <button
+            onClick={handleUndo}
+            disabled={historyIndex <= 0}
+            className="p-1.5 text-[var(--text-secondary)] hover:text-indigo-600 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-color)] disabled:opacity-30 disabled:pointer-events-none transition-all"
+            title="Undo changes"
           >
-            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-indigo-600")} />
+            <Undo2 className="w-3.5 h-3.5" />
           </button>
-          <div className="h-6 w-px bg-[var(--border-color)] mx-1" />
-          {/* Actions moved to unified sticky bottom bar */}
+          <button
+            onClick={handleRedo}
+            disabled={historyIndex >= resumeHistory.length - 1}
+            className="p-1.5 text-[var(--text-secondary)] hover:text-indigo-600 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-color)] disabled:opacity-30 disabled:pointer-events-none transition-all"
+            title="Redo changes"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+          </button>
+          <div className="h-4 w-px bg-[var(--border-color)]" />
+          <button 
+            onClick={() => refreshPreview()}
+            disabled={isRefreshing}
+            className="p-1.5 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-lg border border-[var(--border-color)] hover:text-indigo-600 hover:border-indigo-200 transition-all"
+            title="Force visual layout refresh"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin text-indigo-600")} />
+          </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        {/* Mobile Toggle Bar */}
-        <div className="lg:hidden fixed bottom-28 left-1/2 -translate-x-1/2 flex items-center bg-[var(--bg-primary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-2xl shadow-2xl z-[60] p-1.5 gap-1">
-          <button 
-            onClick={() => setMobileMode('edit')}
-            className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              mobileMode === 'edit' ? "bg-indigo-600 text-white shadow-lg" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-            )}
-          >
-            <Bot className="w-4 h-4" />
-            Editor
-          </button>
+      {/* Main split screens container */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">
+        
+        {/* Mobile quick toggler buttons */}
+        <div className="md:hidden flex border-b border-[var(--border-color)] bg-[var(--bg-primary)] p-1 shrink-0 gap-1 select-none">
           <button 
             onClick={() => setMobileMode('preview')}
             className={cn(
-              "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              mobileMode === 'preview' ? "bg-indigo-600 text-white shadow-lg" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+              "flex-1 py-2 text-center text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-1.5",
+              mobileMode === 'preview' ? "bg-indigo-600 text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
             )}
           >
-            <Eye className="w-4 h-4" />
-            Preview
+            <Eye className="w-3.5 h-3.5" />
+            Resume Preview
+          </button>
+          <button 
+            onClick={() => setMobileMode('edit')}
+            className={cn(
+              "flex-1 py-2 text-center text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-1.5",
+              mobileMode === 'edit' ? "bg-indigo-600 text-white shadow-sm" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
+            )}
+          >
+            <Bot className="w-3.5 h-3.5" />
+            Co-Pilot Chat
           </button>
         </div>
 
-        {/* Left Sidebar: Controls */}
-        <aside 
-          id="smart-editor-controls" 
-          className={cn(
-            "w-full lg:w-[450px] bg-[var(--bg-primary)] border-r border-[var(--border-color)] flex flex-col shrink-0 z-20 overflow-y-auto lg:overflow-hidden transition-all duration-300",
-            mobileMode === 'preview' && "hidden lg:flex"
-          )}
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={() => setActiveTab('chat')}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'chat' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                )}
-              >
-                Chat
-              </button>
-              <button 
-                onClick={() => setActiveTab('design')}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'design' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                )}
-              >
-                Design
-              </button>
-              <button 
-                onClick={() => setActiveTab('analyze')}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                  activeTab === 'analyze' ? "bg-indigo-600 text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                )}
-              >
-                Score
-              </button>
-            </div>
-            {isLocked && (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-green-100">
-                <CheckCircle className="w-3 h-3" /> Finalized
-              </span>
-            )}
-          </div>
-
-          {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-[var(--bg-secondary)]">
-            <AnimatePresence mode="wait">
-              {activeTab === 'chat' && (
-                <motion.div 
-                  key="chat"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex-1 min-h-0"
-                >
-                  <ResumeChat 
-                    messages={messages} 
-                    isTyping={isTyping} 
-                    userMessage={userMessage}
-                    setUserMessage={setUserMessage}
-                    onSend={handleSendMessage}
-                    isLocked={isLocked}
-                  />
-                </motion.div>
-              )}
-              {activeTab === 'design' && (
-                 <motion.div 
-                   key="design"
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: 1 }}
-                   exit={{ opacity: 0 }}
-                   className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar"
-                 >
-                   <DesignSection styles={styles} setStyles={setStyles} />
-                 </motion.div>
-              )}
-              {activeTab === 'analyze' && (
-                <motion.div 
-                  key="analyze"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex-1 overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar"
-                >
-                  <AnalyzeSection 
-                    resumeData={resumeData}
-                    atsAnalysis={atsAnalysis}
-                    setAtsAnalysis={setAtsAnalysis}
-                    jdMatch={jdMatch}
-                    setJdMatch={setJdMatch}
-                    targetJd={targetJd}
-                    setTargetJd={setTargetJd}
-                    onRefresh={refreshPreview}
-                    isRefreshing={isRefreshing}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </aside>
-
-        {/* Right Area: Preview Canvas */}
+        {/* LEFT VIEW: Full Visual Frame representation */}
         <main className={cn(
-          "flex-1 bg-[var(--bg-secondary)] p-4 md:p-12 overflow-y-auto relative flex flex-col items-center custom-scrollbar transition-all duration-300 pb-40",
-          mobileMode === 'edit' && "hidden lg:flex"
+          "flex-1 bg-slate-100 dark:bg-slate-900/60 p-4 md:p-8 overflow-y-auto relative flex flex-col items-center custom-scrollbar pb-24 md:pb-8",
+          mobileMode === 'edit' && "hidden md:flex"
         )}>
           {isRefreshing && (
-            <div className="absolute top-4 md:top-12 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-32px)] md:w-auto">
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="px-6 py-3 md:py-2 bg-[var(--bg-primary)] rounded-full shadow-xl border border-[var(--border-color)] flex items-center justify-center gap-3"
-              >
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">AI Syncing...</span>
-              </motion.div>
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+              <div className="px-3.5 py-1.5 bg-white dark:bg-slate-900 shadow-md border border-[var(--border-color)] rounded-full flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-primary)]">Syncing Canvas...</span>
+              </div>
             </div>
           )}
 
-          <div className="w-full max-w-[850px] space-y-6 md:space-y-8 animate-in fade-in duration-1000">
-             {/* Toolbar Overlay */}
-             <div className="flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-3 bg-[var(--bg-primary)]/80 backdrop-blur-md rounded-2xl shadow-xl shadow-black/5 border border-[var(--border-color)] mb-4 md:mb-8 sticky top-0 z-30">
-               <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-indigo-600 flex items-center gap-2 group shrink-0">
-                 <Target className="w-4 h-4" />
-                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Select Mode</span>
-               </button>
-               <div className="w-px h-6 bg-[var(--border-color)]" />
-               <button className="p-2 md:p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-all text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center gap-2 group shrink-0">
-                 <Layout className="w-4 h-4 group-hover:scale-110" />
-                 <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Layout</span>
-               </button>
-               <div className="w-px h-6 bg-[var(--border-color)]" />
-               <div className="flex items-center gap-0.5 md:gap-1.5">
-                 <button 
-                   onClick={refreshPreview}
-                   disabled={isRefreshing}
-                   className={cn(
-                     "p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-all text-[var(--text-tertiary)] hover:text-indigo-600",
-                     isRefreshing && "animate-spin text-indigo-600"
-                   )}
-                   title="Force AI Sync"
-                 >
-                   <RefreshCw className="w-4 h-4" />
-                 </button>
-                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><AlertCircle className="w-4 h-4" /></button>
-                 <button className="p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"><RefreshCw className="w-4 h-4" /></button>
-                 <button 
-                  onClick={handleSave}
-                  disabled={isLocked}
-                  className={cn(
-                    "p-2 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors",
-                    isLocked ? "text-green-600" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                  )}
-                  title={isLocked ? "Resume Locked" : "Save and Lock for Export"}
-                >
-                  {isLocked ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                </button>
-               </div>
-             </div>
-
-             {/* Canvas Container */}
-             <div 
-               className="bg-white shadow-2xl rounded-sm w-full mx-auto ring-1 ring-gray-200 min-h-[1100px] overflow-hidden origin-top transition-all"
-               style={{ boxShadow: '0 40px 100px -20px rgba(0,0,0,0.15)' }}
-             >
-                {generatedHtml ? (
-                  <iframe 
-                    id="smart-editor-preview"
-                    ref={iframeRef}
-                    className="w-full h-[1100px] border-none"
-                      srcDoc={`
-                      <!DOCTYPE html>
-                      <html>
-                        <head>
-                          <script src="https://cdn.tailwindcss.com"></script>
-                          <script src="https://unpkg.com/lucide@latest"></script>
-                          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-                          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-                          <style>
-                            :root {
-                              --primary-color: ${styles.primaryColor};
-                              --font-family: '${styles.fontFamily}', sans-serif;
-                              --line-height: ${styles.spacing === 'compact' ? '1.4' : styles.spacing === 'normal' ? '1.6' : '1.8'};
-                              --font-size: ${styles.fontSize === 'xs' ? '12px' : styles.fontSize === 'small' ? '14px' : styles.fontSize === 'normal' ? '16px' : '18px'};
-                              --text-main: #1f2937;
-                            }
-                            body { 
-                              margin: 0; 
-                              padding: 60px 0;
-                              background-color: #f8fafc;
-                              display: flex;
-                              flex-direction: column;
-                              align-items: center;
-                              min-height: 100vh;
-                              box-sizing: border-box;
-                              scroll-behavior: smooth;
-                            }
-                            .page { 
-                              background: white;
-                              width: 794px;
-                              min-height: 1123px;
-                              height: auto;
-                              padding: 48px 56px;
-                              margin: 0 0 32px 0;
-                              box-sizing: border-box;
-                              overflow: visible;
-                              position: relative;
-                              box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15), 0 8px 24px -10px rgba(0, 0, 0, 0.1); 
-                              border-radius: 2px;
-                            }
-                            .page-break-indicator {
-                              position: absolute;
-                              left: 0;
-                              right: 0;
-                              border-top: 2px dashed #a5b4fc;
-                              height: 0;
-                              pointer-events: none;
-                              z-index: 9999;
-                            }
-                            .page-break-indicator::after {
-                              content: 'PAGE BREAK - NEXT PAGE';
-                              position: absolute;
-                              right: 24px;
-                              top: -9px;
-                              background: #f1f5f9;
-                              padding: 0 8px;
-                              font-size: 8px;
-                              font-weight: 800;
-                              color: #6366f1;
-                              border-radius: 4px;
-                              letter-spacing: 0.1em;
-                              border: 1px solid #c7d2fe;
-                              z-index: 10000;
-                            }
-                            .content {
-                              width: 100%;
-                              height: 100%;
-                              box-sizing: border-box;
-                              overflow: visible;
-                            }
-                            #resume-root {
-                              width: 794px;
-                              margin: 0 auto;
-                              box-sizing: border-box;
-                              position: relative;
-                            }
-                            @media print {
-                              .page { margin: 0; box-shadow: none; min-height: 1123px !important; height: auto !important; overflow: visible !important; }
-                              .page-break-indicator { display: none !important; }
-                            }
-                            .resume-footer {
-                              font-size: 10px; 
-                              color: #94a3b8; 
-                              text-align: center; 
-                              margin-top: 30px; 
-                              padding-bottom: 20px;
-                              font-family: 'Inter', sans-serif;
-                              width: 100%;
-                              border-top: 1px solid #f1f5f9;
-                              padding-top: 15px;
-                              display: block !important;
-                            }
-                            /* Table stability without artifacts */
-                            table {
-                              border-collapse: collapse !important;
-                            }
-                            [data-section-name] {
-                              page-break-inside: avoid;
-                            }
-                            .new-content { animation: highlight 1s ease-out; }
-                            @keyframes highlight { from { background-color: #fef08a; } to { background-color: transparent; } }
-
-                            /* New Scaling approach ONLY for preview */
-                            body {
-                              background: #f1f5f9;
-                              padding: 0 !important;
-                              margin: 0 !important;
-                              display: flex;
-                              flex-direction: column;
-                              align-items: center;
-                              height: 100vh;
-                              overflow-x: hidden !important;
-                              overflow-y: auto !important;
-                            }
-                            #resume-root {
-                              transform-origin: top center;
-                              transition: transform 0.2s ease-out;
-                              width: 794px;
-                              display: flex;
-                              flex-direction: column;
-                              gap: 15px;
-                              padding: 40px 0;
-                              margin: 0 auto;
-                            }
-                            .page {
-                              margin: 0 auto;
-                              box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
-                              border-radius: 2px;
-                            }
-                          </style>
-                          <script>
-                            function updateScale() {
-                              const root = document.getElementById('resume-root');
-                              if (!root) return;
-                              
-                              const containerWidth = document.documentElement.clientWidth;
-                              const targetWidth = 840; 
-                              const scale = Math.min(1, (containerWidth - 10) / targetWidth);
-                              
-                              root.style.transform = "scale(" + scale + ")";
-                              
-                              // Update body height to match scaled content
-                              const scaledHeight = root.offsetHeight * scale;
-                              document.body.style.height = (scaledHeight + 40) + 'px';
-                              document.body.style.overflowY = 'auto';
-                            }
-
-                            function resolvePath(obj, path) {
-                              if (!path) return undefined;
-                              return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-                            }
-
-                            async function paginate() {
-                              const root = document.getElementById('resume-root');
-                              if (!root) return;
-
-                              if (root.getAttribute('data-paginating') === 'true') return;
-                              root.setAttribute('data-paginating', 'true');
-
-                              // Reset scale for accurate measurement
-                              root.style.transform = 'none';
-                              root.style.width = '794px';
-
-                              // 1. Wait for images
-                              const images = Array.from(root.querySelectorAll('img'));
-                              await Promise.all(images.map(img => {
-                                if (img.complete) return Promise.resolve();
-                                return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-                              }));
-
-                              const USABLE_HEIGHT = 1027; 
-                              const PAGE_MAX_HEIGHT = 1135; // A4 height (1123) + small buffer
-                              const BUFFER = 4;
-
-                              function addVisualPageBreaks() {
-                                root.querySelectorAll('.page').forEach(p => {
-                                  p.querySelectorAll('.page-break-indicator').forEach(el => el.remove());
-                                  const height = p.offsetHeight;
-                                  const standardPageHeight = 1123;
-                                  if (height > 1135) {
-                                    const numPages = Math.floor(height / standardPageHeight);
-                                    for (let i = 1; i <= numPages; i++) {
-                                      const indicator = document.createElement('div');
-                                      indicator.className = 'page-break-indicator';
-                                      indicator.style.top = (i * standardPageHeight) + 'px';
-                                      p.appendChild(indicator);
-                                    }
-                                  }
-                                });
-                              }
-
-                              // Blueprint capture
-                              const firstPage = root.querySelector('.page');
-                              const pageClasses = firstPage ? firstPage.className : 'page';
-                              const contentClasses = firstPage?.querySelector('.content')?.className || 'content';
-
-                               // 2. Decide if we need to flatten
-                               const existingPages = Array.from(root.querySelectorAll('.page'));
-                               
-                               // Check if any existing page is overfull
-                               let isAnyPageOverfull = false;
-                               existingPages.forEach(p => {
-                                 const prevOverflow = p.style.overflow;
-                                 const prevHeight = p.style.height;
-                                 p.style.overflow = 'visible';
-                                 p.style.height = 'auto';
-                                 if (p.offsetHeight > PAGE_MAX_HEIGHT) isAnyPageOverfull = true;
-                                 p.style.overflow = prevOverflow;
-                                 p.style.height = prevHeight;
-                               });
-
-                               if (existingPages.length > 1 && !isAnyPageOverfull) {
-                                 // AI handled pagination correctly
-                                 addVisualPageBreaks();
-                                 if (window.lucide) window.lucide.createIcons();
-                                 root.removeAttribute('data-paginating');
-                                 updateScale();
-                                 return;
-                               }
-
-                               // Check for complex layouts
-                               const firstPageContent = firstPage?.querySelector('.content') || firstPage;
-                               const hasComplexLayout = firstPageContent && (
-                                 Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar')) ||
-                                 firstPageContent.classList.contains('grid-cols-2') ||
-                                 firstPageContent.classList.contains('grid-cols-3') ||
-                                 (firstPageContent.classList.contains('grid') && !firstPageContent.classList.contains('grid-cols-1')) ||
-                                 firstPageContent.querySelector('.main-column') !== null
-                               );
-
-                               if (hasComplexLayout) {
-                                 addVisualPageBreaks();
-                                 if (window.lucide) window.lucide.createIcons();
-                                 root.removeAttribute('data-paginating');
-                                 updateScale();
-                                 return;
-                               }
-
-                               if (existingPages.length > 0) {
-                                const fragment = document.createDocumentFragment();
-                                existingPages.forEach(p => {
-                                  const content = p.querySelector('.content') || p;
-                                  while (content.firstChild) fragment.appendChild(content.firstChild);
-                                });
-                                root.innerHTML = '';
-                                root.appendChild(fragment);
-                              }
-
-                              const footer = document.querySelector('.resume-footer');
-                              const elements = Array.from(root.childNodes).filter(n => n !== footer);
-                              root.innerHTML = '';
-
-                              function createPage() {
-                                const p = document.createElement('div');
-                                p.className = pageClasses;
-                                const c = document.createElement('div');
-                                c.className = contentClasses;
-                                p.appendChild(c);
-                                return p;
-                              }
-
-                              let currentPage = createPage();
-                              root.appendChild(currentPage);
-                              let currentContent = currentPage.querySelector('.content') || currentPage;
-
-                              for (const node of elements) {
-                                if (node.nodeType === 3 && !node.textContent.trim()) continue;
-                                
-                                currentContent.appendChild(node);
-                                
-                                const contentRect = currentContent.getBoundingClientRect();
-                                const children = currentContent.children;
-                                if (children.length > 0) {
-                                  const lastChild = children[children.length - 1];
-                                  const height = lastChild.getBoundingClientRect().bottom - contentRect.top;
-
-                                  if (height > (USABLE_HEIGHT - BUFFER) && children.length > 1) {
-                                    currentContent.removeChild(node);
-                                    currentPage = createPage();
-                                    root.appendChild(currentPage);
-                                    currentContent = currentPage.querySelector('.content') || currentPage;
-                                    currentContent.appendChild(node);
-                                  }
-                                }
-                              }
-
-                              if (footer) root.appendChild(footer);
-                              
-                              setTimeout(() => {
-                                addVisualPageBreaks();
-                                root.removeAttribute('data-paginating');
-                                updateScale();
-                              }, 300);
-                            }
-
-                            window.addEventListener('message', async (event) => {
-                              if (event.data.type === 'SYNC_DATA') {
-                                const data = event.data.data;
-                                const styles = event.data.styles;
-                                const sections = event.data.sections;
-
-                                if (styles) {
-                                  const root = document.documentElement;
-                                  root.style.setProperty('--primary-color', styles.primaryColor);
-                                  root.style.setProperty('--font-family', styles.fontFamily + ', sans-serif');
-                                  const fontSizeMap = { xs: '12px', small: '14px', normal: '16px', large: '18px' };
-                                  root.style.setProperty('--font-size', fontSizeMap[styles.fontSize] || '16px');
-                                  const spacingMap = { compact: '1.4', normal: '1.6', comfortable: '1.8' };
-                                  root.style.setProperty('--line-height', spacingMap[styles.spacing] || '1.6');
-                                }
-
-                                if (sections) {
-                                  sections.forEach(function(sec) {
-                                    var sectionEl = document.querySelector('[data-section-name="' + sec.id + '"]');
-                                    if (sectionEl) {
-                                      sectionEl.style.display = sec.visible ? 'block' : 'none';
-                                    }
-                                  });
-                                }
-                                
-                                document.querySelectorAll('[data-resume-field]').forEach(el => {
-                                  const path = el.getAttribute('data-resume-field');
-                                  const value = resolvePath(data, path);
-                                  if (value !== undefined && !Array.isArray(value) && el.innerText !== value) {
-                                    el.innerText = value;
-                                    el.classList.add('new-content');
-                                    setTimeout(() => el.classList.remove('new-content'), 1000);
-                                  }
-                                });
-
-                                // Repaginate if data changed
-                                setTimeout(() => {
-                                  if (window.lucide) window.lucide.createIcons();
-                                  paginate();
-                                }, 100);
-                              }
-
-                               if (event.data.type === 'CAPTURE_CANVAS') {
-                                try {
-                                  // For capturing, we target the main resume container
-                                  const root = document.getElementById('resume-root');
-                                  
-                                  // Wait for images to load
-                                  const images = Array.from(root.querySelectorAll('img'));
-                                  await Promise.all(images.map(img => {
-                                    if (img.complete) return Promise.resolve();
-                                    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-                                  }));
-
-                                  await document.fonts.ready;
-                                  
-                                  // Delay to ensure fonts and layout are settled
-                                  await new Promise(r => setTimeout(r, 400));
-
-                                  const canvas = await html2canvas(root, {
-                                    scale: 2, 
-                                    useCORS: true,
-                                    allowTaint: true,
-                                    backgroundColor: "#ffffff",
-                                    logging: false,
-                                    imageTimeout: 15000,
-                                    removeContainer: true,
-                                    onclone: (clonedDoc) => {
-                                      clonedDoc.querySelectorAll('.page').forEach(p => {
-                                        (p as HTMLElement).style.height = 'auto';
-                                        (p as HTMLElement).style.minHeight = '1123px';
-                                        (p as HTMLElement).style.overflow = 'visible';
-                                        (p as HTMLElement).style.margin = '0';
-                                        (p as HTMLElement).style.boxShadow = 'none';
-                                        (p as HTMLElement).style.border = 'none';
-                                        (p as HTMLElement).style.borderRadius = '0';
-                                      });
-                                      const preview = clonedDoc.getElementById('resume-root');
-                                      if (preview) {
-                                         // ENSURE NO GAPS in export for seamless PDF slicing
-                                         preview.style.gap = '0';
-                                         preview.style.padding = '0';
-                                         preview.style.margin = '0';
-                                         preview.style.boxShadow = 'none';
-                                         preview.style.border = 'none';
-                                         preview.style.background = 'white';
-                                         preview.style.display = 'flex';
-                                         preview.style.flexDirection = 'column';
-                                      }
-                                      
-                                      // Hide pagination UI decorations
-                                      const styleTag = clonedDoc.createElement('style');
-                                      styleTag.innerHTML = '.page-break-indicator { display: none !important; } .page::before, .page::after { display: none !important; opacity: 0 !important; } .page { margin: 0 !important; box-shadow: none !important; border: none !important; border-radius: 0 !important; } .resume-footer { margin-bottom: 0 !important; padding-bottom: 20px !important; border-top: none !important; }';
-                                      clonedDoc.head.appendChild(styleTag);
-                                      
-                                      // Force standard text rendering
-                                      const allElements = clonedDoc.querySelectorAll('*');
-                                      allElements.forEach(el => {
-                                        const style = (el as HTMLElement).style;
-                                        style.textRendering = 'geometricPrecision';
-                                        (style as any).webkitFontSmoothing = 'antialiased';
-                                        
-                                        // Fix potential "strikethrough" look of underlines in html2canvas
-                                        if (style.textDecoration === 'underline' || style.textDecorationLine === 'underline') {
-                                          style.textDecoration = 'none';
-                                          style.textDecorationLine = 'none';
-                                          style.borderBottom = '1px solid currentColor';
-                                          style.display = style.display === 'inline' ? 'inline-block' : style.display;
-                                          style.paddingBottom = '1px';
-                                        }
-                                      });
-
-                                      // Handle additional non-export elements
-                                      clonedDoc.querySelectorAll('.no-export, .ui-controls').forEach(el => el.remove());
-                                    }
-                                  });
-
-                                  window.parent.postMessage({
-                                    type: 'CANVAS_RESPONSE',
-                                    requestId: event.data.requestId,
-                                    imgData: canvas.toDataURL('image/png'),
-                                    width: canvas.width,
-                                    height: canvas.height
-                                  }, '*');
-                                } catch (err) {
-                                  window.parent.postMessage({
-                                    type: 'CANVAS_RESPONSE',
-                                    requestId: event.data.requestId,
-                                    error: err.message
-                                  }, '*');
-                                }
-                              }
-                            });
-
-                            const observer = new MutationObserver((mutations) => {
-                              let shouldRepaginate = false;
-                              const root = document.getElementById('resume-root');
-                              if (root && root.getAttribute('data-paginating') === 'true') return;
-
-                              mutations.forEach(m => {
-                                if (m.type === 'childList') {
-                                  const hasPages = Array.from(m.target.children || []).some(child => child.classList?.contains('page'));
-                                  if (!hasPages && m.target.id === 'resume-root' && m.addedNodes.length > 0) {
-                                    shouldRepaginate = true;
-                                  }
-                                }
-                              });
-                              if (shouldRepaginate) setTimeout(paginate, 100);
-                            });
-                            
-                            setTimeout(() => {
-                              const root = document.getElementById('resume-root');
-                              if (root) {
-                                observer.observe(root, { childList: true });
-                                paginate(); // Initial manual call
-                              }
-                            }, 500);
-
-                            window.addEventListener('resize', updateScale);
-
-                            window.addEventListener('load', () => {
-                              setTimeout(() => {
-                                paginate();
-                                updateScale();
-                                window.parent.postMessage({ type: 'IFRAME_READY' }, '*');
-                              }, 100);
-                            });
-                          </script>
-                        </head>
-                        <body>
-                          <div id="resume-root">
-                            ${generatedHtml}
-                            ${!isPremium ? `
-                              <div class="resume-footer">
-                                Created by <a href="https://resume-morph.com" style="color: #6366f1; text-decoration: none; font-weight: 700;">Resume Morph</a> (Sankalp Suman)
-                              </div>
-                            ` : ''}
-                          </div>
-                        </body>
-                      </html>
-                    `}
-                  />
-                ) : (
-                  <div className="w-full h-[1100px] flex flex-col items-center justify-center gap-6 bg-white">
-                    <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest animate-pulse">Initializing Visual Canvas...</p>
-                  </div>
-                )}
-             </div>
+          <div className="w-full max-w-[800px] flex flex-col shrink-0">
+            {/* Standard frame for document */}
+            <div 
+              className="bg-white shadow-2xl rounded-sm w-full mx-auto border border-slate-200/50 min-h-[1100px] overflow-hidden relative"
+              style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08)' }}
+            >
+              {generatedHtml ? (
+                <iframe 
+                  id="smart-canvas-renderer"
+                  ref={iframeRef}
+                  className="w-full h-[1100px] border-none"
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <script src="https://cdn.tailwindcss.com"></script>
+                        <script src="https://unpkg.com/lucide@latest"></script>
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+                        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+                        <style>
+                          :root {
+                            --primary-color: ${styles.primaryColor};
+                            --font-family: '${styles.fontFamily}', sans-serif;
+                            --font-size: 15px;
+                            --text-main: #1e293b;
+                          }
+                          body { 
+                            margin: 0; 
+                            background-color: #f1f5f9;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            min-height: 100vh;
+                            box-sizing: border-box;
+                            padding: 24px 0;
+                          }
+                          .page { 
+                            background: white;
+                            width: 794px;
+                            min-height: 1123px;
+                            padding: 48px 56px;
+                            box-sizing: border-box;
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+                            border-radius: 2px;
+                            border: 1px solid #e2e8f0;
+                          }
+                          #canvas-root {
+                            width: 794px;
+                            margin: 0 auto;
+                          }
+                          .watermark {
+                            text-align: center;
+                            font-size: 10px;
+                            color: #94a3b8;
+                            margin-top: 30px;
+                            border-top: 1px solid #e2e8f0;
+                            padding-top: 15px;
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div id="canvas-root">
+                          ${generatedHtml}
+                          ${!isPremium ? `
+                            <div class="watermark">
+                              Rendered by <a href="#" style="color: #4f46e5; text-decoration: none; font-weight: 700;">Resume Morph</a>
+                            </div>
+                          ` : ''}
+                        </div>
+                      </body>
+                    </html>
+                  `}
+                />
+              ) : (
+                <div className="w-full h-[1100px] flex flex-col items-center justify-center gap-3 bg-white">
+                  <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Building layout sandboxes...</p>
+                </div>
+              )}
+            </div>
           </div>
         </main>
+
+        {/* RIGHT VIEW: Clean modern Co-pilot panel */}
+        <aside className={cn(
+          "w-full md:w-[420px] bg-[var(--bg-primary)] border-t md:border-t-0 md:border-l border-[var(--border-color)] flex flex-col shrink-0 z-20 overflow-hidden",
+          mobileMode === 'preview' && "hidden md:flex"
+        )}>
+          {/* Messages desk feed */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[var(--bg-secondary)]/50">
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={cn(
+                  "flex gap-2.5 max-w-[85%] animate-fadeIn",
+                  m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
+                )}
+              >
+                <div className={cn(
+                  "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 self-start border",
+                  m.role === 'user' 
+                    ? "bg-indigo-600 border-indigo-600 text-white" 
+                    : "bg-[var(--bg-primary)] border-[var(--border-color)] text-indigo-600"
+                )}>
+                  {m.role === 'user' ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5 animate-pulse" />}
+                </div>
+                <div className={cn(
+                  "p-3.5 rounded-2xl text-xs leading-normal font-medium shadow-sm transition-all",
+                  m.role === 'user' 
+                    ? "bg-indigo-600 text-white rounded-tr-none" 
+                    : "bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-tl-none whitespace-pre-wrap"
+                )}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex gap-2.5 mr-auto">
+                <div className="w-7 h-7 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] text-indigo-600 flex items-center justify-center shrink-0">
+                  <Bot className="w-3.5 h-3.5" />
+                </div>
+                <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] px-4 py-3 rounded-2xl rounded-tl-none flex gap-1 items-center shadow-sm">
+                  <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" />
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Conditional proposal banner (Apply or Rollback) */}
+          <AnimatePresence>
+            {pendingResumeData && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="p-4 border-t border-indigo-100 bg-indigo-50/95 dark:bg-indigo-950/20 shrink-0"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1.5 text-indigo-800 dark:text-indigo-300">
+                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                    <p className="text-[11px] font-black uppercase tracking-wider">Review proposed changes</p>
+                  </div>
+                  {pendingChangesSummary.length > 0 && (
+                    <div className="flex flex-wrap gap-1 max-h-12 overflow-y-auto">
+                      {pendingChangesSummary.map((c, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-indigo-200/55 rounded text-[9px] font-bold text-indigo-600 dark:text-indigo-400">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1.5 pt-1">
+                    <button
+                      onClick={handleConfirmChanges}
+                      className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"
+                    >
+                      Apply Edits
+                    </button>
+                    <button
+                      onClick={handleRollbackDraft}
+                      className="flex-1 py-2 bg-white dark:bg-slate-950 border border-indigo-200 text-indigo-700 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-900 transition-all"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Prompt sender & sugestions container */}
+          <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-primary)] space-y-3 shrink-0">
+            {/* Quick Suggestions Chips */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
+              <button
+                onClick={() => handleSendMessage("Improve spelling, style grammar, and increase corporate vocabulary")}
+                disabled={isTyping || !!pendingResumeData}
+                className="px-3 py-1 bg-[var(--bg-secondary)] hover:bg-indigo-50 border border-[var(--border-color)] rounded-full text-[10px] font-bold text-[var(--text-secondary)] hover:text-indigo-600 whitespace-nowrap transition-all"
+              >
+                👔 Professional Redish
+              </button>
+              <button
+                onClick={() => handleSendMessage("Restructure my professional experience summary to be shorter and result-driven")}
+                disabled={isTyping || !!pendingResumeData}
+                className="px-3 py-1 bg-[var(--bg-secondary)] hover:bg-indigo-50 border border-[var(--border-color)] rounded-full text-[10px] font-bold text-[var(--text-secondary)] hover:text-indigo-600 whitespace-nowrap transition-all"
+              >
+                ✂️ Shorten Summary
+              </button>
+              <button
+                onClick={() => handleSendMessage("Highlight technical skills using bold indicators or modern coloring")}
+                disabled={isTyping || !!pendingResumeData}
+                className="px-3 py-1 bg-[var(--bg-secondary)] hover:bg-indigo-50 border border-[var(--border-color)] rounded-full text-[10px] font-bold text-[var(--text-secondary)] hover:text-indigo-600 whitespace-nowrap transition-all"
+              >
+                ⚡ Color Accent
+              </button>
+            </div>
+
+            {/* Input form */}
+            <div className="relative">
+              <textarea
+                value={userMessage}
+                onChange={(e) => setUserMessage(e.target.value)}
+                disabled={isTyping || !!pendingResumeData}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={
+                  pendingResumeData 
+                    ? "Apply or Discard changes above..." 
+                    : "Describe edits (e.g., 'Change my title', 'Add certifications')"
+                }
+                className={cn(
+                  "w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl p-3 pr-12 text-xs font-semibold leading-relaxed transition-all resize-none outline-none text-[var(--text-primary)] placeholder-gray-400",
+                  pendingResumeData ? "opacity-50 cursor-not-allowed" : "focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                )}
+                rows={2}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!userMessage.trim() || isTyping || !!pendingResumeData}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-705 active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
-      {/* Floating Actions */}
+
+      {/* Floating unified primary actions footer footer bar */}
       <AnimatePresence>
         {!loading && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.8, x: -20 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.8, x: -20 }}
-            className="fixed bottom-24 md:bottom-6 left-4 md:left-6 z-[150] flex flex-col gap-4"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="fixed bottom-6 left-6 z-[120] flex gap-2"
           >
-            {/* WhatsApp share */}
-            <button 
-              onClick={shareToWhatsApp}
-              title="Share on WhatsApp"
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white flex items-center justify-center shadow-2xl shadow-[#25D366]/30 transition-all hover:scale-110 active:scale-95 group relative"
-            >
-              <MessageSquare className="w-5 h-5" />
-              <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
-                WhatsApp Share
-              </div>
-            </button>
-
-            {/* Download PDF */}
             <button 
               onClick={downloadPdf}
               disabled={loading}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/30 transition-all hover:scale-110 active:scale-95 group relative disabled:opacity-50"
-              title="Download PDF"
+              className="px-4.5 h-11 rounded-full bg-slate-900 dark:bg-indigo-650 hover:bg-slate-800 text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 gap-2 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+              title="Download print optimized version"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              <div className="absolute left-full ml-4 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] text-[10px] font-black uppercase tracking-widest rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 pointer-events-none whitespace-nowrap">
-                Download PDF
-              </div>
+              <Download className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
+            
+            <button 
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('morph-success'));
+              }}
+              className="px-4.5 h-11 rounded-full bg-white text-slate-800 border border-slate-200/80 flex items-center justify-center shadow-xl hover:bg-slate-55 hover:scale-105 active:scale-95 gap-2 text-[10px] font-black uppercase tracking-widest transition-all"
+            >
+              <Check className="w-3.5 h-3.5 text-green-600" />
+              Save Layout
             </button>
           </motion.div>
         )}
@@ -1408,381 +878,14 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
   );
 }
 
-// Sub-components
-const ResumeChat = memo(({ messages, isTyping, userMessage, setUserMessage, onSend, isLocked }: any) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isTyping]);
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--bg-primary)]">
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth custom-scrollbar"
-      >
-        {messages.map((m: any) => (
-          <motion.div
-            key={m.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex gap-3 max-w-[90%]",
-              m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
-            )}
-          >
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm",
-              m.role === 'user' ? "bg-indigo-600 text-white" : "bg-white border border-[var(--border-color)] text-indigo-600"
-            )}>
-              {m.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-            <div className={cn(
-              "p-4 rounded-2xl text-sm font-medium leading-relaxed shadow-sm",
-              m.role === 'user' ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-tl-none whitespace-pre-wrap"
-            )}>
-              {m.content}
-            </div>
-          </motion.div>
-        ))}
-        {isTyping && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex gap-3 mr-auto"
-          >
-            <div className="w-8 h-8 rounded-full bg-white border border-[var(--border-color)] text-indigo-600 flex items-center justify-center shrink-0 shadow-sm">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border-color)] p-4 rounded-2xl rounded-tl-none flex gap-1">
-              <span className="w-1.5 h-1.5 bg-indigo-600/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-              <span className="w-1.5 h-1.5 bg-indigo-600/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-              <span className="w-1.5 h-1.5 bg-indigo-600/40 rounded-full animate-bounce" />
-            </div>
-          </motion.div>
-        )}
-      </div>
-      
-      <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-primary)]">
-        <div className="relative group">
-          <textarea
-            value={userMessage}
-            onChange={(e) => setUserMessage(e.target.value)}
-            disabled={isLocked}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
-            placeholder={isLocked ? "Editing is locked. Your resume is finalized." : "Tell me what to change..."}
-            className={cn(
-              "w-full bg-[var(--bg-secondary)] border-2 border-[var(--border-color)] rounded-2xl p-4 pr-14 text-sm font-medium transition-all resize-none outline-none text-[var(--text-primary)]",
-              isLocked ? "opacity-50 cursor-not-allowed border-gray-200" : "focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-500/5"
-            )}
-            rows={2}
-          />
-          <button
-            onClick={onSend}
-            disabled={!userMessage.trim() || isTyping || isLocked}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:hover:bg-indigo-600 shadow-lg shadow-indigo-200 dark:shadow-none"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="mt-2 text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest text-center">
-          {isLocked ? "Resume Finalized & Locked" : 'Type commands like "Add a summary" or "Update my title"'}
-        </p>
-      </div>
-    </div>
-  );
-});
-
-const DesignSection = memo(({ styles, setStyles }: any) => {
-  return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Visual Architecture</h2>
-        <p className="text-sm font-medium text-[var(--text-secondary)]">Customize the aesthetic framework of your resume.</p>
-      </div>
-
-      <div className="space-y-6">
-        {/* Colors */}
-        <div className="space-y-4">
-          <label className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)]">Accent Palette</label>
-          <div className="grid grid-cols-6 gap-3">
-            {COLORS.map((c) => (
-              <button
-                key={c.value}
-                onClick={() => setStyles((prev: any) => ({ ...prev, primaryColor: c.value }))}
-                className={cn(
-                  "w-10 h-10 rounded-xl transition-all relative group",
-                  styles.primaryColor === c.value ? "ring-4 ring-indigo-500/10 scale-110" : "hover:scale-105"
-                )}
-                style={{ backgroundColor: c.value }}
-              >
-                {styles.primaryColor === c.value && (
-                  <CheckCircle className="w-5 h-5 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Fonts */}
-        <div className="space-y-4">
-          <label className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)]">Typographic Scale</label>
-          <div className="grid grid-cols-1 gap-2">
-            {FONTS.map((f) => (
-              <button
-                key={f.name}
-                onClick={() => setStyles((prev: any) => ({ ...prev, fontFamily: f.name }))}
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left",
-                  styles.fontFamily === f.name 
-                    ? "border-indigo-600 bg-indigo-50/10 text-indigo-600" 
-                    : "border-[var(--border-color)] text-[var(--text-secondary)] hover:border-indigo-400"
-                )}
-              >
-                <span className="font-bold" style={{ fontFamily: f.value }}>{f.name}</span>
-                {styles.fontFamily === f.name && <CheckCircle className="w-4 h-4" />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Font Size & Spacing */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Font Size</label>
-            <select 
-              value={styles.fontSize}
-              onChange={(e) => setStyles((prev: any) => ({ ...prev, fontSize: e.target.value }))}
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl p-3 text-xs font-bold outline-none"
-            >
-              <option value="xs">Extra Small</option>
-              <option value="small">Small</option>
-              <option value="normal">Normal</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">Line Spacing</label>
-            <select 
-              value={styles.spacing}
-              onChange={(e) => setStyles((prev: any) => ({ ...prev, spacing: e.target.value }))}
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl p-3 text-xs font-bold outline-none"
-            >
-              <option value="compact">Compact</option>
-              <option value="normal">Normal</option>
-              <option value="comfortable">Comfortable</option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-const AnalyzeSection = memo(({ resumeData, atsAnalysis, setAtsAnalysis, jdMatch, setJdMatch, targetJd, setTargetJd, onRefresh, isRefreshing }: any) => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isMatching, setIsMatching] = useState(false);
-
-  const runAtsCheck = async () => {
-    if (!resumeData) return;
-    setIsAnalyzing(true);
-    try {
-      const resumeText = JSON.stringify(resumeData);
-      const plan = await getOptimizationPlan(resumeText);
-      setAtsAnalysis({
-        score: 75 + Math.floor(Math.random() * 15),
-        recommendations: plan
-      });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const runJdMatch = async () => {
-    if (!resumeData || !targetJd) return;
-    setIsMatching(true);
-    try {
-      const resumeText = JSON.stringify(resumeData);
-      const result = await checkMatch(resumeText, targetJd);
-      setJdMatch(result);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsMatching(false);
-    }
-  };
-
-  return (
-    <motion.div 
-      key="analyze"
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 10 }}
-      className="space-y-12"
-    >
-            <div className="space-y-2">
-              <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">AI Analysis & Scoring</h2>
-              <p className="text-sm font-medium text-[var(--text-secondary)]">Optimize your resume for applicant tracking systems.</p>
-            </div>
-
-      {/* ATS Score */}
-      <div className="space-y-6">
-        <div className="p-6 bg-gray-900 rounded-[32px] text-white space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-widest text-indigo-400">ATS Readiness</h3>
-            <button 
-              onClick={runAtsCheck}
-              disabled={isAnalyzing}
-              className="px-4 py-2 bg-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-indigo-900/20"
-            >
-              {isAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-              {atsAnalysis ? 'Recalculate' : 'Analyze Now'}
-            </button>
-          </div>
-          
-      {atsAnalysis ? (
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row items-center gap-8 md:gap-10">
-            <div className="relative w-32 h-32 flex items-center justify-center">
-              <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
-                <motion.circle 
-                  cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
-                  strokeDasharray={`${atsAnalysis.score * 3.64} 364`}
-                  strokeLinecap="round"
-                  initial={{ strokeDasharray: "0 364" }}
-                  animate={{ strokeDasharray: `${atsAnalysis.score * 3.64} 364` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className={cn(
-                    atsAnalysis.score >= 80 ? "text-green-500" :
-                    atsAnalysis.score >= 60 ? "text-indigo-500" : "text-amber-500"
-                  )}
-                />
-              </svg>
-              <div className="flex flex-col items-center">
-                <span className="text-4xl font-black">{atsAnalysis.score}</span>
-                <span className="text-[8px] font-black uppercase tracking-tighter text-indigo-400">Score</span>
-              </div>
-            </div>
-            <div className="flex-1 text-center md:text-left space-y-2">
-              <p className="text-xl font-black tracking-tight leading-none">
-                {atsAnalysis.score >= 80 ? "Elite Architecture" : 
-                 atsAnalysis.score >= 60 ? "Strong Baseline" : "Needs Structural Prep"}
-              </p>
-              <p className="text-xs text-indigo-200/50 font-bold uppercase tracking-widest leading-relaxed">
-                Optimized for enterprise-grade <br className="hidden md:block" /> applicant tracking systems.
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-4 pt-6 border-t border-white/10">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Architectural Fixes</h4>
-            <div className="grid gap-3">
-              {atsAnalysis.recommendations.map((rec: string, i: number) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-start gap-3 group hover:bg-white/10 hover:border-white/10 transition-all"
-                >
-                  <div className="w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
-                    <CheckCircle className="w-3 h-3" />
-                  </div>
-                  <p className="text-xs font-medium text-gray-300 leading-relaxed">{rec}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-            <div className="py-8 text-center border-2 border-dashed border-white/10 rounded-3xl">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Click analyze to see your score</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* JD Matching */}
-            <h3 className="text-xs font-black text-[var(--text-tertiary)] uppercase tracking-widest px-1">Job Description Matcher</h3>
-            <div className="space-y-4">
-              <textarea
-                value={targetJd}
-                onChange={(e) => setTargetJd(e.target.value)}
-                placeholder="Paste the job description here..."
-                className="w-full h-40 p-5 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-3xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/5 focus:bg-[var(--bg-primary)] transition-all outline-none resize-none text-[var(--text-primary)]"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={runJdMatch}
-                  disabled={isMatching || !targetJd}
-                  className="py-4 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-[var(--bg-secondary)] transition-all flex items-center justify-center gap-3 shadow-sm"
-                >
-                  {isMatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-                  Match Score
-                </button>
-                <button 
-                  onClick={() => {
-                    // This will trigger the refreshPreview which now uses targetJd
-                    onRefresh();
-                  }}
-                  disabled={isRefreshing || !targetJd}
-                  className="py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 shadow-xl"
-                >
-                  {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Smart Tailor
-                </button>
-              </div>
-            </div>
-
-            {jdMatch && (
-              <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-6">
-                 <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Relevance Score</p>
-                      <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">{jdMatch.score}%</p>
-                    </div>
-                    <div className="w-16 h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: `${jdMatch.score}%` }} className="h-full bg-indigo-600" />
-                    </div>
-                 </div>
-                 
-                 {jdMatch.missing.length > 0 && (
-                   <div className="space-y-3">
-                     <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Missing Keywords</p>
-                     <div className="flex flex-wrap gap-2">
-                       {jdMatch.missing.map((word: string) => (
-                         <span key={word} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                           {word}
-                         </span>
-                       ))}
-                     </div>
-                   </div>
-                 )}
-              </div>
-            )}
-    </motion.div>
-  );
-});
-
-function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) => void, loading: boolean, label: string, icon: React.ReactNode }) {
+// Minimal Dropzone Component
+function Dropzone({ onDrop, loading }: { onDrop: (files: File[]) => void, loading: boolean }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
-      'image/*': ['.png', '.jpg', '.jpeg']
+      'text/plain': ['.txt']
     },
     multiple: false
   } as any);
@@ -1791,21 +894,22 @@ function Dropzone({ onDrop, loading, label, icon }: { onDrop: (files: File[]) =>
     <div 
       {...getRootProps()}
       className={cn(
-        "relative group cursor-pointer transition-all duration-500 h-[280px]",
-        "border-2 border-dashed rounded-[32px] p-8 text-center flex flex-col items-center justify-center gap-6",
-        isDragActive ? "border-indigo-600 bg-indigo-50/50 scale-[1.02]" : "border-[var(--border-color)] hover:border-indigo-400 hover:bg-[var(--bg-secondary)]",
+        "relative cursor-pointer transition-all duration-300 h-44 rounded-3xl p-6 text-center flex flex-col items-center justify-center gap-3 border-2 border-dashed",
+        isDragActive 
+          ? "border-indigo-600 bg-indigo-50/20 scale-[1.01]" 
+          : "border-[var(--border-color)] hover:border-indigo-400 hover:bg-indigo-55/5",
       )}
     >
       <input {...getInputProps()} />
       <div className={cn(
-        "w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-500",
-        isDragActive ? "bg-indigo-600 text-white scale-110 shadow-2xl shadow-indigo-200" : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 group-hover:scale-110"
+        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
+        isDragActive ? "bg-indigo-600 text-white scale-105" : "bg-indigo-50 dark:bg-indigo-950 text-indigo-600"
       )}>
-        {loading ? <Loader2 className="w-10 h-10 animate-spin" /> : icon}
+        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
       </div>
-      <div className="space-y-1">
-        <p className="text-xl font-black text-[var(--text-primary)] tracking-tight">{label}</p>
-        <p className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest">Drag & drop or click to browse</p>
+      <div>
+        <p className="text-sm font-black text-[var(--text-primary)] leading-none mb-1">Click or Drop your Resume</p>
+        <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">Supports PDF, DOCX, TXT</p>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ export default function CreatorWelcomeModal() {
     const handleMorphSuccess = (e?: any) => {
       const featureId = e?.detail?.feature || 'morph';
       const storageKey = `morph_congrats_seen_${featureId}`;
-      const hasSeenCongrats = localStorage.getItem(storageKey);
+      const hasSeenCongrats = localStorage.getItem(storageKey) || localStorage.getItem('morph_congrats_any_seen') === 'true';
       
       if (!hasSeenCongrats) {
         const featureConfig: Record<string, any> = {
@@ -73,6 +73,7 @@ export default function CreatorWelcomeModal() {
         setModalType('congrats');
         setIsOpen(true);
         localStorage.setItem(storageKey, 'true');
+        localStorage.setItem('morph_congrats_any_seen', 'true');
       }
     };
 

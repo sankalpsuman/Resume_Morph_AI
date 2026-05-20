@@ -116,6 +116,19 @@ export default function Feedback() {
       });
       setName('');
       setMessage('');
+
+      // Update Firestore user status to hasReviewed: true
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          hasReviewed: true
+        });
+      } catch (err) {
+        console.error("Error updating user hasReviewed on feedback submit:", err);
+      }
+
+      // Record in local storage for instant feedback sync
+      localStorage.setItem('morph_user_submitted_feedback', 'true');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'feedbacks');
     } finally {
