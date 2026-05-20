@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, 
   ArrowLeft, Download, RefreshCw, X, Send, Bot, User, 
@@ -880,19 +879,46 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
 
 // Minimal Dropzone Component
 function Dropzone({ onDrop, loading }: { onDrop: (files: File[]) => void, loading: boolean }) {
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt']
-    },
-    multiple: false
-  } as any);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave" || e.type === "drop") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      onDrop(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      onDrop(Array.from(e.target.files));
+    }
+  };
+
+  const onButtonClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div 
-      {...getRootProps()}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+      onClick={onButtonClick}
       className={cn(
         "relative cursor-pointer transition-all duration-300 h-44 rounded-3xl p-6 text-center flex flex-col items-center justify-center gap-3 border-2 border-dashed",
         isDragActive 
@@ -900,7 +926,13 @@ function Dropzone({ onDrop, loading }: { onDrop: (files: File[]) => void, loadin
           : "border-[var(--border-color)] hover:border-indigo-400 hover:bg-indigo-55/5",
       )}
     >
-      <input {...getInputProps()} />
+      <input 
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.docx,.txt"
+        onChange={handleChange}
+      />
       <div className={cn(
         "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
         isDragActive ? "bg-indigo-600 text-white scale-105" : "bg-indigo-50 dark:bg-indigo-950 text-indigo-600"
