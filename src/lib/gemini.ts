@@ -452,7 +452,7 @@ export async function generateResume(
     TOKEN EFFICIENCY: Be extremely concise with HTML. Use utility classes. Minimize redundant nesting.
     
     PIXEL-PERFECT RENDER:
-    - Wrapper: <div class="page" data-page="Page X of Y"><div class="content">[CONTENT]</div></div>.
+    - Wrapper: <div class="page"><div class="content">[CONTENT]</div></div>.
     - If a layout requires a sidebar, you can put the grid structure directly on the .page element, but ensure content area still uses class="content".
     - MULTI-PAGE OUTPUT (REQUIRED): If the content is long, YOU MUST output multiple <div class="page"> blocks.
     - HEIGHT LIMIT: Each <div class="page"> MUST contain approximately 1000px - 1100px height of content. If content exceeds this, start a new <div class="page">.
@@ -1102,7 +1102,7 @@ export async function generateResumeFromData(
     - DATA INTEGRITY: Render EVERY entry from USER_DATA. No summaries.
     
     PIXEL-PERFECT RENDER:
-    - Wrapper: <div class="page" data-page="Page X of Y"><div class="content">[CONTENT]</div></div>.
+    - Wrapper: <div class="page"><div class="content">[CONTENT]</div></div>.
     - MULTI-PAGE AI PAGINATION (MANDATORY):
       - If content is long, you MUST split it into multiple <div class="page"> elements yourself. 
       - Each page should have roughly 1000px height of content. 

@@ -1021,10 +1021,84 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
     const originalTransform = root?.style.transform || '';
     if (root) root.style.transform = 'none';
 
+    // Add temporary style to hide indicators during capture
+    const styleHide = iframeDoc.createElement('style');
+    styleHide.id = 'temp-hide-indicators';
+    styleHide.innerHTML = '.page-break-indicator { display: none !important; }';
+    iframeDoc.head.appendChild(styleHide);
+
     // Wait a moment for layout to settle after removing transform
     await new Promise(r => setTimeout(r, 300));
 
     try {
+      const htmlToImage = await loadHtmlToImage();
+      const jsPDF = await loadJsPDF();
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4',
+        compress: false // Disable compression for maximum quality
+      });
+      
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const standardA4HeightPx = 1123; // at 96dpi
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        // Ensure we measure and capture the FULL content if it's overfull
+        const originalOverflow = page.style.overflow;
+        const originalHeight = page.style.height;
+        page.style.overflow = 'visible';
+        page.style.height = 'auto';
+        
+        const realHeight = page.offsetHeight;
+        
+        // Use html-to-image for pixel-perfect rendering
+        const imgData = await htmlToImage.toPng(page, {
+          quality: 1.0,
+          pixelRatio: 4, 
+          backgroundColor: '#ffffff',
+          style: {
+            margin: '0',
+            boxShadow: 'none',
+            border: 'none',
+            transform: 'none',
+            width: '794px',
+            height: 'auto', // Allow it to capture the full expanded height
+            overflow: 'visible',
+            textRendering: 'optimizeLegibility'
+          } as any,
+          cacheBust: true,
+          skipFonts: false 
+        });
+
+        // Restore original styles
+        page.style.overflow = originalOverflow;
+        page.style.height = originalHeight;
+
+        // Determine if this single DOM page spans multiple PDF pages
+        const pagesNeeded = Math.ceil(realHeight / (standardA4HeightPx + 5)); // small buffer
+
+        for (let j = 0; j < pagesNeeded; j++) {
+           if (i > 0 || j > 0) pdf.addPage();
+           
+           // We use the same image but different view windows
+           // pdf.addImage(data, format, x, y, width, height, alias, compression)
+           // If it's a multi-page slice, we shift the Y position
+           const position = -(j * pageHeight);
+           const totalPdfHeight = (realHeight * pageWidth) / 794;
+           
+           pdf.addImage(imgData, 'PNG', 0, position, pageWidth, totalPdfHeight, undefined, 'NONE');
+        }
+      }
+      
+      return pdf;
+    } catch (err) {
+      console.warn("Modern export failed, falling back to legacy...", err);
+      // Fallback to legacy html2canvas if modern export fails
       const html2canvas = await loadHtml2Canvas();
       const jsPDF = await loadJsPDF();
       
@@ -1036,68 +1110,30 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       });
       
       const pageWidth = 210;
-      const pageHeight = 297;
-      const standardA4HeightPx = 1123; // at 96dpi
 
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
-        
-        // Capture individual page at high scale
         const canvas = await html2canvas(page, {
-          scale: 3, // Very high quality for text sharpness
+          scale: 4,
           useCORS: true,
-          allowTaint: false,
           backgroundColor: '#ffffff',
           logging: false,
-          imageTimeout: 20000,
-          removeContainer: true,
-          windowWidth: 794,
-          onclone: (clonedDoc) => {
-             // Ensure no margins or shadows bleed into the capture
-             const clonedPage = clonedDoc.querySelectorAll('.page')[i] as HTMLElement;
-             if (clonedPage) {
-                clonedPage.style.margin = '0';
-                clonedPage.style.boxShadow = 'none';
-                clonedPage.style.border = 'none';
-             }
-          }
+          windowWidth: 794
         });
 
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        
-        // Calculate standard height at the current scale
-        // canvas.width is scaled from 794px. So scale = canvas.width / 794.
-        const currentScale = imgWidth / 794;
-        const scaledA4Height = Math.floor(standardA4HeightPx * currentScale);
-        
-        // Determine how many PDF pages this captured element spans
-        const pagesNeeded = Math.ceil(imgHeight / (scaledA4Height - 1)); // -1 to avoid tiny overlaps
-
         const imgData = canvas.toDataURL('image/png', 1.0);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, 297, undefined, 'NONE');
         
-        for (let p = 0; p < pagesNeeded; p++) {
-          if (i > 0 || p > 0) pdf.addPage();
-          
-          // Slice and add to PDF
-          // position is target Y coordinate in PDF
-          const position = -(p * pageHeight);
-          
-          // Use the ratio to ensure height matches
-          const pdfImgHeight = (imgHeight * pageWidth) / imgWidth;
-          
-          pdf.addImage(imgData, 'PNG', 0, position, pageWidth, pdfImgHeight, undefined, 'FAST');
-        }
-        
-        // Free memory
         canvas.width = 0;
         canvas.height = 0;
       }
-      
       return pdf;
     } finally {
       // Restore transform
       if (root) root.style.transform = originalTransform;
+      const hideEl = iframeDoc.getElementById('temp-hide-indicators');
+      if (hideEl) hideEl.remove();
     }
   };
 
@@ -1202,6 +1238,12 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       const originalTransform = root?.style.transform || '';
       if (root) root.style.transform = 'none';
 
+      // Add temporary style to hide indicators during capture
+      const styleHide = iframeDoc.createElement('style');
+      styleHide.id = 'temp-hide-indicators-img';
+      styleHide.innerHTML = '.page-break-indicator { display: none !important; }';
+      iframeDoc.head.appendChild(styleHide);
+
       const originalBodyOverflow = iframeDoc.body.style.overflow;
       const originalBodyHeight = iframeDoc.body.style.height;
       iframeDoc.body.style.overflow = 'visible';
@@ -1223,6 +1265,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
         iframeDoc.body.style.overflow = originalBodyOverflow;
         iframeDoc.body.style.height = originalBodyHeight;
         if (root) root.style.transform = originalTransform;
+        const hideEl = iframeDoc.getElementById('temp-hide-indicators-img');
+        if (hideEl) hideEl.remove();
       }
     } catch (err) {
       console.error("Capture failed:", err);
@@ -1828,7 +1872,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
             <div className={cn(
               "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
               isPreviewFull 
-                ? "min-h-screen sm:min-h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
+                ? "h-screen sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
                 : "h-[70vh] sm:h-[85vh] lg:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[700px] w-full"
             )}>
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">

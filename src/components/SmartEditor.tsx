@@ -397,12 +397,12 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
 
           const imgData = event.data.imgData;
           const jsPDF = await loadJsPDF();
-      const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdf = new jsPDF('p', 'mm', 'a4');
           const pageWidth = 210;
           const pageHeight = 297;
           
           const edScale = event.data.width / 794;
-          const pagesCount = Math.round(event.data.height / (1123 * edScale)) || 1;
+          const pagesCount = Math.ceil(event.data.height / (1123 * edScale)) || 1;
           const imgWidth = pageWidth;
           const imgHeight = pagesCount * pageHeight;
           
@@ -911,20 +911,45 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                             .page { 
                               background: white;
                               width: 794px;
-                              height: 1123px;
+                              min-height: 1123px;
+                              height: auto;
                               padding: 48px 56px;
                               margin: 0 0 32px 0;
                               box-sizing: border-box;
-                              overflow: hidden;
+                              overflow: visible;
                               position: relative;
                               box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15), 0 8px 24px -10px rgba(0, 0, 0, 0.1); 
                               border-radius: 2px;
+                            }
+                            .page-break-indicator {
+                              position: absolute;
+                              left: 0;
+                              right: 0;
+                              border-top: 2px dashed #a5b4fc;
+                              height: 0;
+                              pointer-events: none;
+                              z-index: 9999;
+                            }
+                            .page-break-indicator::after {
+                              content: 'PAGE BREAK - NEXT PAGE';
+                              position: absolute;
+                              right: 24px;
+                              top: -9px;
+                              background: #f1f5f9;
+                              padding: 0 8px;
+                              font-size: 8px;
+                              font-weight: 800;
+                              color: #6366f1;
+                              border-radius: 4px;
+                              letter-spacing: 0.1em;
+                              border: 1px solid #c7d2fe;
+                              z-index: 10000;
                             }
                             .content {
                               width: 100%;
                               height: 100%;
                               box-sizing: border-box;
-                              overflow: hidden;
+                              overflow: visible;
                             }
                             #resume-root {
                               width: 794px;
@@ -933,7 +958,8 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                               position: relative;
                             }
                             @media print {
-                              .page { margin: 0; box-shadow: none; }
+                              .page { margin: 0; box-shadow: none; min-height: 1123px !important; height: auto !important; overflow: visible !important; }
+                              .page-break-indicator { display: none !important; }
                             }
                             .resume-footer {
                               font-size: 10px; 
@@ -1014,12 +1040,37 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                               if (root.getAttribute('data-paginating') === 'true') return;
                               root.setAttribute('data-paginating', 'true');
 
+                              // Reset scale for accurate measurement
+                              root.style.transform = 'none';
+                              root.style.width = '794px';
+
                               // 1. Wait for images
                               const images = Array.from(root.querySelectorAll('img'));
                               await Promise.all(images.map(img => {
                                 if (img.complete) return Promise.resolve();
                                 return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
                               }));
+
+                              const USABLE_HEIGHT = 1027; 
+                              const PAGE_MAX_HEIGHT = 1135; // A4 height (1123) + small buffer
+                              const BUFFER = 4;
+
+                              function addVisualPageBreaks() {
+                                root.querySelectorAll('.page').forEach(p => {
+                                  p.querySelectorAll('.page-break-indicator').forEach(el => el.remove());
+                                  const height = p.offsetHeight;
+                                  const standardPageHeight = 1123;
+                                  if (height > 1135) {
+                                    const numPages = Math.floor(height / standardPageHeight);
+                                    for (let i = 1; i <= numPages; i++) {
+                                      const indicator = document.createElement('div');
+                                      indicator.className = 'page-break-indicator';
+                                      indicator.style.top = (i * standardPageHeight) + 'px';
+                                      p.appendChild(indicator);
+                                    }
+                                  }
+                                });
+                              }
 
                               // Blueprint capture
                               const firstPage = root.querySelector('.page');
@@ -1032,11 +1083,18 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                                // Check if any existing page is overfull
                                let isAnyPageOverfull = false;
                                existingPages.forEach(p => {
-                                 if (p.offsetHeight > (USABLE_HEIGHT + 50)) isAnyPageOverfull = true;
+                                 const prevOverflow = p.style.overflow;
+                                 const prevHeight = p.style.height;
+                                 p.style.overflow = 'visible';
+                                 p.style.height = 'auto';
+                                 if (p.offsetHeight > PAGE_MAX_HEIGHT) isAnyPageOverfull = true;
+                                 p.style.overflow = prevOverflow;
+                                 p.style.height = prevHeight;
                                });
 
                                if (existingPages.length > 1 && !isAnyPageOverfull) {
                                  // AI handled pagination correctly
+                                 addVisualPageBreaks();
                                  if (window.lucide) window.lucide.createIcons();
                                  root.removeAttribute('data-paginating');
                                  updateScale();
@@ -1046,12 +1104,15 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                                // Check for complex layouts
                                const firstPageContent = firstPage?.querySelector('.content') || firstPage;
                                const hasComplexLayout = firstPageContent && (
-                                 firstPageContent.classList.contains('flex') || 
-                                 firstPageContent.classList.contains('grid') ||
-                                 Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar') || c.classList.contains('main-column'))
+                                 Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar')) ||
+                                 firstPageContent.classList.contains('grid-cols-2') ||
+                                 firstPageContent.classList.contains('grid-cols-3') ||
+                                 (firstPageContent.classList.contains('grid') && !firstPageContent.classList.contains('grid-cols-1')) ||
+                                 firstPageContent.querySelector('.main-column') !== null
                                );
 
-                               if (hasComplexLayout && !isAnyPageOverfull) {
+                               if (hasComplexLayout) {
+                                 addVisualPageBreaks();
                                  if (window.lucide) window.lucide.createIcons();
                                  root.removeAttribute('data-paginating');
                                  updateScale();
@@ -1071,9 +1132,6 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                               const footer = document.querySelector('.resume-footer');
                               const elements = Array.from(root.childNodes).filter(n => n !== footer);
                               root.innerHTML = '';
-
-                              const USABLE_HEIGHT = 1050;
-                              const BUFFER = 4;
 
                               function createPage() {
                                 const p = document.createElement('div');
@@ -1112,6 +1170,7 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                               if (footer) root.appendChild(footer);
                               
                               setTimeout(() => {
+                                addVisualPageBreaks();
                                 root.removeAttribute('data-paginating');
                                 updateScale();
                               }, 300);
@@ -1185,6 +1244,15 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                                     imageTimeout: 15000,
                                     removeContainer: true,
                                     onclone: (clonedDoc) => {
+                                      clonedDoc.querySelectorAll('.page').forEach(p => {
+                                        (p as HTMLElement).style.height = 'auto';
+                                        (p as HTMLElement).style.minHeight = '1123px';
+                                        (p as HTMLElement).style.overflow = 'visible';
+                                        (p as HTMLElement).style.margin = '0';
+                                        (p as HTMLElement).style.boxShadow = 'none';
+                                        (p as HTMLElement).style.border = 'none';
+                                        (p as HTMLElement).style.borderRadius = '0';
+                                      });
                                       const preview = clonedDoc.getElementById('resume-root');
                                       if (preview) {
                                          // ENSURE NO GAPS in export for seamless PDF slicing
@@ -1200,7 +1268,7 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                                       
                                       // Hide pagination UI decorations
                                       const styleTag = clonedDoc.createElement('style');
-                                      styleTag.innerHTML = '.page::before, .page::after { display: none !important; opacity: 0 !important; } .page { margin: 0 !important; box-shadow: none !important; border: none !important; border-radius: 0 !important; } .resume-footer { margin-bottom: 0 !important; padding-bottom: 20px !important; border-top: none !important; }';
+                                      styleTag.innerHTML = '.page-break-indicator { display: none !important; } .page::before, .page::after { display: none !important; opacity: 0 !important; } .page { margin: 0 !important; box-shadow: none !important; border: none !important; border-radius: 0 !important; } .resume-footer { margin-bottom: 0 !important; padding-bottom: 20px !important; border-top: none !important; }';
                                       clonedDoc.head.appendChild(styleTag);
                                       
                                       // Force standard text rendering
