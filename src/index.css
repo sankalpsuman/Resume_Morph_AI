@@ -120,4 +120,20 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Print-specific utility to correctly scale and center layout within physical boundaries */
+  @media print {
+    .print-resume-center {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      margin: 0 auto !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      transform: scale(0.96) !important;
+      transform-origin: top center !important;
+    }
+  }
 }

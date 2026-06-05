@@ -241,6 +241,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [strictLayout, setStrictLayout] = useState(true);
   const [lengthMode, setLengthMode] = useState<'1-page' | '2-page' | 'executive' | 'no-limit'>('no-limit');
   const [linkedinText, setLinkedinText] = useState('');
@@ -588,6 +589,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   };
 
   const applyGenerationResult = (result: any) => {
+    setSelectedResumeId("");
     setGeneratedHtml(result.html);
     setResumeMetadata({ name: result.name, yoe: result.yoe, profile: result.profile });
     setAtsScore(result.atsScore);
@@ -1877,8 +1879,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
             <div className={cn(
               "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
               isPreviewFull 
-                ? "h-screen sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
-                : "h-[70vh] sm:h-[85vh] lg:h-[calc(100vh-140px)] min-h-[500px] sm:min-h-[700px] w-full"
+                ? "h-[100dvh] sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
+                : "h-[calc(100dvh-220px)] sm:h-[85vh] lg:h-[calc(100vh-140px)] lg:min-h-[700px] sm:min-h-[500px] w-full"
             )}>
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">
                 <div className="flex items-center gap-2 md:gap-6 min-w-0">
@@ -2044,47 +2046,92 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                         <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Est. time: 5-8 seconds</p>
                       </div>
                     </motion.div>
-                  ) : generatedHtml ? (
+                  ) : (generatedHtml || (userData?.resumeHistory && userData.resumeHistory.length > 0)) ? (
                     <div className="relative flex-1 flex flex-col min-h-0 bg-slate-50">
                       {/* Simplified Preview Toolbar */}
-                      <div className="h-10 border-b border-slate-200 bg-white flex items-center justify-between px-4 z-20 shrink-0">
+                      <div className="h-12 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 sm:py-0 z-20 shrink-0 gap-2">
                         <div className="flex items-center gap-2">
                           <FileText className="w-3.5 h-3.5 text-indigo-500" />
                           <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">Resume Preview</span>
                         </div>
+
+                        {/* List out saved resumes */}
+                        {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
+                          <div className="relative flex-grow max-w-xs min-w-[200px]">
+                            <select
+                              value={selectedResumeId}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedResumeId(val);
+                                const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
+                                if (selected) {
+                                  setGeneratedHtml(selected.html);
+                                  setResumeMetadata({
+                                    name: selected.name || 'Untitled Resume',
+                                    yoe: '',
+                                    profile: ''
+                                  });
+                                }
+                              }}
+                              className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] md:text-xs py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none font-sans"
+                            >
+                              <option value="">-- Load Saved Resume ({userData.resumeHistory.length}) --</option>
+                              {userData.resumeHistory.map((resume: any) => (
+                                <option key={resume.id} value={resume.id}>
+                                  {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-400">
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        )}
                         
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={handleGenerate}
-                            disabled={isGenerating}
-                            className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
-                          >
-                            <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
-                            <span>Regenerate</span>
-                          </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {generatedHtml && (
+                            <button
+                              onClick={handleGenerate}
+                              disabled={isGenerating}
+                              className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
+                            >
+                              <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                              <span>Regenerate</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      <ResumeIframe 
-                        html={previewHtml} 
-                        onLoad={() => setIsPreviewReady(true)} 
-                        isReady={isPreviewReady} 
-                        ref={iframeRef}
-                      />
+                      {generatedHtml ? (
+                        <ResumeIframe 
+                          html={previewHtml} 
+                          onLoad={() => setIsPreviewReady(true)} 
+                          isReady={isPreviewReady} 
+                          ref={iframeRef}
+                        />
+                      ) : (
+                        <div className="flex-grow flex flex-col items-center justify-center p-8 text-center bg-slate-50 min-h-0 py-12">
+                          <FileText className="w-16 h-16 text-indigo-200 mb-4 stroke-1 animate-pulse" />
+                          <h3 className="font-extrabold text-base tracking-tight text-slate-500 uppercase">Select a Saved Resume</h3>
+                          <p className="text-xs text-slate-400 max-w-xs mt-2 font-medium">
+                            Choose one of your saved resumes from the dropdown above to load and view its layout on the screen.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <motion.div 
                       key="empty"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="h-full flex flex-col items-center justify-center text-center p-12 min-h-[784px] bg-[var(--bg-primary)]"
+                      className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[var(--bg-primary)] min-h-0"
                     >
-                      <div className="w-40 h-40 bg-[var(--bg-secondary)] rounded-[40px] flex items-center justify-center mb-8 rotate-3 border border-[var(--border-color)]">
-                        <Layout className="w-20 h-20 text-[var(--text-tertiary)] opacity-20" />
+                      <div className="w-32 h-32 md:w-40 md:h-40 bg-[var(--bg-secondary)] rounded-[40px] flex items-center justify-center mb-6 md:mb-8 rotate-3 border border-[var(--border-color)]">
+                        <Layout className="w-16 h-16 md:w-20 md:h-20 text-[var(--text-tertiary)] opacity-20" />
                       </div>
                       <div className="max-w-sm">
-                        <h3 className="font-black text-2xl tracking-tight text-[var(--text-tertiary)] opacity-30">Awaiting Morph</h3>
-                        <p className="text-sm text-[var(--text-tertiary)] font-medium mt-3 leading-relaxed opacity-50">
+                        <h3 className="font-black text-xl md:text-2xl tracking-tight text-[var(--text-tertiary)] opacity-30">Awaiting Morph</h3>
+                        <p className="text-xs md:text-sm text-[var(--text-tertiary)] font-medium mt-2 md:mt-3 leading-relaxed opacity-50">
                           Complete the steps on the left to see your content transformed into a professional masterpiece.
                         </p>
                       </div>

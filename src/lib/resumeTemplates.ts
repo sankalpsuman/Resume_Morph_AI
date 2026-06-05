@@ -90,14 +90,14 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       overflow-y: auto !important;
     }
     .preview-mode #resume-preview {
-      transform-origin: top center;
+      transform-origin: top left;
       transition: transform 0.2s ease-out;
       width: 794px;
       display: flex;
       flex-direction: column;
       gap: 15px;
       padding: 40px 0;
-      margin: 0 auto;
+      margin: 0;
     }
     .preview-mode .page {
       margin: 0 auto;
@@ -107,20 +107,27 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     }
     .page-break-indicator {
       position: absolute;
-      left: 0;
-      right: 0;
-      border-top: 2px dashed #a5b4fc;
-      height: 0;
+      left: -80px;
+      right: -80px;
+      height: 24px;
+      background: #f1f5f9;
+      border-top: 1px solid #cbd5e1;
+      border-bottom: 1px solid #cbd5e1;
+      box-shadow: 
+        0 -4px 6px -1px rgba(0, 0, 0, 0.05),
+        0 4px 6px -1px rgba(0, 0, 0, 0.05),
+        inset 0 3px 6px rgba(0, 0, 0, 0.02),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.02);
       pointer-events: none;
       z-index: 9999;
     }
     .page-break-indicator::after {
-      content: 'PAGE BREAK - NEXT PAGE';
+      content: 'PAGE BREAK';
       position: absolute;
-      right: 24px;
-      top: -9px;
+      right: 48px;
+      top: 4px;
       background: #f1f5f9;
-      padding: 0 8px;
+      padding: 2px 10px;
       font-size: 8px;
       font-weight: 800;
       color: #6366f1;
@@ -163,6 +170,20 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       .page-break-indicator { display: none !important; }
       .watermark { display: none !important; }
       .resume-footer { display: none !important; }
+
+      /* Print utility to scale and center layout perfectly on physical standard pages */
+      .print-resume-center {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        transform: scale(0.96) !important;
+        transform-origin: top center !important;
+      }
     }
     .watermark {
       position: fixed;
@@ -181,25 +202,37 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   </style>
 </head>
 <body class="${previewMode ? 'preview-mode' : ''}">
-  <div id="resume-preview" style="opacity: 0">
-    ${contentHtml}
+  <div id="resume-preview-container" class="print-resume-center" style="position: relative; width: 794px; margin: 0 auto; overflow: visible;">
+    <div id="resume-preview" style="opacity: 0">
+      ${contentHtml}
+    </div>
   </div>
   ${isGuest ? '<div class="watermark">MORPH ENGINE GUEST</div>' : ''}
   <script>
     function updateScale() {
       if (!document.body.classList.contains('preview-mode')) return;
       const root = document.getElementById('resume-preview');
-      if (!root) return;
+      const container = document.getElementById('resume-preview-container');
+      if (!root || !container) return;
       
       const containerWidth = document.documentElement.clientWidth;
       const targetWidth = 840; // 794 + some breathing room
-      const scale = Math.min(1, (containerWidth - 10) / targetWidth);
+      const scale = Math.min(1, (containerWidth - 24) / targetWidth);
       
       root.style.transform = "scale(" + scale + ")";
+      root.style.transformOrigin = "top left";
       
-      // Update body height to match scaled content so scrolling works
-      const scaledHeight = root.offsetHeight * scale;
-      document.body.style.height = (scaledHeight + 40) + 'px';
+      // Get unscaled element height
+      const unscaledHeight = root.offsetHeight;
+      
+      // Update parent container dimensions to perfectly match visible scale footprint
+      container.style.width = (794 * scale) + "px";
+      container.style.height = (unscaledHeight * scale) + "px";
+      container.style.overflow = "hidden";
+      container.style.margin = "0 auto";
+      
+      document.body.style.height = 'auto';
+      document.body.style.minHeight = '100vh';
       document.body.style.overflowY = 'auto';
     }
 
@@ -210,150 +243,275 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       if (window._paginating) return;
       window._paginating = true;
 
-      // Reset scale for accurate measurement
+      console.log("[Paginator Debug] Initializing cascading page pagination...");
+
+      // Reset scale and width to allow pristine layout measurements
       root.style.transform = 'none';
       root.style.width = '794px';
+      
+      const container = document.getElementById('resume-preview-container');
+      if (container) {
+        container.style.width = '794px';
+        container.style.height = 'auto';
+        container.style.overflow = 'visible';
+      }
 
-      function addVisualPageBreaks() {
-        root.querySelectorAll('.page').forEach(p => {
-          p.querySelectorAll('.page-break-indicator').forEach(el => el.remove());
-          const height = p.offsetHeight;
-          const standardPageHeight = 1123;
-          if (height > 1135) {
-            const numPages = Math.floor(height / standardPageHeight);
-            for (let i = 1; i <= numPages; i++) {
-              const indicator = document.createElement('div');
-              indicator.className = 'page-break-indicator';
-              indicator.style.top = (i * standardPageHeight) + 'px';
-              p.appendChild(indicator);
-            }
+      function getContainerContentHeight(col) {
+        const children = Array.from(col.children);
+        if (children.length === 0) return 0;
+        
+        const containerRect = col.getBoundingClientRect();
+        const top = containerRect.top;
+        
+        let maxBottom = top;
+        children.forEach(child => {
+          const childRect = child.getBoundingClientRect();
+          if (childRect.bottom > maxBottom) {
+            maxBottom = childRect.bottom;
           }
         });
+        
+        return maxBottom - top;
+      }
+
+      function getPageColumns(page) {
+        const sidebar = page.querySelector('.layout-sidebar') || page.querySelector('.sidebar');
+        const main = page.querySelector('.layout-main') || page.querySelector('.main-column') || page.querySelector('.main');
+        
+        if (sidebar && main) {
+          return [sidebar, main];
+        }
+        
+        const content = page.querySelector('.content') || page;
+        return [content];
+      }
+
+      function isSplitable(node) {
+        if (node.nodeType !== 1) return false;
+        const tag = node.tagName.toUpperCase();
+        const atomicTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'LI', 'A', 'SPAN', 'IMG', 'BUTTON', 'I', 'B', 'STRONG', 'EM', 'svg', 'path'];
+        if (atomicTags.includes(tag)) return false;
+        
+        // If it has children and is not a small button/icon container
+        if (node.children.length === 0) return false;
+        
+        return true;
+      }
+
+      function splitNode(node, availableHeight) {
+        const fits = node.cloneNode(false);
+        const overflow = node.cloneNode(false);
+        
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = 'position: absolute; left: -9999px; width: 794px; opacity: 0;';
+        document.body.appendChild(tempContainer);
+        tempContainer.appendChild(fits);
+        
+        const children = Array.from(node.childNodes);
+        let splitPointReached = false;
+        
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          
+          if (splitPointReached) {
+            overflow.appendChild(child.cloneNode(true));
+            continue;
+          }
+          
+          const childClone = child.cloneNode(true);
+          fits.appendChild(childClone);
+          
+          const currentHeight = fits.getBoundingClientRect().height;
+          
+          if (currentHeight <= availableHeight || i === 0) {
+            // keep it
+          } else {
+            fits.removeChild(childClone);
+            splitPointReached = true;
+            
+            // Try sub-splitting this child
+            if (child.nodeType === 1 && isSplitable(child)) {
+              const currentFitsHeight = fits.getBoundingClientRect().height;
+              const remainingSpace = availableHeight - currentFitsHeight;
+              
+              if (remainingSpace > 60) {
+                const subSplit = splitNode(child, remainingSpace);
+                if (subSplit.fits && subSplit.fits.children.length > 0) {
+                  fits.appendChild(subSplit.fits);
+                }
+                if (subSplit.overflow && subSplit.overflow.childNodes.length > 0) {
+                  overflow.appendChild(subSplit.overflow);
+                }
+                continue;
+              }
+            }
+            
+            overflow.appendChild(child.cloneNode(true));
+          }
+        }
+        
+        document.body.removeChild(tempContainer);
+        return { fits, overflow };
       }
 
       try {
-        const USABLE_HEIGHT = 1027; // Content area height (1123 - 48*2)
-        const PAGE_MAX_HEIGHT = 1135; // A4 height (1123) + small buffer
+        const SAFE_INNER_HEIGHT = 1010; // 1123px standard page minus padding buffer
         
-        // 1. Identify first page blueprint to preserve layout structure (classes, sidebar vs main)
-        const firstPage = root.querySelector('.page');
-        const pageClasses = firstPage ? firstPage.className : 'page';
-        const contentClasses = firstPage?.querySelector('.content')?.className || 'content';
-        
-        // 2. Decide if we need to flatten
-        const existingPages = Array.from(root.querySelectorAll('.page'));
-        
-        // Check if any existing page is overfull - if so, we need to handle it
-        let isAnyPageOverfull = false;
-        existingPages.forEach(p => {
-          // Temporarily allow content to dictate height for check
-          const prevOverflow = p.style.overflow;
-          const prevHeight = p.style.height;
+        // Ensure there is at least one page wrapper
+        let firstPage = root.querySelector('.page');
+        if (!firstPage) {
+          console.log("[Paginator Debug] Wrapping naked HTML in .page");
+          const originalHTML = root.innerHTML;
+          root.innerHTML = '<div class="page"><div class="content">' + originalHTML + '</div></div>';
+          firstPage = root.querySelector('.page');
+        }
+
+        // Add proper styling overrides to pages to allow visible overflow
+        root.querySelectorAll('.page').forEach(p => {
+          p.style.minHeight = '1123px';
+          p.style.height = '1123px';
+          p.style.maxHeight = '1123px';
           p.style.overflow = 'visible';
-          p.style.height = 'auto';
-          if (p.offsetHeight > PAGE_MAX_HEIGHT) isAnyPageOverfull = true;
-          // Restore
-          p.style.overflow = prevOverflow;
-          p.style.height = prevHeight;
+          p.style.boxSizing = 'border-box';
+          
+          const c = p.querySelector('.content');
+          if (c) c.style.overflow = 'visible';
+          
+          const s = p.querySelector('.layout-sidebar') || p.querySelector('.sidebar');
+          if (s) s.style.overflow = 'visible';
+          
+          const m = p.querySelector('.layout-main') || p.querySelector('.main-column') || p.querySelector('.main');
+          if (m) m.style.overflow = 'visible';
         });
 
-        if (existingPages.length > 1 && !isAnyPageOverfull) {
-          // AI handled pagination correctly and no page is overfull
-          addVisualPageBreaks();
-          if (window.lucide) window.lucide.createIcons();
-          updateScale();
-          window._paginating = false;
-          root.style.opacity = '1';
-          return;
-        }
-
-        // Check for complex layouts (sidebars, multi-column grids) 
-        const firstPageContent = firstPage?.querySelector('.content') || firstPage;
-        const hasComplexLayout = firstPageContent && (
-          // Look for explicit sidebars or grid columns > 1
-          Array.from(firstPageContent.children).some(c => c.classList.contains('sidebar')) ||
-          firstPageContent.classList.contains('grid-cols-2') ||
-          firstPageContent.classList.contains('grid-cols-3') ||
-          (firstPageContent.classList.contains('grid') && !firstPageContent.classList.contains('grid-cols-1')) ||
-          firstPageContent.querySelector('.main-column') !== null
-        );
-
-        if (hasComplexLayout) {
-          // For complex layouts, flattening destroys the sidebar/grid structure.
-          // We allow the page to grow and rely on the PDF exporter to slice it.
-          // In preview, they just see one long page if it's overfull.
-          addVisualPageBreaks();
-          if (window.lucide) window.lucide.createIcons();
-          updateScale();
-          window._paginating = false;
-          root.style.opacity = '1';
-          return;
-        }
-
-        // Flatten logic for simple linear layouts
-        const fragment = document.createDocumentFragment();
-        if (existingPages.length > 0) {
-          existingPages.forEach(p => {
-             const content = p.querySelector('.content') || p;
-             while(content.firstChild) fragment.appendChild(content.firstChild);
-          });
-          root.innerHTML = '';
-          root.appendChild(fragment);
-        } else {
-           const contentNodes = Array.from(root.childNodes);
-           root.innerHTML = '';
-           contentNodes.forEach(n => fragment.appendChild(n));
-           root.appendChild(fragment);
-        }
-
-        function createPageTemplate() {
-          const p = document.createElement('div');
-          p.className = pageClasses;
-          const c = document.createElement('div');
-          c.className = contentClasses;
-          p.appendChild(c);
-          return p;
-        }
-
-        const elements = Array.from(root.childNodes).filter(n => !n.classList?.contains('page'));
-        root.innerHTML = '';
-        
-        let currentPage = createPageTemplate();
-        root.appendChild(currentPage);
-        let currentContent = currentPage.querySelector('.content') || currentPage;
-
-        // Distribution logic
-        elements.forEach(node => {
-          if (node.nodeType === 3 && !node.textContent.trim()) return; // Skip empty text
+        // Loop over pages. Remember new pages can be created dynamically.
+        let pageIdx = 0;
+        while (pageIdx < root.children.length) {
+          const currentPage = root.children[pageIdx];
           
-          currentContent.appendChild(node);
+          // Ensure classes are applied
+          if (!currentPage.classList.contains('page')) {
+            currentPage.classList.add('page');
+          }
           
-          // Check for overflow
-          const children = currentContent.children;
-          if (children.length > 0) {
-            const lastChild = children[children.length - 1];
-            const contentRect = currentContent.getBoundingClientRect();
-            const childRect = lastChild.getBoundingClientRect();
-            const height = childRect.bottom - contentRect.top;
+          const cols = getPageColumns(currentPage);
+          console.log("[Paginator Debug] Processing Page " + (pageIdx + 1) + " with " + cols.length + " columns.");
+          
+          let nextPageCreated = false;
+          let nextPage = null;
+          let nextCols = null;
 
-            if (height > USABLE_HEIGHT && children.length > 1) {
-              currentContent.removeChild(node);
-              currentPage = createPageTemplate();
-              root.appendChild(currentPage);
-              currentContent = currentPage.querySelector('.content') || currentPage;
-              currentContent.appendChild(node);
+          cols.forEach((col, colIdx) => {
+            const children = Array.from(col.children);
+            let overflowStartIndex = -1;
+            
+            // Check heights by rebuilding column children list
+            col.innerHTML = '';
+            
+            for (let i = 0; i < children.length; i++) {
+              const child = children[i];
+              col.appendChild(child);
+              
+              const height = getContainerContentHeight(col);
+              console.log("[Paginator Debug] Page " + (pageIdx + 1) + " col " + colIdx + " height after item " + i + ": " + height + "px (limit: " + SAFE_INNER_HEIGHT + "px)");
+              
+              if (height > SAFE_INNER_HEIGHT) {
+                // Orphan/infinite loop defense
+                if (i === 0) {
+                  console.log("[Paginator Debug] First item overflows page! Retaining to avoid infinite loop.");
+                  continue;
+                }
+                
+                col.removeChild(child);
+                
+                // Check if we can split this item
+                if (isSplitable(child)) {
+                  const currentFitsHeight = getContainerContentHeight(col);
+                  const remainingSpace = SAFE_INNER_HEIGHT - currentFitsHeight;
+                  
+                  if (remainingSpace > 80) {
+                    const splitResult = splitNode(child, remainingSpace);
+                    if (splitResult.fits && splitResult.fits.children.length > 0) {
+                      col.appendChild(splitResult.fits);
+                      children[i] = splitResult.overflow;
+                      overflowStartIndex = i;
+                      console.log("[Paginator Debug] Successfully split overflowing node.");
+                      break;
+                    }
+                  }
+                }
+                
+                overflowStartIndex = i;
+                break;
+              }
             }
+
+            // Move any overflowing nodes to next page
+            if (overflowStartIndex !== -1) {
+              if (!nextPageCreated) {
+                console.log("[Paginator Debug] Overflow detected! Creating Page " + (pageIdx + 2));
+                nextPage = currentPage.cloneNode(true);
+                
+                // Cleanup header on non-first page
+                const header = nextPage.querySelector('.resume-header') || nextPage.querySelector('.profile-header');
+                if (header) {
+                  header.remove();
+                }
+                
+                nextCols = getPageColumns(nextPage);
+                nextCols.forEach(c => {
+                  c.innerHTML = '';
+                  c.style.overflow = 'visible';
+                });
+                nextPageCreated = true;
+              }
+              
+              const targetCol = nextCols[colIdx];
+              for (let k = overflowStartIndex; k < children.length; k++) {
+                targetCol.appendChild(children[k]);
+              }
+            }
+          });
+
+          if (nextPageCreated && nextPage) {
+            currentPage.parentNode.insertBefore(nextPage, currentPage.nextSibling);
+            
+            // Apply layout styles to newly created page
+            nextPage.style.minHeight = '1123px';
+            nextPage.style.height = '1123px';
+            nextPage.style.maxHeight = '1123px';
+            nextPage.style.overflow = 'visible';
+            nextPage.style.boxSizing = 'border-box';
+          }
+
+          pageIdx++;
+        }
+
+        // 5. Update Page Numbers and break indicators
+        const pages = root.querySelectorAll('.page');
+        pages.forEach((pg, i) => {
+          let pageNumEl = pg.querySelector('.page-number');
+          if (!pageNumEl) {
+            pageNumEl = document.createElement('div');
+            pageNumEl.className = 'page-number';
+            pageNumEl.style.cssText = 'position: absolute; bottom: 20px; right: 56px; font-size: 9px; font-weight: 600; color: #94a3b8; font-family: sans-serif;';
+            pg.appendChild(pageNumEl);
+          }
+          pageNumEl.textContent = (i + 1) + ' / ' + pages.length;
+        });
+
+        // Add visual page-break-indicators
+        pages.forEach((pg, i) => {
+          pg.querySelectorAll('.page-break-indicator').forEach(el => el.remove());
+          if (i < pages.length - 1) {
+            const indicator = document.createElement('div');
+            indicator.className = 'page-break-indicator';
+            indicator.style.top = '1123px'; // Place directly at the bottom boundary of the A4 page
+            pg.appendChild(indicator);
           }
         });
 
-        // 3. Update Page Indicators
-        const allPages = root.querySelectorAll('.page');
-        allPages.forEach((pg, i) => {
-          const pageNumEl = pg.querySelector('.page-number');
-          if (pageNumEl) pageNumEl.textContent = (i + 1) + ' / ' + allPages.length;
-        });
-
-        addVisualPageBreaks();
+        if (window.lucide) window.lucide.createIcons();
         updateScale();
       } catch (err) {
         console.error("Pagination error:", err);
@@ -369,6 +527,13 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       
       // Delay slightly to ensure fonts and layouts are settled
       setTimeout(paginate, 100);
+      
+      // Recalculate once fonts are fully ready
+      if (document.fonts) {
+        document.fonts.ready.then(() => {
+          setTimeout(paginate, 200);
+        });
+      }
       
       // Listen for window resizes
       window.addEventListener('resize', updateScale);
