@@ -3,8 +3,8 @@
  * Utility to wrap a generated resume HTML fragment into a full, self-contained HTML document.
  * This ensures that the resume looks the same in preview, saved history, and downloads.
  */
-export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean, previewMode?: boolean, isPremium?: boolean } = {}) {
-  const { name = 'Resume', isGuest = false, previewMode = false, isPremium = false } = options;
+export function wrapResumeHtml(contentHtml: string, options: { name?: string, isGuest?: boolean, previewMode?: boolean, isPremium?: boolean, showA4Border?: boolean } = {}) {
+  const { name = 'Resume', isGuest = false, previewMode = false, isPremium = false, showA4Border = false } = options;
   
   return `
 <!DOCTYPE html>
@@ -37,7 +37,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       background: white;
       width: 794px;
       min-height: 1123px;
-      padding: 48px 56px; /* FIXED MARGINS: Top/Bottom 48px, Left/Right 56px */
+      padding: 24px 32px; /* FIXED MARGINS: Top/Bottom 24px, Left/Right 32px */
       margin: 0 auto 20px auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       position: relative;
@@ -55,7 +55,13 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       print-color-adjust: exact !important;
     }
     /* Prevent section headers and blocks from splitting weirdly */
-    .section-title, h1, h2, h3, .experience-item, .education-item, .project-item, .skill-item {
+    .section-title, h1, h2, h3, h4, h5, h6, 
+    section, article, .section, .resume-section, .section-container,
+    .experience-item, .experience-card, .experience-block, .job-item, .job-card,
+    .education-item, .education-card, .education-block, .edu-item, .edu-card,
+    .project-item, .project-card, .project-block,
+    .skill-item, .skill-group, .skill-card, .skill-category,
+    .cert-item, .certification-item, .cert-card, .award-item {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
     }
@@ -70,12 +76,12 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     .resume-page {
       width: 794px;
       min-height: 1123px;
-      padding: 48px 56px;
+      padding: 24px 32px;
       background: white;
       margin: 0 auto;
       box-sizing: border-box;
     }
-    /* Fixed usable height constant: 1123 - (48 * 2) = 1027px */
+    /* Fixed usable height constant: 1123 - (24 * 2) = 1075px */
     
     /* New Scaling approach ONLY for preview */
     .preview-mode body {
@@ -101,9 +107,12 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     }
     .preview-mode .page {
       margin: 0 auto;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      border-radius: 2px;
+      box-shadow: ${showA4Border ? '0 0 0 4px rgba(99, 102, 241, 0.15), 0 12px 30px rgba(0,0,0,0.15)' : '0 10px 25px rgba(0,0,0,0.1)'};
+      border: ${showA4Border ? '2.5px dashed #6366f1' : '1px solid transparent'};
+      border-radius: ${showA4Border ? '4px' : '2px'};
       page-break-after: always;
+      position: relative;
+      transition: all 0.3s ease-in-out;
     }
     .page-break-indicator {
       position: absolute;
@@ -245,6 +254,13 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
 
       console.log("[Paginator Debug] Initializing cascading page pagination...");
 
+      // Cache and restore the original unpaginated HTML so multiple paginate calls work flawlessly
+      if (!window._originalHTML) {
+        window._originalHTML = root.innerHTML;
+      } else {
+        root.innerHTML = window._originalHTML;
+      }
+
       // Reset scale and width to allow pristine layout measurements
       root.style.transform = 'none';
       root.style.width = '794px';
@@ -257,21 +273,37 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       }
 
       function getContainerContentHeight(col) {
-        const children = Array.from(col.children);
+        // Find the ancestor .page element (or root if not found)
+        let pageEl = col;
+        while (pageEl && !pageEl.classList.contains('page')) {
+          pageEl = pageEl.parentElement;
+        }
+        if (!pageEl) {
+          pageEl = document.querySelector('.page') || root;
+        }
+
+        const children = col.children ? Array.from(col.children) : [];
         if (children.length === 0) return 0;
-        
-        const containerRect = col.getBoundingClientRect();
-        const top = containerRect.top;
-        
-        let maxBottom = top;
+
+        let maxBottom = 0;
         children.forEach(child => {
-          const childRect = child.getBoundingClientRect();
-          if (childRect.bottom > maxBottom) {
-            maxBottom = childRect.bottom;
+          if (child.nodeType !== 1) return;
+          
+          // Calculate child top relative to pageEl using unscaled offsetParent traversal
+          let top = 0;
+          let curr = child;
+          while (curr && curr !== pageEl && pageEl.contains(curr)) {
+            top += curr.offsetTop || 0;
+            curr = curr.offsetParent;
+          }
+          
+          const bottom = top + (child.offsetHeight || 0);
+          if (bottom > maxBottom) {
+            maxBottom = bottom;
           }
         });
-        
-        return maxBottom - top;
+
+        return maxBottom;
       }
 
       function getPageColumns(page) {
@@ -321,7 +353,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           const childClone = child.cloneNode(true);
           fits.appendChild(childClone);
           
-          const currentHeight = fits.getBoundingClientRect().height;
+          const currentHeight = fits.offsetHeight;
           
           if (currentHeight <= availableHeight || i === 0) {
             // keep it
@@ -331,7 +363,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
             
             // Try sub-splitting this child
             if (child.nodeType === 1 && isSplitable(child)) {
-              const currentFitsHeight = fits.getBoundingClientRect().height;
+              const currentFitsHeight = fits.offsetHeight;
               const remainingSpace = availableHeight - currentFitsHeight;
               
               if (remainingSpace > 60) {
@@ -355,7 +387,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       }
 
       try {
-        const SAFE_INNER_HEIGHT = 1010; // 1123px standard page minus padding buffer
+        const SAFE_INNER_HEIGHT = 1060; // 1123px standard page minus padding buffer
         
         // Ensure there is at least one page wrapper
         let firstPage = root.querySelector('.page');
@@ -373,15 +405,25 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           p.style.maxHeight = '1123px';
           p.style.overflow = 'visible';
           p.style.boxSizing = 'border-box';
+          p.style.position = 'relative';
           
           const c = p.querySelector('.content');
-          if (c) c.style.overflow = 'visible';
+          if (c) {
+            c.style.overflow = 'visible';
+            c.style.position = 'relative';
+          }
           
           const s = p.querySelector('.layout-sidebar') || p.querySelector('.sidebar');
-          if (s) s.style.overflow = 'visible';
+          if (s) {
+            s.style.overflow = 'visible';
+            s.style.position = 'relative';
+          }
           
           const m = p.querySelector('.layout-main') || p.querySelector('.main-column') || p.querySelector('.main');
-          if (m) m.style.overflow = 'visible';
+          if (m) {
+            m.style.overflow = 'visible';
+            m.style.position = 'relative';
+          }
         });
 
         // Loop over pages. Remember new pages can be created dynamically.
@@ -494,7 +536,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
           if (!pageNumEl) {
             pageNumEl = document.createElement('div');
             pageNumEl.className = 'page-number';
-            pageNumEl.style.cssText = 'position: absolute; bottom: 20px; right: 56px; font-size: 9px; font-weight: 600; color: #94a3b8; font-family: sans-serif;';
+            pageNumEl.style.cssText = 'position: absolute; bottom: 10px; right: 32px; font-size: 9px; font-weight: 600; color: #94a3b8; font-family: sans-serif;';
             pg.appendChild(pageNumEl);
           }
           pageNumEl.textContent = (i + 1) + ' / ' + pages.length;

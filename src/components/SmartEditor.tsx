@@ -648,7 +648,7 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
                             background: white;
                             width: 794px;
                             min-height: 1123px;
-                            padding: 48px 56px;
+                            padding: 24px 32px;
                             box-sizing: border-box;
                             box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
                             border-radius: 2px;

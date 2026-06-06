@@ -225,6 +225,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
@@ -298,9 +299,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       name: resumeMetadata?.name, 
       isGuest: !user, 
       previewMode: true, 
-      isPremium 
+      isPremium,
+      showA4Border: showPrintPreview
     });
-  }, [generatedHtml, resumeMetadata?.name, user, isPremium]);
+  }, [generatedHtml, resumeMetadata?.name, user, isPremium, showPrintPreview]);
 
   // Safety timeout for preview ready state
   useEffect(() => {
@@ -2090,14 +2092,33 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                         
                         <div className="flex items-center gap-2 shrink-0">
                           {generatedHtml && (
-                            <button
-                              onClick={handleGenerate}
-                              disabled={isGenerating}
-                              className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
-                            >
-                              <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
-                              <span>Regenerate</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  setShowPrintPreview(prev => !prev);
+                                  setIsPreviewReady(false);
+                                }}
+                                type="button"
+                                className={cn(
+                                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border",
+                                  showPrintPreview 
+                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300" 
+                                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                                )}
+                                title="Toggle A4 dashed outline to visualize physical page boundaries"
+                              >
+                                <span className={cn("w-1.5 h-1.5 rounded-full transition-all", showPrintPreview ? "bg-indigo-600 dark:bg-indigo-400 animate-pulse" : "bg-slate-400")} />
+                                <span>{showPrintPreview ? "A4 Bounds: On" : "A4 Bounds: Off"}</span>
+                              </button>
+                              <button
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                                className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
+                              >
+                                <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                                <span>Regenerate</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
