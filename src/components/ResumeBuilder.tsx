@@ -278,6 +278,45 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [linkedinText, setLinkedinText] = useState('');
   const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
 
+  // Measure Left Panel Height for fixed height on preview panel
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const [leftPanelHeight, setLeftPanelHeight] = useState<number | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    setIsDesktop(media.matches);
+    const listener = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches);
+    };
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, []);
+
+  useEffect(() => {
+    if (!leftPanelRef.current) return;
+    const element = leftPanelRef.current;
+    
+    if (element.clientHeight > 0) {
+      setLeftPanelHeight(element.clientHeight);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.target.clientHeight;
+        if (height > 0) {
+          setLeftPanelHeight(height);
+        }
+      }
+    });
+    
+    observer.observe(element);
+    
+    return () => {
+      observer.unobserve(element);
+    };
+  }, []);
+
   useEffect(() => {
     if (userData?.showResetSurprise) {
       setShowSurprise(true);
@@ -1614,7 +1653,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
             "lg:col-span-4 xl:col-span-3 space-y-6 md:space-y-8",
             activeMobileTab !== 'edit' && "hidden lg:block"
           )}>
-            <div className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10">
+            <div 
+              ref={leftPanelRef}
+              className="bg-[var(--bg-primary)] p-5 md:p-8 rounded-3xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm space-y-6 md:space-y-10"
+            >
               
               <section>
                 <div className="flex flex-col xs:flex-row xs:items-center gap-3 mb-5 md:mb-6">
@@ -1912,12 +1954,17 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
               : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32",
             !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:block"
           )}>
-            <div className={cn(
-              "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
-              isPreviewFull 
-                ? "h-[100dvh] sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
-                : "h-[calc(100dvh-220px)] sm:h-[85vh] lg:h-[calc(100vh-140px)] lg:min-h-[700px] sm:min-h-[500px] w-full"
-            )}>
+            <div 
+              style={(!isPreviewFull && isDesktop && leftPanelHeight) ? { height: `${leftPanelHeight}px` } : undefined}
+              className={cn(
+                "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
+                isPreviewFull 
+                  ? "h-[100dvh] sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
+                  : (isDesktop && leftPanelHeight 
+                      ? "w-full" 
+                      : "h-[calc(100dvh-220px)] sm:h-[85vh] lg:h-[calc(100vh-140px)] lg:min-h-[700px] sm:min-h-[500px] w-full")
+              )}
+            >
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">
                 <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
                   <div className="flex items-center gap-2 md:gap-3 shrink-0">
