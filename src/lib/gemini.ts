@@ -1053,8 +1053,8 @@ export async function generateResumeFromData(
   referenceMime: string | null = null,
   jobDescription: string = ""
 ) {
-  return withRetry(async (ai) => {
-    const model = "gemini-3.1-pro-preview";
+  return withRetry(async (ai, attempt) => {
+    const model = attempt > 0 ? "gemini-3.5-flash" : "gemini-3.1-pro-preview";
     const parts: any[] = [];
     
     const dataToon = TOON.stringify(data, 'USER_DATA');

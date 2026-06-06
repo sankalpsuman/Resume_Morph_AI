@@ -285,25 +285,29 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         const children = col.children ? Array.from(col.children) : [];
         if (children.length === 0) return 0;
 
+        const pageRect = pageEl.getBoundingClientRect();
         let maxBottom = 0;
+        
         children.forEach(child => {
           if (child.nodeType !== 1) return;
-          
-          // Calculate child top relative to pageEl using unscaled offsetParent traversal
-          let top = 0;
-          let curr = child;
-          while (curr && curr !== pageEl && pageEl.contains(curr)) {
-            top += curr.offsetTop || 0;
-            curr = curr.offsetParent;
-          }
-          
-          const bottom = top + (child.offsetHeight || 0);
+          const childRect = child.getBoundingClientRect();
+          const bottom = childRect.bottom - pageRect.top;
           if (bottom > maxBottom) {
             maxBottom = bottom;
           }
         });
 
-        return maxBottom;
+        // Detect if there is a transform scale active on the preview container to adjust coordinates
+        let scale = 1;
+        const previewEl = document.getElementById('resume-preview');
+        if (previewEl && previewEl.style.transform && previewEl.style.transform !== 'none') {
+          const match = previewEl.style.transform.match(/scale\(([^)]+)\)/);
+          if (match && match[1]) {
+            scale = parseFloat(match[1]) || 1;
+          }
+        }
+
+        return maxBottom / scale;
       }
 
       function getPageColumns(page) {

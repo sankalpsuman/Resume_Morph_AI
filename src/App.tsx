@@ -49,6 +49,85 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashStatus, setSplashStatus] = useState('Initializing Morph Engine...');
+  const mountTimeRef = React.useRef(Date.now());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Proactively preload lazy-loaded components' bundles in background
+    const preload = async () => {
+      try {
+        const components = [
+          () => import('./components/ResumeBuilder'),
+          () => import('./components/ResumeAIAssistant'),
+          () => import('./components/SmartEditor'),
+          () => import('./components/ApplyTracker'),
+          () => import('./components/AccountModal'),
+          () => import('./components/PortfolioGenerator'),
+          () => import('./components/CoverLetterGenerator'),
+          () => import('./components/UserGuide'),
+          () => import('./components/Resources'),
+          () => import('./components/About'),
+          () => import('./components/Contact'),
+          () => import('./components/Feedback'),
+          () => import('./components/PrivacyPolicy')
+        ];
+        
+        // Execute dynamic imports concurrently
+        components.forEach((importFn) => {
+          importFn().catch((err) => console.log('Preload chunk failed:', err));
+        });
+        console.log('[Morph Preload] Background preloading of lazy dynamic modules launched successfully.');
+      } catch (err) {
+        console.warn('[Morph Preload] Module preload error:', err);
+      }
+    };
+    
+    preload();
+
+    // Ensure the splash stays for at least 2500ms to reveal the brand banner,
+    // and wait until `loading` is false (firebase auth + database profile synchronization is complete).
+    if (!loading) {
+      const elapsed = Date.now() - mountTimeRef.current;
+      const remaining = Math.max(0, 2500 - elapsed);
+      const timer = setTimeout(() => {
+        if (isMounted) {
+          setShowSplash(false);
+        }
+      }, remaining);
+      return () => {
+        isMounted = false;
+        clearTimeout(timer);
+      };
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loading]);
+
+  useEffect(() => {
+    if (!showSplash) return;
+    const stages = [
+      { delay: 0, text: 'Mapping cognitive structures...' },
+      { delay: 500, text: 'Constructing AI career pathways...' },
+      { delay: 1000, text: 'Synchronizing interactive dashboards...' },
+      { delay: 1500, text: 'Optimizing real-time career systems...' },
+      { delay: 2000, text: 'System initialized successfully.' }
+    ];
+
+    const timeouts = stages.map(stage => {
+      return setTimeout(() => {
+        setSplashStatus(stage.text);
+      }, stage.delay);
+    });
+
+    return () => {
+      timeouts.forEach(t => clearTimeout(t));
+    };
+  }, [showSplash]);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -461,11 +540,68 @@ export default function App() {
     }
   };
 
-  // Removed redundant theme effects (consolidated globally above)
-  if (loading) {
+  // Branded Morph Splash Screen immediately visible on App launch
+  if (showSplash) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#070913] text-white flex flex-col items-center justify-center relative overflow-hidden font-sans">
+        {/* Ambient blurred glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[6000ms]" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[8000ms]" />
+        
+        {/* Subtle background tech grid overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff04_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none opacity-60" />
+
+        <div className="relative z-10 flex flex-col items-center max-w-sm px-6 text-center">
+          {/* Branded Icon Container */}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-2xl scale-125 animate-pulse" />
+            <div className="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-[1.75rem] flex items-center justify-center shadow-2xl relative border border-white/10 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+              <RefreshCw className="text-white w-8 h-8 animate-spin" style={{ animationDuration: '3s' }} />
+            </div>
+            {/* Live Indicator blink */}
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+          </div>
+
+          {/* Typography */}
+          <h1 className="text-2xl font-black tracking-tighter bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent mb-1 uppercase">
+            Morph Engine
+          </h1>
+          <p className="text-[9px] uppercase tracking-[0.3em] text-indigo-400 font-extrabold mb-8 text-center w-full">
+            Cognitive Career Architect
+          </p>
+
+          {/* Loading status card */}
+          <div className="w-64 bg-white/[0.03] border border-white/5 backdrop-blur-md rounded-2xl p-4 shadow-xl mb-4 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <p className="text-[9px] font-mono font-bold text-slate-300 uppercase tracking-wider truncate w-52">
+                {splashStatus}
+              </p>
+            </div>
+            
+            {/* Dynamic Progress Bar */}
+            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500 transition-all duration-300 rounded-full"
+                style={{
+                  width: splashStatus.includes('successfully') ? '100%' :
+                         splashStatus.includes('cognitive') || splashStatus.includes('Cognitive') ? '25%' :
+                         splashStatus.includes('pathways') ? '50%' :
+                         splashStatus.includes('dashboards') ? '75%' :
+                         splashStatus.includes('systems') ? '90%' : '15%'
+                }}
+              />
+            </div>
+          </div>
+
+          <p className="text-[8px] font-mono font-bold uppercase tracking-[0.25em] text-slate-500 animate-pulse">
+            Preloading modules & engine dependencies
+          </p>
+        </div>
       </div>
     );
   }
@@ -890,31 +1026,71 @@ export default function App() {
         </React.Suspense>
       </main>
 
-      {/* Bottom Navigation for Mobile */}
+      {/* Premium Floating Bottom Navigation (Mobile-first Redesign) */}
       {!isPortfolioFullscreen && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[var(--bg-secondary)]/80 backdrop-blur-2xl border-t border-[var(--border-color)] px-6 py-3 flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-        {[
-          { id: 'builder', icon: Layout, label: 'Morph', desc: 'AI-architected resumes' },
-          { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach', desc: 'Mock interviews & feedback' },
-          { id: 'smart-editor', icon: Sparkles, label: 'Smart', desc: 'Live ATS optimization' },
-          { id: 'tracker', icon: Briefcase, label: 'Jobs', desc: 'Track your search progress' },
-          { id: 'account', icon: UserIcon, label: 'Me', desc: 'Settings & account power' },
-        ].map((item) => (
-          <div key={item.id} className="relative group flex flex-col items-center">
-            <button
-              id={`mobile-tab-${item.id}`}
-              onClick={() => handleTabChange(item.id as Tab)}
-              className={cn(
-                "flex flex-col items-center gap-1 transition-all",
-                activeTab === item.id ? "text-indigo-600" : "text-[var(--text-tertiary)]"
-              )}
-            >
-              <item.icon className={cn("w-6 h-6", activeTab === item.id && "fill-indigo-50 dark:fill-indigo-900/20")} />
-              <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-            </button>
+        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-sm">
+          <div className="bg-[#0b0f19]/95 dark:bg-black/95 backdrop-blur-2xl border border-white/10 rounded-full p-2 flex items-center justify-between shadow-[0_16px_40px_rgba(0,0,0,0.6)] relative">
+            {[
+              { id: 'builder', icon: Layout, label: 'Morph' },
+              { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach' },
+              { id: 'smart-editor', icon: Sparkles, label: 'Smart' },
+              { id: 'tracker', icon: Briefcase, label: 'Jobs' },
+              { id: 'account', icon: UserIcon, label: 'Profile' },
+            ].map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  id={`mobile-tab-${item.id}`}
+                  onClick={() => handleTabChange(item.id as Tab)}
+                  className="relative py-2 px-3 rounded-full flex flex-col items-center justify-center transition-all focus:outline-none flex-1 select-none cursor-pointer"
+                >
+                  {/* Fluid sliding background pill on active */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="mobileActiveIndicator"
+                      className="absolute inset-x-1 inset-y-1 bg-white/10 dark:bg-white/15 rounded-full z-0"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  
+                  {/* Tab Icon and Indicator */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    {item.id === 'account' && user ? (
+                      <div className="relative">
+                        <img 
+                          src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || '')}&background=6366f1&color=fff`} 
+                          alt="Profile" 
+                          className={cn(
+                            "w-5 h-5 rounded-full object-cover border transition-all duration-300",
+                            isActive ? "border-indigo-400 scale-110" : "border-white/20"
+                          )}
+                          referrerPolicy="no-referrer"
+                        />
+                        {/* Interactive Notification live active dot */}
+                        <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                        </span>
+                      </div>
+                    ) : (
+                      <item.icon className={cn(
+                        "w-5 h-5 transition-transform duration-300",
+                        isActive ? "text-white scale-110" : "text-zinc-500 hover:text-zinc-300"
+                      )} />
+                    )}
+                    <span className={cn(
+                      "text-[8px] font-black uppercase tracking-wider mt-1 transition-colors duration-300",
+                      isActive ? "text-white font-black" : "text-zinc-500 font-bold"
+                    )}>
+                      {item.label}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
       )}
 
       {/* Admin Panel */}
