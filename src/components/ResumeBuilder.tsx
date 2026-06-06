@@ -1177,8 +1177,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       }
       
       return pdf;
-    } catch (err) {
-      console.warn("Modern export failed, falling back to legacy...", err);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? (err.message || String(err)) : String(err));
+      console.warn("Modern export failed, falling back to legacy...", errMsg);
       // Fallback to legacy html2canvas if modern export fails
       const html2canvas = await loadHtml2Canvas();
       const jsPDF = await loadJsPDF();
@@ -1233,8 +1234,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       if (pdf) {
         pdf.save(getFileName('pdf'));
       }
-    } catch (err) {
-      console.error("PDF download failed:", err);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? (err.message || String(err)) : String(err));
+      console.error("PDF download failed:", errMsg);
       setError("High-quality PDF export failed. Please try printing to PDF instead.");
     } finally {
       setIsExporting(false);
@@ -1350,8 +1352,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
         const hideEl = iframeDoc.getElementById('temp-hide-indicators-img');
         if (hideEl) hideEl.remove();
       }
-    } catch (err) {
-      console.error("Capture failed:", err);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? (err.message || String(err)) : String(err));
+      console.error("Capture failed:", errMsg);
       return null;
     } finally {
       setIsExporting(false);
@@ -1383,8 +1386,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       link.click();
       document.body.removeChild(link);
       setShowDownloadMenu(false);
-    } catch (err) {
-      console.error("Image download failed:", err);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? (err.message || String(err)) : String(err));
+      console.error("Image download failed:", errMsg);
     }
   };
 
@@ -1436,7 +1440,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
             setIsExporting(false);
             return;
           }
-          console.warn("Native share failed, following fallback:", shareErr);
+          const errMsg = shareErr instanceof Error ? shareErr.message : String(shareErr);
+          console.warn("Native share failed, following fallback:", errMsg);
         }
       }
 
@@ -1461,8 +1466,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
         setIsExporting(false);
       }, 800);
       
-    } catch (err) {
-      console.error("WhatsApp share failed:", err);
+    } catch (err: any) {
+      const errMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? (err.message || String(err)) : String(err));
+      console.error("WhatsApp share failed:", errMsg);
       setIsExporting(false);
     }
   };
