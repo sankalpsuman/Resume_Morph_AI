@@ -44,6 +44,36 @@ interface ResumeBuilderProps {
   onLogin?: () => void;
 }
 
+function extractRawHtml(wrappedHtml: string): string {
+  if (!wrappedHtml) return '';
+  // If it is already wrapped, try to parse with DOMParser to get contents of resume-preview element
+  if (wrappedHtml.includes('id="resume-preview"')) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(wrappedHtml, 'text/html');
+      const previewEl = doc.getElementById('resume-preview');
+      if (previewEl) {
+        return previewEl.innerHTML.trim();
+      }
+    } catch (e) {
+      console.error("DOMParser failed to extract raw html:", e);
+    }
+    
+    // String split fallback if DOMParser fails
+    const startIdx = wrappedHtml.indexOf('id="resume-preview"');
+    if (startIdx !== -1) {
+      const tagEndIdx = wrappedHtml.indexOf('>', startIdx);
+      if (tagEndIdx !== -1) {
+        const endContainerIdx = wrappedHtml.indexOf('</div>\n  </div>', tagEndIdx);
+        if (endContainerIdx !== -1) {
+          return wrappedHtml.substring(tagEndIdx + 1, endContainerIdx).trim();
+        }
+      }
+    }
+  }
+  return wrappedHtml;
+}
+
 const StatsBar = React.memo(({ 
   isLimitReached, 
   usedMorphs, 
@@ -295,7 +325,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
   const previewHtml = useMemo(() => {
     if (!generatedHtml) return '';
-    return wrapResumeHtml(generatedHtml, { 
+    const cleanHtml = extractRawHtml(generatedHtml);
+    return wrapResumeHtml(cleanHtml, { 
       name: resumeMetadata?.name, 
       isGuest: !user, 
       previewMode: true, 
@@ -474,12 +505,13 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       const resumeId = replaceId || crypto.randomUUID();
       const storagePath = `resumes/${auth.currentUser.uid}/${resumeId}.html`;
       const resumeRef = ref(storage, storagePath);
+      const cleanHtml = extractRawHtml(html);
 
       const newResume = {
         id: resumeId,
         name: name || 'Untitled Resume',
         timestamp: new Date().toISOString(),
-        html: wrapResumeHtml(html, { name: name || 'Untitled Resume', isGuest: false, isPremium }), // Save exact snapshot
+        html: wrapResumeHtml(cleanHtml, { name: name || 'Untitled Resume', isGuest: false, isPremium }), // Save exact snapshot
         originalText: contentFile?.text || '', // Save original text for diffing
         storagePath: storagePath
       };
@@ -496,7 +528,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       // Parallelize Storage and Firestore updates
       // Note: Storage upload often fails in restricted preview environments, 
       // but we still have the full HTML saved in Firestore history as primary backup.
-      uploadWithRetry(resumeRef, html, 'raw', { contentType: 'text/html' })
+      uploadWithRetry(resumeRef, cleanHtml, 'raw', { contentType: 'text/html' })
         .catch(err => {
           // Silent catch for background task if it's a timeout, as we have Firestore backup
           if (!err.message?.includes('timed out')) {
@@ -988,7 +1020,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       return;
     }
     if (!generatedHtml) return;
-    const fullHtml = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
+    const cleanHtml = extractRawHtml(generatedHtml);
+    const fullHtml = wrapResumeHtml(cleanHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
     const blob = new Blob([fullHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1198,7 +1231,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
     if (!generatedHtml) return;
     
     // Construct HTML with Word-specific fixes
-    const wrapped = wrapResumeHtml(generatedHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
+    const cleanHtml = extractRawHtml(generatedHtml);
+    const wrapped = wrapResumeHtml(cleanHtml, { name: resumeMetadata?.name, isGuest: false, isPremium });
     const fullHtml = wrapped.replace('</style>', `
       /* Word-specific overrides for layout */
       .grid { display: table !important; width: 100% !important; }
@@ -1885,7 +1919,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                 : "h-[calc(100dvh-220px)] sm:h-[85vh] lg:h-[calc(100vh-140px)] lg:min-h-[700px] sm:min-h-[500px] w-full"
             )}>
               <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">
-                <div className="flex items-center gap-2 md:gap-6 min-w-0">
+                <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
                   <div className="flex items-center gap-2 md:gap-3 shrink-0">
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500" />
                     <span className="text-[9px] md:text-xs font-black text-[var(--text-tertiary)] uppercase tracking-[0.15em] md:tracking-[0.2em]">Preview</span>
@@ -1918,6 +1952,39 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                         )}
                       </button>
                     </motion.div>
+                  )}
+
+                  {/* Saved Resume select dropdown (Moved to outer persistent container header) */}
+                  {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
+                    <div className="relative max-w-xs min-w-[130px] sm:min-w-[180px] md:min-w-[220px] ml-auto select-dropdown-outer">
+                      <select
+                        value={selectedResumeId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedResumeId(val);
+                          const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
+                          if (selected) {
+                            setGeneratedHtml(extractRawHtml(selected.html));
+                            setResumeMetadata({
+                              name: selected.name || 'Untitled Resume',
+                              yoe: '',
+                              profile: ''
+                            });
+                          }
+                        }}
+                        className="w-full bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-[10px] md:text-xs py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none font-sans"
+                      >
+                        <option value="">-- Load Saved Resume ({userData.resumeHistory.length}) --</option>
+                        {userData.resumeHistory.map((resume: any) => (
+                          <option key={resume.id} value={resume.id}>
+                            {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[var(--text-tertiary)]">
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -2057,38 +2124,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                           <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">Resume Preview</span>
                         </div>
 
-                        {/* List out saved resumes */}
-                        {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
-                          <div className="relative flex-grow max-w-xs min-w-[200px]">
-                            <select
-                              value={selectedResumeId}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setSelectedResumeId(val);
-                                const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
-                                if (selected) {
-                                  setGeneratedHtml(selected.html);
-                                  setResumeMetadata({
-                                    name: selected.name || 'Untitled Resume',
-                                    yoe: '',
-                                    profile: ''
-                                  });
-                                }
-                              }}
-                              className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] md:text-xs py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none font-sans"
-                            >
-                              <option value="">-- Load Saved Resume ({userData.resumeHistory.length}) --</option>
-                              {userData.resumeHistory.map((resume: any) => (
-                                <option key={resume.id} value={resume.id}>
-                                  {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
-                                </option>
-                              ))}
-                            </select>
-                            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-400">
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </div>
-                          </div>
-                        )}
+
                         
                         <div className="flex items-center gap-2 shrink-0">
                           {generatedHtml && (

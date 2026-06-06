@@ -415,8 +415,10 @@ export async function generateResume(
     LAYOUT CLONING PROTOCOL (STRICT ADHERENCE REQUIRED):
     - You are a front-end engineer tasked with cloning a design.
     - The DESIGN TOKENS MANIFEST provided in the context is your SOURCE OF TRUTH for layout, colors, and typography.
-    - COLUMN_STRATEGY: If "2-Column", you MUST use a flex/grid layout.
+    - COLUMN_STRATEGY: If "2-Column", you MUST use a flex or grid layout side-by-side.
     - SIDEBAR: If SIDEBAR_POSITION is "Left" or "Right", you MUST implement a sidebar with the exact SIDEBAR_WIDTH_PERCENT.
+    - MANDATORY 2-COLUMN LABELS: The sidebar element MUST be given the class name "sidebar" (or "layout-sidebar"). The main body text column MUST be given the class name "main" (or "layout-main" or "main-column"). This is absolutely mandatory for the paginator tool.
+    - FLUID HEIGH SYSTEM: Do NOT use absolute positioning (like absolute, top-0, left-0) to position the sidebar or main panels. Do NOT use fixed tall height classes (such as h-[1123px], h-[100%], h-full, or h-screen) on style layouts of the columns. They must flow naturally so that they can be dynamically sliced and paginated item-by-item by our render engine!
     - TYPOGRAPHY: Use the fonts and sizes specified in the manifest.
     - COLORS: Use the HEX codes for backgrounds and text.
     - INTEGRITY: Ensure the final HTML strictly follows the structure: <div class="page"><div class="content">...</div></div>.

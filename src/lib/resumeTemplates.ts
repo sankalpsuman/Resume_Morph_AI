@@ -311,11 +311,44 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       }
 
       function getPageColumns(page) {
-        const sidebar = page.querySelector('.layout-sidebar') || page.querySelector('.sidebar');
-        const main = page.querySelector('.layout-main') || page.querySelector('.main-column') || page.querySelector('.main');
+        // Look for sidebar and main elements using various selectors
+        const sidebar = page.querySelector('.layout-sidebar, .sidebar, aside, [class*="layout-sidebar"], [class*="sidebar"], [class*="aside"]');
+        const main = page.querySelector('.layout-main, .main-column, .main, [class*="layout-main"], [class*="main-column"], [class*="main-content"]');
         
         if (sidebar && main) {
           return [sidebar, main];
+        }
+
+        // Structural detection of 2-column layouts under .content or page
+        const contentArea = page.querySelector('.content') || page;
+        const potentialContainers = [contentArea, page, ...Array.from(page.querySelectorAll('[class*="flex"], [class*="grid"], [style*="display: flex"], [style*="display: grid"]'))];
+        
+        for (const container of potentialContainers) {
+          if (!container) continue;
+          
+          const directChildren = Array.from(container.children).filter(child => {
+            if (child.nodeType !== 1) return false;
+            const tag = child.tagName.toUpperCase();
+            return tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'SVG' && 
+                   !child.classList.contains('page-break-indicator') && 
+                   !child.classList.contains('watermark') && 
+                   !child.classList.contains('page-number');
+          });
+
+          if (directChildren.length === 2) {
+            const style = window.getComputedStyle(container);
+            const isFlexRow = style.display === 'flex' && (style.flexDirection === 'row' || !style.flexDirection);
+            const isGrid = style.display === 'grid';
+            
+            const classes = container.className || '';
+            const hasFlexRowClass = classes.includes('flex') && !classes.includes('flex-col');
+            const hasGridClass = classes.includes('grid');
+            
+            if (isFlexRow || isGrid || hasFlexRowClass || hasGridClass) {
+              console.log("[Paginator Debug] Dynamically detected 2-column layout columns:", directChildren);
+              return directChildren;
+            }
+          }
         }
         
         const content = page.querySelector('.content') || page;
@@ -417,16 +450,17 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
             c.style.position = 'relative';
           }
           
-          const s = p.querySelector('.layout-sidebar') || p.querySelector('.sidebar');
-          if (s) {
-            s.style.overflow = 'visible';
-            s.style.position = 'relative';
-          }
-          
-          const m = p.querySelector('.layout-main') || p.querySelector('.main-column') || p.querySelector('.main');
-          if (m) {
-            m.style.overflow = 'visible';
-            m.style.position = 'relative';
+          // Dynamically override overflow styles on all layout columns to ensure correct page measurements
+          try {
+            const cols = getPageColumns(p);
+            cols.forEach(col => {
+              if (col && typeof col.style !== 'undefined') {
+                col.style.overflow = 'visible';
+                col.style.position = 'relative';
+              }
+            });
+          } catch (colErr) {
+            console.warn("[Paginator Styling] Failed to style dynamic columns:", colErr);
           }
         });
 
