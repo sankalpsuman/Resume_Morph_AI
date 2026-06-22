@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star } from 'lucide-react';
+import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star, Mail, Send, AlertTriangle, CheckSquare } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
@@ -44,7 +44,7 @@ interface PremiumRequest {
 import { PLANS } from '../constants';
 
 export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
-  const [activeTab, setActiveTab] = useState<'admin' | 'users' | 'requests'>('admin');
+  const [activeTab, setActiveTab] = useState<'admin' | 'users' | 'requests' | 'email'>('admin');
   const [users, setUsers] = useState<UserData[]>([]);
   const [requests, setRequests] = useState<PremiumRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +58,71 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     activePremium: 0
   });
 
+  // SMTP Testing and Config Diagnoser States
+  const [smtpStatus, setSmtpStatus] = useState<{
+    host: string | null;
+    port: number | null;
+    user: string | null;
+    hasPass: boolean;
+    fromEmail: string | null;
+    fromName: string | null;
+    configured: boolean;
+  } | null>(null);
+  const [testEmail, setTestEmail] = useState(auth.currentUser?.email || '');
+  const [testName, setTestName] = useState(auth.currentUser?.displayName || 'Morph Admin');
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
+  const [smtpLoading, setSmtpLoading] = useState(false);
+
+  const fetchSMTPStatus = async () => {
+    setSmtpLoading(true);
+    try {
+      const response = await fetch('/api/smtp-status');
+      if (response.ok) {
+        const data = await response.json();
+        setSmtpStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch SMTP Status:", err);
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleTestSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const response = await fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: testEmail.trim(),
+          name: testName.trim()
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setTestResult({ success: true, message: data.message });
+      } else {
+        setTestResult({ success: false, error: data.error });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, error: err.message || "Network request failed" });
+    } finally {
+      setTestSending(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (activeTab === 'users') fetchUsers();
-      else fetchRequests();
+      else if (activeTab === 'requests') fetchRequests();
+      else if (activeTab === 'email') fetchSMTPStatus();
     }
   }, [isOpen, activeTab]);
 
@@ -382,11 +443,20 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => setActiveTab('email')}
+                  className={cn(
+                    "flex-shrink-0 px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all relative",
+                    activeTab === 'email' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  Email Diagnoser
+                </button>
               </div>
             </div>
 
             {/* Search Bar - Only for Users and Requests */}
-            {activeTab !== 'admin' && (
+            {activeTab !== 'admin' && activeTab !== 'email' && (
               <div className="p-4 md:p-8 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
                 <div className="relative max-w-2xl">
                   <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[var(--text-tertiary)]" />
@@ -639,7 +709,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     );
                   })}
                 </div>
-              ) : (
+              ) : activeTab === 'requests' ? (
                 <div className="grid gap-6">
                   {filteredRequests.map((request) => (
                     <div 
@@ -704,31 +774,213 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  {/* Email Diagnoser Header Card */}
+                  <div className="bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] p-6 border border-[var(--border-color)] shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl">
+                        <Mail className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-base md:text-lg font-black text-[var(--text-primary)]">Automatic Welcome Email Diagnoser</h3>
+                        <p className="text-xs text-[var(--text-secondary)] font-medium mt-1 leading-relaxed">
+                          Verify your Vercel or deployment SMTP credentials instantly. ResumeMorph will trigger welcome emails to newly registered users automatically when they sign up. Use this panel to diagnose any delivery errors.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Column 1: Configuration Status */}
+                    <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">SMTP Configuration Status</h4>
+                        
+                        {smtpLoading ? (
+                          <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-tertiary)] py-4">
+                            <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                            Checking environment parameters...
+                          </div>
+                        ) : !smtpStatus ? (
+                          <div className="text-xs text-red-500 font-bold py-4">
+                            Failed to read status from backend. Confirm server is running.
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {/* Overall badge status */}
+                            <div className="flex items-center gap-2">
+                              {smtpStatus.configured ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                  <CheckSquare className="w-3.5 h-3.5" />
+                                  Ready & Configured
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/15 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                  <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                                  Credentials Missing
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Variable parameter table */}
+                            <div className="border border-[var(--border-color)] rounded-xl overflow-hidden text-xs">
+                              <div className="divide-y divide-[var(--border-color)]">
+                                <div className="grid grid-cols-3 p-2.5 bg-[var(--bg-secondary)]/50">
+                                  <span className="font-bold text-[var(--text-tertiary)]">Variable</span>
+                                  <span className="col-span-2 font-bold text-[var(--text-tertiary)]">Status / Value</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_HOST</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.host || "❌ Missing"}</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PORT</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{smtpStatus.port || "❌ Missing (Defaults 587)"}</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_USER</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.user || "❌ Missing"}</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PASS</span>
+                                  <span className="col-span-2 font-medium text-[var(--text-primary)]">
+                                    {smtpStatus.hasPass ? "✅ Configured (Hidden)" : "❌ Missing Password"}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">FROM_EMAIL</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.fromEmail || "ℹ️ support@resumemorph.com"}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Diagnostic suggestions */}
+                      <div className="mt-6 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-2">
+                        <p className="font-bold text-[var(--text-primary)]">💡 Setup Guideline for Gmail SMTP:</p>
+                        <p>1. Ensure <strong>SMTP_HOST</strong> is set to <code className="bg-[var(--bg-primary)] px-1 py-0.5 rounded select-all font-mono">smtp.gmail.com</code></p>
+                        <p>2. Set <strong>SMTP_PORT</strong> to <code className="bg-[var(--bg-primary)] px-1 py-0.5 rounded select-all font-mono">587</code></p>
+                        <p>3. <strong>CRITICAL</strong>: Do NOT use your standard Gmail password for SMTP_PASS. You must enable 2-Step Verification and generate an <strong>App Password</strong> in your Google Account security settings.</p>
+                      </div>
+                    </div>
+
+                    {/* Column 2: Test Sender Widget */}
+                    <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">SMTP Test Dispatcher</h4>
+
+                      <form onSubmit={handleTestSend} className="space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-1.5">Recipient's Email</label>
+                          <input 
+                            type="email" 
+                            required
+                            value={testEmail}
+                            onChange={(e) => setTestEmail(e.target.value)}
+                            placeholder="recipient@example.com"
+                            className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-1.5">Recipient's Name</label>
+                          <input 
+                            type="text" 
+                            required
+                            value={testName}
+                            onChange={(e) => setTestName(e.target.value)}
+                            placeholder="Alex Smith"
+                            className="w-full px-3 py-2 text-sm bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-xl text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+
+                        <button 
+                          type="submit"
+                          disabled={testSending || !smtpStatus?.configured}
+                          className="w-full py-2.5 bg-indigo-600 disabled:bg-neutral-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                        >
+                          {testSending ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Sending test...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              Dispatch Test Email
+                            </>
+                          )}
+                        </button>
+                      </form>
+
+                      {/* Display test execution trace */}
+                      {testResult && (
+                        <div className="mt-4">
+                          {testResult.success ? (
+                            <div className="p-3.5 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl text-xs space-y-1">
+                              <p className="font-bold text-green-700 dark:text-green-400">🎉 SMTP Test Succeeded!</p>
+                              <p className="text-green-600 dark:text-green-500/80 leading-relaxed font-medium">
+                                Email was submitted to server successfully. Check your spam filters, junk folders, and promotional tabs if you don't receive it in 1 minute.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-3.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl text-xs space-y-1.5">
+                              <p className="font-bold text-red-700 dark:text-red-400">❌ SMTP test failed</p>
+                              <p className="font-mono text-[10px] text-red-600 dark:text-red-400/90 whitespace-pre-wrap break-all select-all bg-red-100/50 dark:bg-red-900/20 p-2 rounded border border-red-200/50">
+                                {testResult.error || "Unknown Error occurred during dispatch."}
+                              </p>
+                              <div className="text-[10px] text-red-600 dark:text-red-400 mt-2 space-y-1 leading-normal">
+                                <p className="font-bold">Advice based on failure type:</p>
+                                {testResult.error?.toLowerCase().includes("auth") && (
+                                  <p>👉 Authentication Failed: App password might be incorrect or revoked. Regenerate a new App password in Google Account Security.</p>
+                                )}
+                                {testResult.error?.toLowerCase().includes("timeout") && (
+                                  <p>👉 Timeout: Host address or port might be closed. Check if port 465 is blocked, or use port 587.</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
             {/* Footer */}
             <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border-color)] flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
-                <div className="flex flex-col">
-                  <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">
-                    {activeTab === 'users' ? 'Total Users' : 'Total Requests'}
-                  </span>
-                  <span className="text-lg md:text-xl font-black text-[var(--text-primary)]">
-                    {activeTab === 'users' ? users.length : requests.length}
+              {activeTab !== 'email' ? (
+                <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">
+                      {activeTab === 'users' ? 'Total Users' : 'Total Requests'}
+                    </span>
+                    <span className="text-lg md:text-xl font-black text-[var(--text-primary)]">
+                      {activeTab === 'users' ? users.length : requests.length}
+                    </span>
+                  </div>
+                  <div className="w-px h-8 bg-[var(--border-color)]" />
+                  <div className="flex flex-col">
+                    <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Pending</span>
+                    <span className={cn(
+                      "text-lg md:text-xl font-black",
+                      requests.filter(r => r.status === 'Pending').length > 0 ? "text-red-500" : "text-[var(--text-tertiary)]"
+                    )}>
+                      {requests.filter(r => r.status === 'Pending').length}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest flex items-center gap-1">
+                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                    Secure Sandbox Diagnostics System
                   </span>
                 </div>
-                <div className="w-px h-8 bg-[var(--border-color)]" />
-                <div className="flex flex-col">
-                  <span className="text-[8px] md:text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Pending</span>
-                  <span className={cn(
-                    "text-lg md:text-xl font-black",
-                    requests.filter(r => r.status === 'Pending').length > 0 ? "text-red-500" : "text-[var(--text-tertiary)]"
-                  )}>
-                    {requests.filter(r => r.status === 'Pending').length}
-                  </span>
-                </div>
-              </div>
+              )}
               <button 
                 onClick={onClose}
                 className="w-full md:w-auto px-6 md:px-10 py-3 md:py-4 bg-gray-900 dark:bg-indigo-600 text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] hover:bg-black dark:hover:bg-indigo-700 transition-all shadow-xl shadow-gray-200 dark:shadow-none"

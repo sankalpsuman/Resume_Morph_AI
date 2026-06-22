@@ -73,6 +73,23 @@ async function startServer() {
     return false;
   }
 
+  // SMTP Status endpoint for Admin Diagnoser view (non-sensitive check)
+  app.get("/api/smtp-status", (req: Request, res: Response) => {
+    try {
+      return res.json({
+        host: process.env.SMTP_HOST || null,
+        port: Number(process.env.SMTP_PORT) || null,
+        user: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 3)}...` : null,
+        hasPass: !!process.env.SMTP_PASS,
+        fromEmail: process.env.SMTP_FROM_EMAIL || null,
+        fromName: process.env.SMTP_FROM_NAME || null,
+        configured: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Failed to check SMTP variables status" });
+    }
+  });
+
   // Welcome Email automation API
   app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
     try {
