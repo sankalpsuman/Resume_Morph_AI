@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Resume Morph AI 🧬✨
 
-# Run and deploy your AI Studio app
+Resume Morph is a high-fidelity style cloning engine. We bridge the structural gap between your expertise and your dream role's aesthetic with mathematical precision.
 
-This contains everything you need to run your app locally.
+![Resume Morph Preview](https://res.cloudinary.com/dyksnjhyx/image/upload/v1781114996/oq2lql5xtwblfzrjvnzn.jpg)
 
-View your app in AI Studio: https://ai.studio/apps/b1953b9c-8662-4bfe-99a9-729adf68bf6f
+## 🌐 Project Links
 
-## Run Locally
+- **Live URL:** [https://resume-morph.vercel.app/](https://resume-morph.vercel.app/)
+- **Repository Metadata:** Configured via `metadata.json` for AI Studio integration.
 
-**Prerequisites:**  Node.js
+---
 
+## 🚀 Key Features
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **High-Fidelity Layout Cloning:** Seamlessly match styling DNA from reference layout PDFs or images to render responsive, beautiful resumes.
+- **Dynamic Previews:** A side-by-side split screen view with real-time responsive rendering, internal document scrolling, and height synchronized to the layout customization panel.
+- **Robust Multi-file Extraction:** Parse baseline content from modern `PDF`, `DOCX`, `HTML`, `JSON`, or raw `TXT` inputs.
+- **Smart Formatting Options:** Interactive controls to switch A4 page-bounds visualization, customize font parameters, zoom levels, and live-synchronize background save history.
+- **Flawless Export Suites:** Export high-quality custom layouts straight to custom-rendered documents, Word-friendly XML layers, or professional print engines.
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend & Rendering
+- **React 19 & TypeScript:** Custom modular components with strict type-safety.
+- **Tailwind CSS v4:** A fluid, modern, aesthetic interface utilizing native `@theme` variables and utility pairings.
+- **Motion (motion/react):** Elegant micro-animations and staggered coordinate entries.
+- **Lucide React:** A unified collection of clear line-art icons.
+- **HTML-to-Image / jsPDF / html2canvas:** Client-side vector capturing and multipage PDF generation pipelines.
+
+### Backend & AI Intelligence
+- **Google Gen AI SDK (`@google/genai`):** Dynamic style extracting, semantic structure mapping, and AI-powered copy drafting using server-side Gemini models.
+- **Express & Node.js:** A full-stack backend acting as a secure proxy API to process files and isolate keys.
+- **Mammoth & PDF-Parse:** Server-side engines for processing text from uploaded resumes and target jobs.
+
+### Storage & Database
+- **Firebase Firestore & Authentication:** Secure accounts, high-speed query indexing, and automatic history syncing for user-saved resumes.

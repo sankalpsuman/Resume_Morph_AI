@@ -496,16 +496,11 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
               console.log("[Paginator Debug] Page " + (pageIdx + 1) + " col " + colIdx + " height after item " + i + ": " + height + "px (limit: " + SAFE_INNER_HEIGHT + "px)");
               
               if (height > SAFE_INNER_HEIGHT) {
-                // Orphan/infinite loop defense
-                if (i === 0) {
-                  console.log("[Paginator Debug] First item overflows page! Retaining to avoid infinite loop.");
-                  continue;
-                }
+                let splitSuccess = false;
                 
-                col.removeChild(child);
-                
-                // Check if we can split this item
+                // Try to split this item if possible
                 if (isSplitable(child)) {
+                  col.removeChild(child);
                   const currentFitsHeight = getContainerContentHeight(col);
                   const remainingSpace = SAFE_INNER_HEIGHT - currentFitsHeight;
                   
@@ -516,9 +511,29 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
                       children[i] = splitResult.overflow;
                       overflowStartIndex = i;
                       console.log("[Paginator Debug] Successfully split overflowing node.");
+                      splitSuccess = true;
                       break;
                     }
                   }
+                  
+                  // Put the child back if we couldn't split it successfully
+                  if (!splitSuccess) {
+                    col.appendChild(child);
+                  }
+                }
+                
+                if (splitSuccess) {
+                  break;
+                }
+                
+                // Orphan/infinite loop defense
+                if (i === 0) {
+                  console.log("[Paginator Debug] First item overflows page and cannot be split! Retaining to avoid infinite loop.");
+                  continue;
+                }
+                
+                if (col.contains(child)) {
+                  col.removeChild(child);
                 }
                 
                 overflowStartIndex = i;

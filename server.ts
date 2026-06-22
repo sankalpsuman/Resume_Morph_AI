@@ -5,6 +5,7 @@ import fs from "fs";
 import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
+import { sendWelcomeEmail, isValidEmail } from "./src/lib/sendWelcomeEmail.js";
 
 dotenv.config();
 
@@ -44,7 +45,71 @@ async function startServer() {
     });
   });
 
-  // ... (rest of the API routes would be here, but I'll skip to the metadata/vite parts to keep the edit focused)
+  // Simple in-memory rate limiting map for email recipients
+  const emailLimits = new Map<string, { count: number; resetAt: number }>();
+
+  function isEmailRateLimited(email: string): boolean {
+    const now = Date.now();
+    const limitTime = 60 * 60 * 1000; // 1 hour window
+    const maxAttempts = 3;
+
+    const record = emailLimits.get(email);
+    if (!record) {
+      emailLimits.set(email, { count: 1, resetAt: now + limitTime });
+      return false;
+    }
+
+    if (now > record.resetAt) {
+      // Reset window
+      emailLimits.set(email, { count: 1, resetAt: now + limitTime });
+      return false;
+    }
+
+    if (record.count >= maxAttempts) {
+      return true;
+    }
+
+    record.count += 1;
+    return false;
+  }
+
+  // Welcome Email automation API
+  app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
+    try {
+      const { email, name } = req.body;
+
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Recipient email is required" });
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanName = typeof name === "string" ? name.trim() : "Morph User";
+
+      // 1. Validate email address structure
+      if (!isValidEmail(cleanEmail)) {
+        return res.status(400).json({ error: "Invalid recipient email address format" });
+      }
+
+      // 2. Multi-request spam rate limiting
+      if (isEmailRateLimited(cleanEmail)) {
+        console.warn(`[Welcome Email API] Rate limit reached for ${cleanEmail}`);
+        return res.status(429).json({ error: "Too many welcome email requests for this address. Please try again in an hour." });
+      }
+
+      // 3. Dispatch welcome email via Nodemailer
+      const result = await sendWelcomeEmail(cleanEmail, cleanName);
+
+      if (result.success) {
+        return res.json({ success: true, message: "Welcome email dispatched successfully" });
+      } else {
+        return res.status(502).json({ error: result.error || "Email delivery failed" });
+      }
+
+    } catch (err: any) {
+      console.error("[Welcome Email API] Unexpected Error:", err);
+      return res.status(500).json({ error: "Internal server error during email dispatch" });
+    }
+  });
 
   // Resume Text Extraction API
   app.post("/api/extract-text", upload.single("resume"), async (req: any, res: any) => {

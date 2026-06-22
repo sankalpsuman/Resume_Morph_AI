@@ -1,6 +1,6 @@
 {
   "name": "Resume Morph AI",
-  "description": "Morph your resume into any design with AI. Clone layouts from images, optimize for ATS, and chat with your resume architect to refine every detail.",
+  "description": "Resume Morph is a high-fidelity style cloning engine. We bridge the structural gap between your expertise and your dream role's aesthetic with mathematical precision.",
   "requestFramePermissions": [
     "camera",
     "microphone"

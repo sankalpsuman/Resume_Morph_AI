@@ -52,6 +52,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [splashStatus, setSplashStatus] = useState('Initializing Morph Engine...');
   const mountTimeRef = React.useRef(Date.now());
+  const sendingWelcomeEmailRef = React.useRef("");
 
   useEffect(() => {
     let isMounted = true;
@@ -277,7 +278,9 @@ export default function App() {
             lastActivityAt: serverTimestamp(),
             resumeHistory: [],
             freeClaimed: false,
-            metadata: { freeClaimed: false }
+            metadata: { freeClaimed: false },
+            welcomeEmailSent: false,
+            welcomeEmailSentAt: null
           };
           
           await setDoc(userRef, initialData);
@@ -316,6 +319,67 @@ export default function App() {
     
     updateActivity();
   }, [user?.uid]);
+
+  // Automatic Welcome Email Trigger Effect
+  useEffect(() => {
+    if (!userData || !userData.email) return;
+
+    // Trigger ONLY if welcomeEmailSent is explicitly false, or missing (e.g. for existing users)
+    if (userData.welcomeEmailSent === true) return;
+
+    // Use a ref lock to avoid any duplicate simultaneous running tasks in the same session
+    if (sendingWelcomeEmailRef.current === userData.email) return;
+    sendingWelcomeEmailRef.current = userData.email;
+
+    const triggerWelcomeEmail = async () => {
+      try {
+        console.log(`[Welcome Email Trigger] Dispatching trigger for ${userData.email} (${userData.name})`);
+        
+        const response = await fetch("/api/send-welcome-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: userData.email,
+            name: userData.name || "Morph User"
+          })
+        });
+
+        if (response.ok) {
+          console.log(`[Welcome Email Trigger] Successfully dispatched welcome email to ${userData.email}`);
+          
+          // Update Firestore model
+          const userRef = doc(db, 'users', userData.userId || user?.uid);
+          await updateDoc(userRef, {
+            welcomeEmailSent: true,
+            welcomeEmailSentAt: serverTimestamp()
+          }).catch((dbErr) => {
+            console.error("[Welcome Email Trigger] Failed to update Firestore with welcomeEmailSent flag:", dbErr);
+          });
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          console.error(`[Welcome Email Trigger] Failed dispatch: ${errData.error || response.statusText}`);
+          // Reset ref lock after 35 seconds to allow retry on next mount/tick
+          setTimeout(() => {
+            if (sendingWelcomeEmailRef.current === userData.email) {
+              sendingWelcomeEmailRef.current = "";
+            }
+          }, 35000);
+        }
+      } catch (err) {
+        console.error(`[Welcome Email Trigger] Fetch exception occurred:`, err);
+        // Reset ref lock on failure
+        setTimeout(() => {
+          if (sendingWelcomeEmailRef.current === userData.email) {
+            sendingWelcomeEmailRef.current = "";
+          }
+        }, 35000);
+      }
+    };
+
+    triggerWelcomeEmail();
+  }, [userData?.userId, userData?.welcomeEmailSent, userData?.email, user?.uid]);
 
   useEffect(() => {
     const handleSetTab = (e: any) => {

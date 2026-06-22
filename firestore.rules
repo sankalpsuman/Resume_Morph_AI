@@ -40,6 +40,8 @@ service cloud.firestore {
              (!('lastResetAt' in data) || data.lastResetAt is timestamp || data.lastResetAt == null || data.lastResetAt == serverTimestamp()) &&
              (!('lastActivityAt' in data) || data.lastActivityAt is timestamp || data.lastActivityAt == null || data.lastActivityAt == serverTimestamp()) &&
              (!('role' in data) || data.role is string) &&
+             (!('welcomeEmailSent' in data) || data.welcomeEmailSent is boolean) &&
+             (!('welcomeEmailSentAt' in data) || data.welcomeEmailSentAt is timestamp || data.welcomeEmailSentAt == null || data.welcomeEmailSentAt == serverTimestamp()) &&
              (!('resumeHistory' in data) || data.resumeHistory is list);
     }
 
