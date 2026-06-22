@@ -401,6 +401,20 @@ export default function App() {
           })
         });
 
+        const responseText = await response.text();
+        const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+
+        if (isHtmlResponse) {
+          console.warn("[Welcome Email Trigger] API request blocked by browser security/cookie parameters (returned HTML instead of JSON). Recommend running app in a new tab.");
+          // Reset ref lock after 35 seconds to allow retry when state refreshes
+          setTimeout(() => {
+            if (sendingWelcomeEmailRef.current === userData.email) {
+              sendingWelcomeEmailRef.current = "";
+            }
+          }, 35000);
+          return;
+        }
+
         if (response.ok) {
           console.log(`[Welcome Email Trigger] Successfully dispatched welcome email to ${userData.email}`);
           
@@ -413,7 +427,10 @@ export default function App() {
             console.error("[Welcome Email Trigger] Failed to update Firestore with welcomeEmailSent flag:", dbErr);
           });
         } else {
-          const errData = await response.json().catch(() => ({}));
+          let errData: any = {};
+          try {
+            errData = JSON.parse(responseText);
+          } catch (e) {}
           console.error(`[Welcome Email Trigger] Failed dispatch: ${errData.error || response.statusText}`);
           // Reset ref lock after 35 seconds to allow retry on next mount/tick
           setTimeout(() => {

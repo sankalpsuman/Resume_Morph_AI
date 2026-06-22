@@ -105,7 +105,28 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         })
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+
+      if (isHtmlResponse) {
+        setTestResult({
+          success: false,
+          error: "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again."
+        });
+        return;
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        setTestResult({
+          success: false,
+          error: "Unable to parse server response as JSON. Please try running the app in a new tab."
+        });
+        return;
+      }
+
       if (response.ok) {
         setTestResult({ success: true, message: data.message });
       } else {

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS } from '../constants';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { compareResumes } from '../lib/gemini';
 import ReactMarkdown from 'react-markdown';
@@ -41,6 +41,124 @@ export default function AccountModal({
   const [diffData, setDiffData] = useState<string | null>(null);
   const [isComparing, setIsComparing] = useState(false);
   const [comparingResume, setComparingResume] = useState<any>(null);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendStatus, setResendStatus] = useState<{ success: boolean; message?: string } | null>(null);
+
+  const handleResendWelcomeEmail = async () => {
+    if (!user || !userData || resendingEmail) return;
+    setResendingEmail(true);
+    setResendStatus(null);
+    try {
+      // Dynamic subscription plan mapping
+      const currentPlanId = userData.plan || 'free';
+      const activePlan = PLANS.find(p => p.id === currentPlanId) || PLANS[0];
+      const planNameStr = activePlan.name;
+      
+      let planBenefits: string[] = [];
+      if (currentPlanId === 'free') {
+        planBenefits = [
+          "Access to base design morph matching templates",
+          "1 standard high-fidelity ATS layout style cloner use"
+        ];
+      } else if (currentPlanId === 'pulse') {
+        planBenefits = [
+          "3 standard high-fidelity ATS layout style cloner uses",
+          "Access to responsive preview dashboard",
+          "Standard priority build execution"
+        ];
+      } else if (currentPlanId === 'starter') {
+        planBenefits = [
+          "7 high-fidelity ATS layout style cloner uses",
+          "2 customized responsive portfolio outputs",
+          "Clearance of background credits & watermark signatures"
+        ];
+      } else if (currentPlanId === 'pro') {
+        planBenefits = [
+          "12 high-fidelity ATS layout style cloner uses",
+          "5 customized responsive portfolio outputs",
+          "Premium cover letter builder mirroring layout templates",
+          "Advanced ATS keywords scanning diagnostic score reports"
+        ];
+      } else {
+        planBenefits = [
+          "Unlimited workspace style cloner operations without bounds",
+          "10 custom live portfolio generator pages",
+          "High-priority multi-page parsing formatting",
+          "Direct consultative support priority channels with our founders"
+        ];
+      }
+
+      const remainingCreditsNum = userData.remainingMorphs !== undefined 
+        ? userData.remainingMorphs 
+        : (activePlan.limit === -1 ? undefined : Math.max(0, activePlan.limit - usedMorphs));
+      
+      const upgradeInstructionsStr = currentPlanId === 'unlimited'
+        ? "You are already mapped to our ultimate unlimited master combo plan. No further actions needed."
+        : `Upgrade instantly of your plan ${planNameStr} by visiting the user menu tab inside your ResumeMorph dashboard panel and select from Starter, Pro, or Master Combo plans via our automated payment channels.`;
+
+      const subDetails = {
+        planName: planNameStr,
+        planBenefits: planBenefits,
+        remainingCredits: remainingCreditsNum,
+        upgradeInstructions: upgradeInstructionsStr
+      };
+
+      const response = await fetch("/api/send-welcome-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          name: userData.name || "Morph User",
+          subscriptionDetails: subDetails
+        })
+      });
+
+      const responseText = await response.text();
+      const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+
+      if (isHtmlResponse) {
+        setResendStatus({
+          success: false,
+          message: "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again."
+        });
+        return;
+      }
+
+      let data: any;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        setResendStatus({
+          success: false,
+          message: "Unable to parse server response as JSON. Please try running the app in a new tab."
+        });
+        return;
+      }
+
+      if (response.ok) {
+        setResendStatus({ success: true, message: data.message || "Onboarding welcome message has been triggered!" });
+        // Update Firestore flag
+        try {
+          const userRef = doc(db, 'users', userData.userId || user.uid);
+          await updateDoc(userRef, {
+            welcomeEmailSent: true,
+            welcomeEmailSentAt: serverTimestamp()
+          });
+        } catch (dbErr) {
+          console.error("Failed to update user's welcomeEmailSent status flag:", dbErr);
+        }
+      } else {
+        setResendStatus({ success: false, message: data.error || "Mailing service failed to accept dispatch." });
+      }
+    } catch (err: any) {
+      console.error("Failed manual resend of welcome email:", err);
+      setResendStatus({ success: false, message: err.message || "Network request failed." });
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -449,6 +567,82 @@ export default function AccountModal({
                 <p className="text-[var(--text-tertiary)] font-bold text-sm">No feedback submitted yet.</p>
               </div>
             )}
+          </div>
+
+          {/* Welcome Email Communications & Diagnostics Block */}
+          <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/20">
+                  <Mail className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Onboarding Communications</h3>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Verify and test welcome greetings</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-[var(--bg-primary)] rounded-[32px] border border-[var(--border-color)] space-y-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
+                <div>
+                  <span className="text-[9px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Welcome Email Status</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    {userData.welcomeEmailSent === true ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 rounded-full text-[10px] font-black uppercase tracking-wider">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Dispatched
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full text-[10px] font-black uppercase tracking-wider">
+                        <Clock className="w-3.5 h-3.5" />
+                        Not Dispatched Yet
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={resendingEmail}
+                  onClick={handleResendWelcomeEmail}
+                  className="px-5 py-3 bg-indigo-600 disabled:bg-neutral-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 cursor-pointer self-start md:self-auto shadow-md"
+                >
+                  {resendingEmail ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Triggering...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-3.5 h-3.5" />
+                      Send Welcome Email On-Demand
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {resendStatus && (
+                <div className={cn(
+                  "p-4 rounded-2xl border text-xs leading-normal",
+                  resendStatus.success 
+                    ? "bg-green-50 dark:bg-green-950/10 border-green-100 dark:border-green-900/30 text-green-700 dark:text-green-400" 
+                    : "bg-red-50 dark:bg-red-950/10 border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-400"
+                )}>
+                  <p className="font-bold">{resendStatus.success ? "🎉 Trigger Dispatched Successfully" : "❌ Trigger Attempt Failed"}</p>
+                  <p className="mt-1 opacity-90">{resendStatus.message}</p>
+                </div>
+              )}
+
+              <div className="p-4 bg-[var(--bg-secondary)] rounded-2xl text-[11px] leading-relaxed text-[var(--text-secondary)] space-y-2 border border-[var(--border-color)]">
+                <p className="font-bold text-[var(--text-primary)]">Why didn't you receive the initial welcome email?</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Resend API restrictions</strong>: If the system uses Resend's default trial parameters, welcome emails can only deliver successfully to your verified Resend login address (or domains you have explicitly added and verified on Resend).</li>
+                  <li><strong>Spam Filters</strong>: Sometimes secure emails might be placed in Gmail's <strong>Promotions</strong> or <strong>Spam</strong> tabs. Please verify those folders as well.</li>
+                  <li><strong>Configuration</strong>: Verify that the <code>RESEND_API_KEY</code> environment variable is set in the builder settings so the server can authenticatively route requests through the modern Resend secure tunnel.</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
 
