@@ -58,8 +58,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     activePremium: 0
   });
 
-  // SMTP Testing and Config Diagnoser States
-  const [smtpStatus, setSmtpStatus] = useState<{
+  // Resend Premium Email API Config states
+  const [resendStatus, setResendStatus] = useState<{
     host: string | null;
     port: number | null;
     user: string | null;
@@ -72,20 +72,20 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [testName, setTestName] = useState(auth.currentUser?.displayName || 'Morph Admin');
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
-  const [smtpLoading, setSmtpLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
-  const fetchSMTPStatus = async () => {
-    setSmtpLoading(true);
+  const fetchResendStatus = async () => {
+    setResendLoading(true);
     try {
-      const response = await fetch('/api/smtp-status');
+      const response = await fetch('/api/email-status');
       if (response.ok) {
         const data = await response.json();
-        setSmtpStatus(data);
+        setResendStatus(data);
       }
     } catch (err) {
-      console.error("Failed to fetch SMTP Status:", err);
+      console.error("Failed to fetch Resend status info:", err);
     } finally {
-      setSmtpLoading(false);
+      setResendLoading(false);
     }
   };
 
@@ -122,7 +122,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     if (isOpen) {
       if (activeTab === 'users') fetchUsers();
       else if (activeTab === 'requests') fetchRequests();
-      else if (activeTab === 'email') fetchSMTPStatus();
+      else if (activeTab === 'email') fetchResendStatus();
     }
   }, [isOpen, activeTab]);
 
@@ -783,9 +783,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                         <Mail className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-base md:text-lg font-black text-[var(--text-primary)]">Automatic Welcome Email Diagnoser</h3>
+                        <h3 className="text-base md:text-lg font-black text-[var(--text-primary)]">Resend Premium Email API Diagnoser</h3>
                         <p className="text-xs text-[var(--text-secondary)] font-medium mt-1 leading-relaxed">
-                          Verify your Vercel or deployment SMTP credentials instantly. ResumeMorph will trigger welcome emails to newly registered users automatically when they sign up. Use this panel to diagnose any delivery errors.
+                          Verify your Resend API configuration instantly. ResumeMorph triggers styled welcome emails to newly registered users automatically when they sign up under full-stack server security. Use this panel to test deliveries.
                         </p>
                       </div>
                     </div>
@@ -795,14 +795,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     {/* Column 1: Configuration Status */}
                     <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm flex flex-col justify-between">
                       <div>
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">SMTP Configuration Status</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">Resend Integration Status</h4>
                         
-                        {smtpLoading ? (
+                        {resendLoading ? (
                           <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-tertiary)] py-4">
                             <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                             Checking environment parameters...
                           </div>
-                        ) : !smtpStatus ? (
+                        ) : !resendStatus ? (
                           <div className="text-xs text-red-500 font-bold py-4">
                             Failed to read status from backend. Confirm server is running.
                           </div>
@@ -810,15 +810,15 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           <div className="space-y-4">
                             {/* Overall badge status */}
                             <div className="flex items-center gap-2">
-                              {smtpStatus.configured ? (
+                              {resendStatus.configured ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-full text-[10px] font-black uppercase tracking-wider">
                                   <CheckSquare className="w-3.5 h-3.5" />
-                                  Ready & Configured
+                                  Resend Ready & Configured
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/15 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-wider">
                                   <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
-                                  Credentials Missing
+                                  API Key Missing
                                 </span>
                               )}
                             </div>
@@ -831,26 +831,26 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   <span className="col-span-2 font-bold text-[var(--text-tertiary)]">Status / Value</span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_HOST</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.host || "❌ Missing"}</span>
-                                </div>
-                                <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PORT</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{smtpStatus.port || "❌ Missing (Defaults 587)"}</span>
-                                </div>
-                                <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_USER</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.user || "❌ Missing"}</span>
-                                </div>
-                                <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PASS</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">RESEND_API_KEY</span>
                                   <span className="col-span-2 font-medium text-[var(--text-primary)]">
-                                    {smtpStatus.hasPass ? "✅ Configured (Hidden)" : "❌ Missing Password"}
+                                    {resendStatus.hasPass ? "✅ Configured (Hidden)" : "❌ Missing (Set in Settings)"}
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">FROM_EMAIL</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{smtpStatus.fromEmail || "ℹ️ support@resumemorph.com"}</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">RESEND_FROM_EMAIL</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{resendStatus.fromEmail || "ℹ️ onboarding@resend.dev"}</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">API_GATEWAY</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{resendStatus.host || "api.resend.com"}</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SECURE_PORT</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{resendStatus.port || 443} (HTTPS Secure TLS)</span>
+                                </div>
+                                <div className="grid grid-cols-3 p-2.5">
+                                  <span className="font-medium text-[var(--text-secondary)]">SENDER_NAME</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{resendStatus.fromName || "ResumeMorph Team"}</span>
                                 </div>
                               </div>
                             </div>
@@ -860,16 +860,17 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
                       {/* Diagnostic suggestions */}
                       <div className="mt-6 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-2">
-                        <p className="font-bold text-[var(--text-primary)]">💡 Setup Guideline for Gmail SMTP:</p>
-                        <p>1. Ensure <strong>SMTP_HOST</strong> is set to <code className="bg-[var(--bg-primary)] px-1 py-0.5 rounded select-all font-mono">smtp.gmail.com</code></p>
-                        <p>2. Set <strong>SMTP_PORT</strong> to <code className="bg-[var(--bg-primary)] px-1 py-0.5 rounded select-all font-mono">587</code></p>
-                        <p>3. <strong>CRITICAL</strong>: Do NOT use your standard Gmail password for SMTP_PASS. You must enable 2-Step Verification and generate an <strong>App Password</strong> in your Google Account security settings.</p>
+                        <p className="font-bold text-[var(--text-primary)]">💡 Setup Guideline for Resend Email dispatch:</p>
+                        <p>1. Register your account at <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold">resend.com</a></p>
+                        <p>2. Create and retrieve your secure Key from the Resend **API Keys** menu panel.</p>
+                        <p>3. Set <strong>RESEND_API_KEY</strong> environment variable in your server configuration.</p>
+                        <p>4. <strong>Important Limitation</strong>: The default `onboarding@resend.dev` email can only dispatch welcome emails to your own registered address. To email external clients, verify your domain DNS records in the Resend Domains tab.</p>
                       </div>
                     </div>
 
                     {/* Column 2: Test Sender Widget */}
                     <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">SMTP Test Dispatcher</h4>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">Resend API Test Dispatcher</h4>
 
                       <form onSubmit={handleTestSend} className="space-y-4">
                         <div>
@@ -898,18 +899,18 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
                         <button 
                           type="submit"
-                          disabled={testSending || !smtpStatus?.configured}
+                          disabled={testSending || !resendStatus?.configured}
                           className="w-full py-2.5 bg-indigo-600 disabled:bg-neutral-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
                         >
                           {testSending ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Sending test...
+                              Requesting dispatch...
                             </>
                           ) : (
                             <>
                               <Send className="w-3.5 h-3.5" />
-                              Dispatch Test Email
+                              Dispatch Welcome test
                             </>
                           )}
                         </button>
@@ -920,24 +921,23 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                         <div className="mt-4">
                           {testResult.success ? (
                             <div className="p-3.5 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl text-xs space-y-1">
-                              <p className="font-bold text-green-700 dark:text-green-400">🎉 SMTP Test Succeeded!</p>
+                              <p className="font-bold text-green-700 dark:text-green-400">🎉 Welcome Email Dispatched!</p>
                               <p className="text-green-600 dark:text-green-500/80 leading-relaxed font-medium">
-                                Email was submitted to server successfully. Check your spam filters, junk folders, and promotional tabs if you don't receive it in 1 minute.
+                                Submitted to api.resend.com successfully. Note that if you use the onboarding address, it only delivers successfully to yours/authorized domains. Check your spam and promotions tabs!
                               </p>
                             </div>
                           ) : (
                             <div className="p-3.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl text-xs space-y-1.5">
-                              <p className="font-bold text-red-700 dark:text-red-400">❌ SMTP test failed</p>
+                              <p className="font-bold text-red-700 dark:text-red-400">❌ Resend API Dispatch Failed</p>
                               <p className="font-mono text-[10px] text-red-600 dark:text-red-400/90 whitespace-pre-wrap break-all select-all bg-red-100/50 dark:bg-red-900/20 p-2 rounded border border-red-200/50">
-                                {testResult.error || "Unknown Error occurred during dispatch."}
+                                {testResult.error || "Unknown Error during dispatch."}
                               </p>
                               <div className="text-[10px] text-red-600 dark:text-red-400 mt-2 space-y-1 leading-normal">
                                 <p className="font-bold">Advice based on failure type:</p>
-                                {testResult.error?.toLowerCase().includes("auth") && (
-                                  <p>👉 Authentication Failed: App password might be incorrect or revoked. Regenerate a new App password in Google Account Security.</p>
-                                )}
-                                {testResult.error?.toLowerCase().includes("timeout") && (
-                                  <p>👉 Timeout: Host address or port might be closed. Check if port 465 is blocked, or use port 587.</p>
+                                {testResult.error?.toLowerCase().includes("unauthorized") || testResult.error?.toLowerCase().includes("api key") ? (
+                                  <p>👉 Key Error: RESEND_API_KEY might be incorrect, inactive, or not reloaded. Verify your key token string.</p>
+                                ) : (
+                                  <p>👉 Setup Guideline: Verify that you are sending to an authorized test recipient if you are on the Resend free trial plan.</p>
                                 )}
                               </div>
                             </div>

@@ -6,31 +6,45 @@ export interface PremiumPlanConfig {
 
 export interface WelcomeEmailConfigType {
   founderName: string;
+  founderRole: string;
   supportEmail: string;
   websiteUrl: string;
+  linkedinUrl: string;
   companyName: string;
   logoUrl: string;
+  faqUrl: string;
+  helpCenterUrl: string;
   featuresList: string[];
+  steps: string[];
   premiumPlans: PremiumPlanConfig[];
 }
 
-// Allowed admin configuration options for the Welcome Email without breaking the HTML design
 export const welcomeEmailConfig: WelcomeEmailConfigType = {
   founderName: "Sankalp Suman",
+  founderRole: "Software Test Specialist & Scrum Master",
   supportEmail: "sankalpsmn@gmail.com",
   websiteUrl: "https://resume-morph.vercel.app",
+  linkedinUrl: "https://www.linkedin.com/in/sankalp-suman",
   companyName: "ResumeMorph",
-  // Modern, high-contrast, professional-looking image url to act as top header banner/logo
   logoUrl: "https://res.cloudinary.com/dyksnjhyx/image/upload/v1781114996/oq2lql5xtwblfzrjvnzn.jpg",
-  // Appatures available
+  faqUrl: "https://resume-morph.vercel.app/#faq",
+  helpCenterUrl: "https://resume-morph.vercel.app/help",
   featuresList: [
-    "Resume Morph (Copy Any Design with AI layout DNA mapping)",
-    "AI Resume Optimization (Optimize descriptions for recruiter ATS bots)",
-    "Cover Letter Generator (Fully personalized cover letters matched to styling)",
-    "Portfolio Builder (Instantly generated online portfolios from resume)",
-    "Multi-Template Support (Dynamic font customization & page visualization)",
-    "PDF & DOCX Export (Flawless vector-perfect multi-page export standard)",
-    "Interactive Real-Time Preview (Interactive split-screen with internal parsing)"
+    "AI Resume Morphing – Mirror any document's structural architecture in one-click",
+    "ATS Optimization – Dynamically adjust descriptions for recruiter screening algorithms",
+    "Resume Analysis – Evaluate formatting gaps and section balance clinically",
+    "Cover Letter Generation – Build professional matched sheets that fit your template",
+    "Resume Preview – Interactive real-time split-screen side-by-side editing",
+    "PDF Export – Export flawless, vector-perfect multi-page documents",
+    "Smart Resume Enhancement – Deep semantic analysis powered by Gemini AI",
+    "AI Suggestions – Section-by-section advice on professional impact metrics",
+    "Secure Cloud Storage – Encrypted personal workspace database protection"
+  ],
+  steps: [
+    "Upload Resume (Select your existing master document or starting layout)",
+    "Upload Target Resume (Input the layout design style/DNA you want to clone)",
+    "Generate Professional Resume (Let AI execute high-fidelity matching)",
+    "Download PDF (Acquire clean, high-contrast, ATS-approved vector files)"
   ],
   premiumPlans: [
     {

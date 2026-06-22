@@ -73,27 +73,27 @@ async function startServer() {
     return false;
   }
 
-  // SMTP Status endpoint for Admin Diagnoser view (non-sensitive check)
-  app.get("/api/smtp-status", (req: Request, res: Response) => {
+  // Resend API Status endpoint for Admin Diagnoser view (non-sensitive check)
+  app.get("/api/email-status", (req: Request, res: Response) => {
     try {
       return res.json({
-        host: process.env.SMTP_HOST || null,
-        port: Number(process.env.SMTP_PORT) || null,
-        user: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 3)}...` : null,
-        hasPass: !!process.env.SMTP_PASS,
-        fromEmail: process.env.SMTP_FROM_EMAIL || null,
-        fromName: process.env.SMTP_FROM_NAME || null,
-        configured: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+        host: "api.resend.com",
+        port: 443,
+        user: "Resend HTTPS Agent",
+        hasPass: !!process.env.RESEND_API_KEY,
+        fromEmail: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+        fromName: "ResumeMorph Team",
+        configured: !!process.env.RESEND_API_KEY
       });
     } catch (err: any) {
-      return res.status(500).json({ error: "Failed to check SMTP variables status" });
+      return res.status(500).json({ error: "Failed to check Resend integration parameters status" });
     }
   });
 
   // Welcome Email automation API
   app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
     try {
-      const { email, name } = req.body;
+      const { email, name, subscriptionDetails } = req.body;
 
       if (!email || typeof email !== "string") {
         return res.status(400).json({ error: "Recipient email is required" });
@@ -113,8 +113,8 @@ async function startServer() {
         return res.status(429).json({ error: "Too many welcome email requests for this address. Please try again in an hour." });
       }
 
-      // 3. Dispatch welcome email via Nodemailer
-      const result = await sendWelcomeEmail(cleanEmail, cleanName);
+      // 3. Dispatch welcome email via Resend API
+      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails);
 
       if (result.success) {
         return res.json({ success: true, message: "Welcome email dispatched successfully" });

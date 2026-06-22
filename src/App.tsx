@@ -335,6 +335,60 @@ export default function App() {
       try {
         console.log(`[Welcome Email Trigger] Dispatching trigger for ${userData.email} (${userData.name})`);
         
+        // Dynamic subscription plan mapping
+        const currentPlanId = userData.plan || 'free';
+        const activePlan = PLANS.find(p => p.id === currentPlanId) || PLANS[0];
+        const planNameStr = activePlan.name;
+        
+        let planBenefits: string[] = [];
+        if (currentPlanId === 'free') {
+          planBenefits = [
+            "Access to base design morph matching templates",
+            "1 standard high-fidelity ATS layout style cloner use"
+          ];
+        } else if (currentPlanId === 'pulse') {
+          planBenefits = [
+            "3 standard high-fidelity ATS layout style cloner uses",
+            "Access to responsive preview dashboard",
+            "Standard priority build execution"
+          ];
+        } else if (currentPlanId === 'starter') {
+          planBenefits = [
+            "7 high-fidelity ATS layout style cloner uses",
+            "2 customized responsive portfolio outputs",
+            "Clearance of background credits & watermark signatures"
+          ];
+        } else if (currentPlanId === 'pro') {
+          planBenefits = [
+            "12 high-fidelity ATS layout style cloner uses",
+            "5 customized responsive portfolio outputs",
+            "Premium cover letter builder mirroring layout templates",
+            "Advanced ATS keywords scanning diagnostic score reports"
+          ];
+        } else {
+          planBenefits = [
+            "Unlimited workspace style cloner operations without bounds",
+            "10 custom live portfolio generator pages",
+            "High-priority multi-page parsing formatting",
+            "Direct consultative support priority channels with our founders"
+          ];
+        }
+
+        const remainingCreditsNum = userData.remainingMorphs !== undefined 
+          ? userData.remainingMorphs 
+          : (activePlan.limit === -1 ? undefined : Math.max(0, activePlan.limit - (userData.usedMorphs || userData.morphCount || 0)));
+        
+        const upgradeInstructionsStr = currentPlanId === 'unlimited'
+          ? "You are already mapped to our ultimate unlimited master combo plan. No further actions needed."
+          : `Upgrade instantly of your plan ${planNameStr} by visiting the user menu tab inside your ResumeMorph dashboard panel and select from Starter, Pro, or Master Combo plans via our automated payment channels.`;
+
+        const subDetails = {
+          planName: planNameStr,
+          planBenefits: planBenefits,
+          remainingCredits: remainingCreditsNum,
+          upgradeInstructions: upgradeInstructionsStr
+        };
+
         const response = await fetch("/api/send-welcome-email", {
           method: "POST",
           headers: {
@@ -342,7 +396,8 @@ export default function App() {
           },
           body: JSON.stringify({
             email: userData.email,
-            name: userData.name || "Morph User"
+            name: userData.name || "Morph User",
+            subscriptionDetails: subDetails
           })
         });
 
