@@ -96,6 +96,7 @@ export async function sendWelcomeEmail(
     const fromName = process.env.SMTP_FROM_NAME || `${welcomeEmailConfig.companyName} Team`;
 
     try {
+      const isVercel = !!process.env.VERCEL;
       const transporter = nodemailer.createTransport({
         host,
         port,
@@ -104,9 +105,9 @@ export async function sendWelcomeEmail(
           user: smtpUser,
           pass: smtpPass,
         },
-        connectionTimeout: 5000, // 5 seconds connection timeout
-        greetingTimeout: 5000,   // 5 seconds greeting timeout
-        socketTimeout: 8000,     // 8 seconds socket timeout
+        connectionTimeout: isVercel ? 3000 : 5000, // Safe short connection timeout on serverless
+        greetingTimeout: isVercel ? 2000 : 5000,   // Save time if port is blocked
+        socketTimeout: isVercel ? 4000 : 8000,
       });
 
       const mailOptions = {
@@ -117,15 +118,25 @@ export async function sendWelcomeEmail(
       };
 
       console.log(`[Welcome Email Service] Dispatching email to ${cleanEmail} via SMTP at ${host}:${port}...`);
-      const info = await retry(() => transporter.sendMail(mailOptions), 2, 1500);
+      const maxRetries = isVercel ? 1 : 2; // Do not retry on Vercel to save execution time
+      const info = await retry(() => transporter.sendMail(mailOptions), maxRetries, 1000);
       
       console.log(`[Welcome Email Service] Email successfully delivered via SMTP! Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId, html: compiledHtml, simulated: false };
     } catch (smtpErr: any) {
       console.error(`[Welcome Email Service] SMTP Dispatch failed:`, smtpErr);
+      const host = process.env.SMTP_HOST || "smtp.gmail.com";
+      const port = parseInt(process.env.SMTP_PORT || "465", 10);
+      const isVercel = !!process.env.VERCEL;
+      
+      let enhancedError = smtpErr.message || String(smtpErr);
+      if (isVercel && (enhancedError.toLowerCase().includes("timeout") || enhancedError.toLowerCase().includes("conn") || smtpErr.code === "ETIMEDOUT")) {
+        enhancedError = `SMTP Connection Timeout (${enhancedError}). NOTE: Since you are running on Vercel Serverless, outbound direct TCP/SMTP traffic on port ${port} is likely blocked by Vercel's platform to prevent spam. Please consider setting RESEND_API_KEY to use the secure Resend HTTP API instead.`;
+      }
+      
       return {
         success: false,
-        error: `SMTP mailing delivery failure: ${smtpErr.message || String(smtpErr)}`
+        error: `SMTP mailing delivery failure: ${enhancedError}`
       };
     }
   }
