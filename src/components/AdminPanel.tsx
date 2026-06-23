@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star, Mail, Send, AlertTriangle, CheckSquare } from 'lucide-react';
+import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star, Mail, Send, AlertTriangle, CheckSquare, Sparkles, Eye } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
@@ -71,8 +71,10 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [testEmail, setTestEmail] = useState(auth.currentUser?.email || '');
   const [testName, setTestName] = useState(auth.currentUser?.displayName || 'Morph Admin');
   const [testSending, setTestSending] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string; simulated?: boolean; html?: string } | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [forceSimulate, setForceSimulate] = useState(false);
 
   const fetchResendStatus = async () => {
     setResendLoading(true);
@@ -81,6 +83,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       if (response.ok) {
         const data = await response.json();
         setResendStatus(data);
+        if (!data.configured) {
+          setForceSimulate(true);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch Resend status info:", err);
@@ -101,7 +106,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         },
         body: JSON.stringify({
           email: testEmail.trim(),
-          name: testName.trim()
+          name: testName.trim(),
+          simulate: forceSimulate
         })
       });
 
@@ -128,7 +134,13 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       }
 
       if (response.ok) {
-        setTestResult({ success: true, message: data.message });
+        setTestResult({ 
+          success: true, 
+          message: data.message,
+          error: data.error,
+          simulated: data.simulated,
+          html: data.html
+        });
       } else {
         setTestResult({ success: false, error: data.error });
       }
@@ -918,20 +930,38 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           />
                         </div>
 
+                        <div className="flex items-center gap-2 py-1">
+                          <input 
+                            type="checkbox"
+                            id="forceSimulateCheckbox"
+                            checked={forceSimulate}
+                            onChange={(e) => setForceSimulate(e.target.checked)}
+                            className="rounded border-[var(--border-color)] bg-[var(--bg-secondary)] text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
+                          />
+                          <label htmlFor="forceSimulateCheckbox" className="text-[10px] font-bold text-[var(--text-secondary)] cursor-pointer select-none">
+                            Run inside Sandbox Simulation Mode (Bypass Deliverability Checks)
+                          </label>
+                        </div>
+
                         <button 
                           type="submit"
-                          disabled={testSending || !resendStatus?.configured}
+                          disabled={testSending}
                           className="w-full py-2.5 bg-indigo-600 disabled:bg-neutral-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
                         >
                           {testSending ? (
                             <>
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              Requesting dispatch...
+                              Generating email...
+                            </>
+                          ) : forceSimulate ? (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              Simulate Welcome Email (Sandbox)
                             </>
                           ) : (
                             <>
                               <Send className="w-3.5 h-3.5" />
-                              Dispatch Welcome test
+                              Dispatch Welcome test (Live Resend)
                             </>
                           )}
                         </button>
@@ -941,12 +971,50 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       {testResult && (
                         <div className="mt-4">
                           {testResult.success ? (
-                            <div className="p-3.5 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl text-xs space-y-1">
-                              <p className="font-bold text-green-700 dark:text-green-400">🎉 Welcome Email Dispatched!</p>
-                              <p className="text-green-600 dark:text-green-500/80 leading-relaxed font-medium">
-                                Submitted to api.resend.com successfully. Note that if you use the onboarding address, it only delivers successfully to yours/authorized domains. Check your spam and promotions tabs!
-                              </p>
-                            </div>
+                            testResult.simulated ? (
+                              <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900 rounded-xl text-xs space-y-2">
+                                <div className="flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                                  <p className="font-bold text-indigo-700 dark:text-indigo-400">✨ Sandbox Email Compiled!</p>
+                                </div>
+                                <p className="text-indigo-600 dark:text-indigo-400/90 leading-relaxed font-medium">
+                                  Your premium welcome email was generated in sandbox simulation mode. We compiled the responsive HTML layouts so you can review and validate the dynamic design immediately.
+                                </p>
+                                {testResult.error && (
+                                  <p className="text-[10px] text-amber-600 dark:text-amber-500 font-semibold italic bg-amber-50/50 dark:bg-amber-950/10 p-2 rounded-lg border border-amber-200/40">
+                                    ℹ️ Fallback Log: {testResult.error}
+                                  </p>
+                                )}
+                                {testResult.html && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowEmailPreview(true)}
+                                    className="w-full mt-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                                  >
+                                    👀 Preview Compiled Welcome Email
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="p-3.5 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl text-xs space-y-2">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-ping" />
+                                  <p className="font-bold text-green-700 dark:text-green-400">🎉 Live Welcome Email Dispatched!</p>
+                                </div>
+                                <p className="text-green-600 dark:text-green-500/80 leading-relaxed font-medium">
+                                  Submitted to api.resend.com successfully. Since onboarding domains are restricted, verify your spam folder if sending to unverified addresses.
+                                </p>
+                                {testResult.html && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowEmailPreview(true)}
+                                    className="w-full mt-2 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
+                                  >
+                                    👀 Preview Compiled Welcome Email
+                                  </button>
+                                )}
+                              </div>
+                            )
                           ) : (
                             <div className="p-3.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl text-xs space-y-1.5">
                               <p className="font-bold text-red-700 dark:text-red-400">❌ Resend API Dispatch Failed</p>
@@ -960,6 +1028,9 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                 ) : (
                                   <p>👉 Setup Guideline: Verify that you are sending to an authorized test recipient if you are on the Resend free trial plan.</p>
                                 )}
+                                <p className="font-semibold text-indigo-600 dark:text-indigo-400 mt-1 cursor-pointer hover:underline" onClick={() => setForceSimulate(true)}>
+                                  💡 Tip: Check "Run inside Sandbox Simulation Mode" above to test immediately without an API KEY.
+                                </p>
                               </div>
                             </div>
                           )}
@@ -970,6 +1041,50 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                 </div>
               )}
             </div>
+
+            {/* Custom Interactive Preview Portal Modal */}
+            <AnimatePresence>
+              {showEmailPreview && testResult?.html && (
+                <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 md:p-6">
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                    transition={{ duration: 0.2 }}
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-neutral-200"
+                  >
+                    {/* Modal Head */}
+                    <div className="px-6 py-4 bg-neutral-900 text-white flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-600 rounded-xl">
+                          <Eye className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] text-indigo-300 font-extrabold uppercase tracking-widest leading-none">Interactive Sandbox Checker</span>
+                          <span className="text-sm font-black tracking-tight mt-0.5">Compiled HTML Email Preview</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setShowEmailPreview(false)}
+                        className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-[9px] text-white font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-neutral-700"
+                      >
+                        Close Preview
+                      </button>
+                    </div>
+
+                    {/* Modal Content iframe */}
+                    <div className="flex-1 bg-neutral-50 p-3 md:p-4 overflow-hidden relative">
+                      <iframe 
+                        title="Interactive Onboarding Welcome Email"
+                        srcDoc={testResult.html} 
+                        className="w-full h-full border border-neutral-200 rounded-xl bg-white shadow-inner"
+                        sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"
+                      />
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
 
             {/* Footer */}
             <div className="p-4 md:p-8 bg-[var(--bg-primary)] border-t border-[var(--border-color)] flex flex-col md:flex-row items-center justify-between gap-4">

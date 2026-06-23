@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, 
   Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, 
-  Reply, CheckCircle, Loader2, Diff, FileCode, FileType 
+  Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Sparkles 
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS } from '../constants';
@@ -42,7 +42,8 @@ export default function AccountModal({
   const [isComparing, setIsComparing] = useState(false);
   const [comparingResume, setComparingResume] = useState<any>(null);
   const [resendingEmail, setResendingEmail] = useState(false);
-  const [resendStatus, setResendStatus] = useState<{ success: boolean; message?: string } | null>(null);
+  const [resendStatus, setResendStatus] = useState<{ success: boolean; message?: string; simulated?: boolean; error?: string; html?: string } | null>(null);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   const handleResendWelcomeEmail = async () => {
     if (!user || !userData || resendingEmail) return;
@@ -138,7 +139,13 @@ export default function AccountModal({
       }
 
       if (response.ok) {
-        setResendStatus({ success: true, message: data.message || "Onboarding welcome message has been triggered!" });
+        setResendStatus({ 
+          success: true, 
+          message: data.message || "Onboarding welcome message has been triggered!",
+          simulated: data.simulated,
+          html: data.html,
+          error: data.error
+        });
         // Update Firestore flag
         try {
           const userRef = doc(db, 'users', userData.userId || user.uid);
@@ -623,15 +630,50 @@ export default function AccountModal({
               </div>
 
               {resendStatus && (
-                <div className={cn(
-                  "p-4 rounded-2xl border text-xs leading-normal",
-                  resendStatus.success 
-                    ? "bg-green-50 dark:bg-green-950/10 border-green-100 dark:border-green-900/30 text-green-700 dark:text-green-400" 
-                    : "bg-red-50 dark:bg-red-950/10 border-red-100 dark:border-red-900/30 text-red-700 dark:text-red-400"
-                )}>
-                  <p className="font-bold">{resendStatus.success ? "🎉 Trigger Dispatched Successfully" : "❌ Trigger Attempt Failed"}</p>
-                  <p className="mt-1 opacity-90">{resendStatus.message}</p>
-                </div>
+                resendStatus.success ? (
+                  resendStatus.simulated ? (
+                    <div className="p-4 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 text-xs leading-normal space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                        <p className="font-bold">✨ Sandbox Email Compiled Successfully</p>
+                      </div>
+                      <p className="opacity-90">{resendStatus.message}</p>
+                      {resendStatus.error && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-500 font-semibold italic bg-amber-50/50 dark:bg-amber-950/10 p-2 rounded-lg border border-amber-200/40">
+                          ℹ️ Fallback Log: {resendStatus.error}
+                        </p>
+                      )}
+                      {resendStatus.html && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailPreview(true)}
+                          className="w-full mt-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                        >
+                          👀 Preview Compiled Welcome Email
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl border border-green-100 dark:border-green-900/30 bg-green-50 dark:bg-green-950/10 text-green-700 dark:text-green-400 text-xs leading-normal space-y-1">
+                      <p className="font-bold">🎉 Trigger Dispatched Successfully</p>
+                      <p className="opacity-90">{resendStatus.message}</p>
+                      {resendStatus.html && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailPreview(true)}
+                          className="w-full mt-2 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+                        >
+                          👀 Preview Compiled Welcome Email
+                        </button>
+                      )}
+                    </div>
+                  )
+                ) : (
+                  <div className="p-4 rounded-2xl border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-950/10 text-red-700 dark:text-red-400 text-xs leading-normal">
+                    <p className="font-bold">❌ Trigger Attempt Failed</p>
+                    <p className="mt-1 opacity-90">{resendStatus.message}</p>
+                  </div>
+                )
               )}
 
               <div className="p-4 bg-[var(--bg-secondary)] rounded-2xl text-[11px] leading-relaxed text-[var(--text-secondary)] space-y-2 border border-[var(--border-color)]">
@@ -811,6 +853,50 @@ export default function AccountModal({
                     'Delete'
                   )}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Interactive Preview Portal Modal */}
+      <AnimatePresence>
+        {showEmailPreview && resendStatus?.html && (
+          <div className="fixed inset-0 z-[250] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 md:p-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden border border-neutral-200 text-left"
+            >
+              {/* Modal Head */}
+              <div className="px-6 py-4 bg-neutral-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-600 rounded-xl">
+                    <Eye className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-indigo-300 font-extrabold uppercase tracking-widest leading-none">Interactive Sandbox Checker</span>
+                    <span className="text-sm font-black tracking-tight mt-0.5">Compiled HTML Email Preview</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowEmailPreview(false)}
+                  className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-[9px] text-white font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-neutral-700"
+                >
+                  Close Preview
+                </button>
+              </div>
+
+              {/* Modal Content iframe */}
+              <div className="flex-1 bg-neutral-50 p-3 md:p-4 overflow-hidden relative">
+                <iframe 
+                  title="Interactive Onboarding Welcome Email"
+                  srcDoc={resendStatus.html} 
+                  className="w-full h-full border border-neutral-200 rounded-xl bg-white shadow-inner"
+                  sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"
+                />
               </div>
             </motion.div>
           </div>

@@ -27,12 +27,32 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-async function startServer() {
-  const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+const app = express();
+const PORT = Number(process.env.PORT) || 3000;
 
+async function startServer() {
   app.use(cors());
   app.use(express.json());
+
+  // Handle invalid/malformed JSON payloads gracefully with JSON responses instead of HTML error pages
+  app.use((err: any, req: Request, res: Response, next: any) => {
+    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+      console.warn(`[Server Body Parser] Malformed JSON payload received on ${req.method} ${req.url}:`, err.message);
+      return res.status(400).json({ 
+        error: "Malformed JSON body payload. Please verify syntax structure before submitting.",
+        details: err.message
+      });
+    }
+    next(err);
+  });
+
+  // Request logger middleware for detailed API diagnostics
+  app.use((req: Request, res: Response, next: any) => {
+    if (req.originalUrl.startsWith("/api")) {
+      console.log(`[API Logger] ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+    }
+    next();
+  });
 
   // API Status
   app.get("/api/health", (_req: Request, res: Response) => {
@@ -49,19 +69,28 @@ async function startServer() {
   const emailLimits = new Map<string, { count: number; resetAt: number }>();
 
   function isEmailRateLimited(email: string): boolean {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Exempt Owner/Admin from hard rate limiting constraints to facilitate testing & diagnostic dispatches
+    const ownerEmail = (process.env.OWNER_EMAIL || "sankalpsmn@gmail.com").trim().toLowerCase();
+    if (cleanEmail === ownerEmail || cleanEmail === "sankalpsmn@gmail.com") {
+      console.log(`[Welcome Email API] Exempting owner/admin email (${cleanEmail}) from rate limit constraints.`);
+      return false;
+    }
+
     const now = Date.now();
     const limitTime = 60 * 60 * 1000; // 1 hour window
-    const maxAttempts = 3;
+    const maxAttempts = 10; // Raised from 3 to 10 for smoother general trial testing
 
-    const record = emailLimits.get(email);
+    const record = emailLimits.get(cleanEmail);
     if (!record) {
-      emailLimits.set(email, { count: 1, resetAt: now + limitTime });
+      emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
       return false;
     }
 
     if (now > record.resetAt) {
       // Reset window
-      emailLimits.set(email, { count: 1, resetAt: now + limitTime });
+      emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
       return false;
     }
 
@@ -76,17 +105,22 @@ async function startServer() {
   // Resend API Status endpoint for Admin Diagnoser view (non-sensitive check)
   app.get("/api/email-status", (req: Request, res: Response) => {
     try {
+      const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+      const hasPass = !!process.env.RESEND_API_KEY;
+      console.log(`[Email Status API] Diagnosing parameters: configured=${hasPass}, from=${fromEmail}`);
+      
       return res.json({
         host: "api.resend.com",
         port: 443,
         user: "Resend HTTPS Agent",
-        hasPass: !!process.env.RESEND_API_KEY,
-        fromEmail: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+        hasPass: hasPass,
+        fromEmail: fromEmail,
         fromName: "ResumeMorph Team",
-        configured: !!process.env.RESEND_API_KEY
+        configured: hasPass
       });
     } catch (err: any) {
-      return res.status(500).json({ error: "Failed to check Resend integration parameters status" });
+      console.error("[Email Status API] Diagnosis failed:", err);
+      return res.status(500).json({ error: "Failed to check Resend integration parameters status", details: err.message });
     }
   });
 
@@ -96,35 +130,51 @@ async function startServer() {
       const { email, name, subscriptionDetails } = req.body;
 
       if (!email || typeof email !== "string") {
+        console.warn("[Welcome Email API] Aborted - Recipient email is missing or empty.");
         return res.status(400).json({ error: "Recipient email is required" });
       }
 
       const cleanEmail = email.trim().toLowerCase();
       const cleanName = typeof name === "string" ? name.trim() : "Morph User";
 
+      console.log(`[Welcome Email API] Received manual welcome email trigger:`);
+      console.log(`  - Recipient: "${cleanEmail}"`);
+      console.log(`  - Name: "${cleanName}"`);
+
       // 1. Validate email address structure
       if (!isValidEmail(cleanEmail)) {
+        console.warn(`[Welcome Email API] Aborted - Email address format check failed for "${cleanEmail}"`);
         return res.status(400).json({ error: "Invalid recipient email address format" });
       }
 
       // 2. Multi-request spam rate limiting
       if (isEmailRateLimited(cleanEmail)) {
-        console.warn(`[Welcome Email API] Rate limit reached for ${cleanEmail}`);
+        console.warn(`[Welcome Email API] Aborted - Rate limit has been reached for "${cleanEmail}"`);
         return res.status(429).json({ error: "Too many welcome email requests for this address. Please try again in an hour." });
       }
 
       // 3. Dispatch welcome email via Resend API
-      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails);
+      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails, req.body.simulate);
 
       if (result.success) {
-        return res.json({ success: true, message: "Welcome email dispatched successfully" });
+        console.log(`[Welcome Email API] Succeeded - Welcome email successfully processed for "${cleanEmail}" (Simulated: ${result.simulated ? 'Yes' : 'No'})`);
+        return res.json({ 
+          success: true, 
+          message: result.simulated 
+            ? "Welcome email generated in sandbox simulation mode" 
+            : "Welcome email dispatched successfully",
+          simulated: result.simulated,
+          html: result.html,
+          error: result.error
+        });
       } else {
+        console.error(`[Welcome Email API] Resend Delivery Failed for "${cleanEmail}":`, result.error);
         return res.status(502).json({ error: result.error || "Email delivery failed" });
       }
 
     } catch (err: any) {
-      console.error("[Welcome Email API] Unexpected Error:", err);
-      return res.status(500).json({ error: "Internal server error during email dispatch" });
+      console.error("[Welcome Email API] Unexpected Error caught in route handler:", err);
+      return res.status(500).json({ error: "Internal server error during email dispatch", details: err.message });
     }
   });
 
@@ -192,6 +242,27 @@ async function startServer() {
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
+
+  // Explicit catch-all handler for any undefined /api routes to guarantee valid JSON responses instead of HTML fallback error pages
+  app.all("/api/*", (req: Request, res: Response) => {
+    console.warn(`[API Catch-all] 404 - Not Found: ${req.method} ${req.originalUrl}`);
+    return res.status(404).json({
+      error: `API endpoint '${req.method} ${req.originalUrl}' does not exist on this server. Please verify the path.`
+    });
+  });
+
+  // Global Error Handler for API routes and rendering to prevent HTML stack traces or non-JSON errors on /api endpoints
+  app.use((err: any, req: Request, res: Response, next: any) => {
+    console.error("[Global Server Error Handlers] Catch:", err);
+    if (req.originalUrl.startsWith("/api") || req.baseUrl?.startsWith("/api")) {
+      return res.status(err.status || err.statusCode || 500).json({
+        error: err.message || "An unexpected internal error occurred on our server.",
+        status: err.status || err.statusCode || 500,
+        details: process.env.NODE_ENV === "development" ? err.stack : undefined
+      });
+    }
+    next(err);
   });
 
   // Dynamic Metadata Helper
@@ -367,14 +438,18 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`\n🚀 Morph Engine Server booting...`);
-    console.log(`📌 Port: ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`\n🚀 Morph Engine Server booting...`);
+      console.log(`📌 Port: ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+    });
+  }
 }
 
 startServer().catch(err => {
   console.error("Failed to start server:", err);
   process.exit(1);
 });
+
+export default app;
