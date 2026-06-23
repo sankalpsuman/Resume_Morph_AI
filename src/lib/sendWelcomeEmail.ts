@@ -104,10 +104,10 @@ export async function sendWelcomeEmail(
           user: smtpUser,
           pass: smtpPass,
         },
+        connectionTimeout: 5000, // 5 seconds connection timeout
+        greetingTimeout: 5000,   // 5 seconds greeting timeout
+        socketTimeout: 8000,     // 8 seconds socket timeout
       });
-
-      console.log(`[Welcome Email Service] Verifying SMTP connection settings to ${host}:${port}...`);
-      await transporter.verify();
 
       const mailOptions = {
         from: `"${fromName}" <${fromAddress}>`,
@@ -116,8 +116,8 @@ export async function sendWelcomeEmail(
         html: compiledHtml,
       };
 
-      console.log(`[Welcome Email Service] Transport verified. Dispatching email to ${cleanEmail}...`);
-      const info = await retry(() => transporter.sendMail(mailOptions), 3, 1500);
+      console.log(`[Welcome Email Service] Dispatching email to ${cleanEmail} via SMTP at ${host}:${port}...`);
+      const info = await retry(() => transporter.sendMail(mailOptions), 2, 1500);
       
       console.log(`[Welcome Email Service] Email successfully delivered via SMTP! Message ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId, html: compiledHtml, simulated: false };
