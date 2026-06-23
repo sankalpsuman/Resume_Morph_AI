@@ -93,7 +93,7 @@ export async function sendWelcomeEmail(
     const port = parseInt(process.env.SMTP_PORT || "465", 10);
     const secure = port === 465; // SSL default for secure Gmail / secure SMTP
     const fromAddress = process.env.SMTP_FROM || smtpUser;
-    const fromName = `${welcomeEmailConfig.companyName} Team`;
+    const fromName = process.env.SMTP_FROM_NAME || `${welcomeEmailConfig.companyName} Team`;
 
     try {
       const transporter = nodemailer.createTransport({
@@ -147,7 +147,7 @@ export async function sendWelcomeEmail(
     }
 
     const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const fromName = `${welcomeEmailConfig.companyName} Team`;
+    const fromName = process.env.SMTP_FROM_NAME || `${welcomeEmailConfig.companyName} Team`;
 
     try {
       const sendTask = () => scheduler.emails.send({
