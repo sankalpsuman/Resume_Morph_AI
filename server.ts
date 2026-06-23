@@ -521,7 +521,9 @@ async function startServer() {
     }
   };
 
-  startMailQueueListener();
+  if (!process.env.VERCEL) {
+    startMailQueueListener();
+  }
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {

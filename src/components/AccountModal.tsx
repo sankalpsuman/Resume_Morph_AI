@@ -215,7 +215,18 @@ export default function AccountModal({
           return;
         }
 
-        const data = JSON.parse(responseText);
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error("[AccountModal] Non-JSON payload received:", responseText);
+          setResendStatus({
+            success: false,
+            message: `Mailing services unavailable: Server returned a direct message: "${responseText.substring(0, 100)}" (Status Code: ${response.status})`
+          });
+          return;
+        }
+
         if (response.ok) {
           setResendStatus({ 
             success: true, 
