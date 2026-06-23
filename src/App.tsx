@@ -332,6 +332,7 @@ export default function App() {
     sendingWelcomeEmailRef.current = userData.email;
 
     const triggerWelcomeEmail = async () => {
+      let subDetails: any = null;
       try {
         console.log(`[Welcome Email Trigger] Dispatching trigger for ${userData.email} (${userData.name})`);
         
@@ -373,7 +374,7 @@ export default function App() {
             "Direct consultative support priority channels with our founders"
           ];
         }
-
+ 
         const remainingCreditsNum = userData.remainingMorphs !== undefined 
           ? userData.remainingMorphs 
           : (activePlan.limit === -1 ? undefined : Math.max(0, activePlan.limit - (userData.usedMorphs || userData.morphCount || 0)));
@@ -381,72 +382,135 @@ export default function App() {
         const upgradeInstructionsStr = currentPlanId === 'unlimited'
           ? "You are already mapped to our ultimate unlimited master combo plan. No further actions needed."
           : `Upgrade instantly of your plan ${planNameStr} by visiting the user menu tab inside your ResumeMorph dashboard panel and select from Starter, Pro, or Master Combo plans via our automated payment channels.`;
-
-        const subDetails = {
+ 
+        subDetails = {
           planName: planNameStr,
           planBenefits: planBenefits,
           remainingCredits: remainingCreditsNum,
           upgradeInstructions: upgradeInstructionsStr
         };
 
-        const response = await fetch("/api/send-welcome-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email: userData.email,
-            name: userData.name || "Morph User",
-            subscriptionDetails: subDetails
-          })
+        const isUserAdmin = userData?.role === "admin" || userData?.email === "sankalpsmn@gmail.com";
+        const emailToSubmit = (userData.email || "").toLowerCase();
+        const userRef = doc(db, 'users', userData.userId || user?.uid);
+
+        // Firestore-first trigger - perfect for cookieless sandboxed iframe environments
+        const triggerData = {
+          email: emailToSubmit,
+          name: userData.name || "Morph User",
+          subscriptionDetails: subDetails,
+          simulate: false, // Send real automated dispatch
+          isAdmin: isUserAdmin,
+          timestamp: Date.now(),
+          status: "pending"
+        };
+
+        console.log(`[Auto Welcome Email] Queueing automated dispatch for ${emailToSubmit} via Firestore...`);
+
+        await updateDoc(userRef, {
+          welcomeEmailTrigger: triggerData
         });
 
-        const responseText = await response.text();
-        const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+        // Real-time listener to wait for completion
+        let unsubscribe: (() => void) | null = null;
+        const waitForResult = new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            if (unsubscribe) unsubscribe();
+            reject(new Error("Onboarding trigger response timed out."));
+          }, 15000);
 
-        if (isHtmlResponse) {
-          console.warn("[Welcome Email Trigger] API request blocked by browser security/cookie parameters (returned HTML instead of JSON). Recommend running app in a new tab.");
-          // Reset ref lock after 35 seconds to allow retry when state refreshes
-          setTimeout(() => {
-            if (sendingWelcomeEmailRef.current === userData.email) {
-              sendingWelcomeEmailRef.current = "";
+          unsubscribe = onSnapshot(userRef, (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              const trigger = data?.welcomeEmailTrigger;
+              if (trigger && trigger.status !== "pending" && trigger.status !== "processing") {
+                clearTimeout(timeoutId);
+                if (unsubscribe) unsubscribe();
+                if (trigger.status === "success") {
+                  resolve({ success: true });
+                } else {
+                  resolve({ success: false, error: trigger.error });
+                }
+              }
             }
-          }, 35000);
-          return;
-        }
-
-        if (response.ok) {
-          console.log(`[Welcome Email Trigger] Successfully dispatched welcome email to ${userData.email}`);
-          
-          // Update Firestore model
-          const userRef = doc(db, 'users', userData.userId || user?.uid);
-          await updateDoc(userRef, {
-            welcomeEmailSent: true,
-            welcomeEmailSentAt: serverTimestamp()
-          }).catch((dbErr) => {
-            console.error("[Welcome Email Trigger] Failed to update Firestore with welcomeEmailSent flag:", dbErr);
+          }, (error) => {
+            clearTimeout(timeoutId);
+            if (unsubscribe) unsubscribe();
+            reject(error);
           });
+        });
+
+        const result = await waitForResult;
+
+        if (result.success) {
+          console.log(`[Auto Welcome Email] Onboarding welcome email delivered to ${emailToSubmit} via Firestore.`);
         } else {
-          let errData: any = {};
-          try {
-            errData = JSON.parse(responseText);
-          } catch (e) {}
-          console.error(`[Welcome Email Trigger] Failed dispatch: ${errData.error || response.statusText}`);
-          // Reset ref lock after 35 seconds to allow retry on next mount/tick
+          console.warn(`[Auto Welcome Email] Firestore dispatch returned failure: ${result.error || "Unknown"}`);
+          throw new Error(result.error);
+        }
+
+      } catch (err: any) {
+        console.warn("[Auto Welcome Email] Firestore trigger failed or timed out. Falling back to HTTP endpoint...", err);
+
+        // Fallback to HTTP POST
+        try {
+          const response = await fetch("/api/send-welcome-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email: userData.email,
+              name: userData.name || "Morph User",
+              subscriptionDetails: subDetails,
+              isAdmin: userData?.role === "admin" || userData?.email === "sankalpsmn@gmail.com"
+            })
+          });
+
+          const responseText = await response.text();
+          const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+
+          if (isHtmlResponse) {
+            console.warn("[Auto Welcome Email Fallback] Fetch blocked by browser security/cookie parameters (returned HTML instead of JSON).");
+            setTimeout(() => {
+              if (sendingWelcomeEmailRef.current === userData.email) {
+                sendingWelcomeEmailRef.current = "";
+              }
+            }, 35000);
+            return;
+          }
+
+          if (response.ok) {
+            console.log(`[Auto Welcome Email Fallback] Successfully dispatched welcome email to ${userData.email}`);
+            
+            // Update Firestore model
+            const userRef = doc(db, 'users', userData.userId || user?.uid);
+            await updateDoc(userRef, {
+              welcomeEmailSent: true,
+              welcomeEmailSentAt: serverTimestamp()
+            }).catch((dbErr) => {
+              console.error("[Auto Welcome Email Fallback] Failed to update Firestore with welcomeEmailSent flag:", dbErr);
+            });
+          } else {
+            let errData: any = {};
+            try {
+              errData = JSON.parse(responseText);
+            } catch (e) {}
+            console.error(`[Auto Welcome Email Fallback] Failed dispatch: ${errData.error || response.statusText}`);
+            setTimeout(() => {
+              if (sendingWelcomeEmailRef.current === userData.email) {
+                sendingWelcomeEmailRef.current = "";
+              }
+            }, 35000);
+          }
+        } catch (fetchErr: any) {
+          console.error("[Auto Welcome Email Fallback] Fetch exception occurred:", fetchErr);
           setTimeout(() => {
             if (sendingWelcomeEmailRef.current === userData.email) {
               sendingWelcomeEmailRef.current = "";
             }
           }, 35000);
         }
-      } catch (err) {
-        console.error(`[Welcome Email Trigger] Fetch exception occurred:`, err);
-        // Reset ref lock on failure
-        setTimeout(() => {
-          if (sendingWelcomeEmailRef.current === userData.email) {
-            sendingWelcomeEmailRef.current = "";
-          }
-        }, 35000);
       }
     };
 

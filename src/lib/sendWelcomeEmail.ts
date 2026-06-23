@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { renderWelcomeEmail } from "./welcomeEmailTemplate.js";
 import { welcomeEmailConfig } from "../welcome-email-config.js";
 
@@ -45,13 +46,14 @@ interface UserSubscriptionDetails {
 
 /**
  * Core server-side function that validates the recipient address, compiles
- * our premium responsive email design, and sends it utilizing Resend with built-in retries.
+ * our premium responsive email design, and sends it utilizing either SMTP (Nodemailer) or Resend.
  */
 export async function sendWelcomeEmail(
   toEmail: string, 
   userName: string, 
   subscriptionDetails?: UserSubscriptionDetails,
-  simulate?: boolean
+  simulate?: boolean,
+  isAdmin?: boolean
 ): Promise<{ success: boolean; messageId?: string; error?: string; simulated?: boolean; html?: string }> {
   const cleanEmail = toEmail.trim().toLowerCase();
   const cleanName = userName.trim();
@@ -60,6 +62,7 @@ export async function sendWelcomeEmail(
   console.log(`  - Target Recipient: "${cleanEmail}"`);
   console.log(`  - Recipient Name: "${cleanName}"`);
   console.log(`  - Has Custom Plan Customizations: ${subscriptionDetails ? "Yes" : "No"}`);
+  console.log(`  - Is Admin Requester: ${isAdmin ? "Yes" : "No"}`);
 
   // 1. Recipient validity check
   if (!isValidEmail(cleanEmail)) {
@@ -68,86 +71,153 @@ export async function sendWelcomeEmail(
     return { success: false, error: errorMsg };
   }
 
-  // Compile email template first so we can always return the gorgeous HTML on simulation fallback
+  // Compile email template first so we can always return the gorgeous HTML
   console.log(`[Welcome Email Service] Rendering dynamic template contents...`);
   const compiledHtml = renderWelcomeEmail(cleanName, subscriptionDetails);
   console.log(`[Welcome Email Service] Template compiled successfully (${compiledHtml.length} characters)`);
 
-  // Detect sandbox/simulation request or missing/dummy key situations
-  const hasKey = !!process.env.RESEND_API_KEY;
-  const isDummyKey = !hasKey || process.env.RESEND_API_KEY === "" || process.env.RESEND_API_KEY === "your_api_key_here";
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const resendKey = process.env.RESEND_API_KEY;
 
-  if (simulate || isDummyKey) {
-    console.log(`[Welcome Email Service] Dispatching via Sandbox Simulation Mode.`);
-    return {
-      success: true,
-      simulated: true,
-      html: compiledHtml,
-      messageId: `sim_${Date.now()}`
-    };
-  }
+  const hasSmtpConfig = !!(smtpUser && smtpPass);
+  const hasResendConfig = !!(resendKey && resendKey !== "your_api_key_here");
 
-  // 2. Load API credentials
-  let scheduler: Resend;
-  try {
-    console.log(`[Welcome Email Service] Checking credentials: RESEND_API_KEY is DEFINED`);
-    scheduler = getResendClient();
-  } catch (initErr: any) {
-    console.warn(`[Welcome Email Service] Resend Client failed initialization (${initErr.message}). Seamlessly falling back to Sandbox Simulator.`);
-    return {
-      success: true,
-      simulated: true,
-      html: compiledHtml,
-      error: `Note: Seamlessly fell back to Sandbox simulation mode because client initialization failed: ${initErr.message}`,
-      messageId: `sim_${Date.now()}`
-    };
-  }
+  // ==========================================
+  // MODE 1: SMTP Direct Delivery (Zero domain setup required)
+  // ==========================================
+  if (hasSmtpConfig) {
+    console.log(`[Welcome Email Service] Active SMTP Configuration detected. Initiating SMTP delivery via Nodemailer...`);
+    
+    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.SMTP_PORT || "465", 10);
+    const secure = port === 465; // SSL default for secure Gmail / secure SMTP
+    const fromAddress = process.env.SMTP_FROM || smtpUser;
+    const fromName = `${welcomeEmailConfig.companyName} Team`;
 
-  // 3. Resolve From email config
-  const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-  const fromName = `${welcomeEmailConfig.companyName} Team`;
-  console.log(`[Welcome Email Service] Resolving Sender settings:`);
-  console.log(`  - Resolved Sender From: "${fromEmail}"`);
-  console.log(`  - Env EMAIL_FROM: "${process.env.EMAIL_FROM || 'not set'}"`);
-  console.log(`  - Env RESEND_FROM_EMAIL: "${process.env.RESEND_FROM_EMAIL || 'not set'}"`);
+    try {
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
 
-  try {
-    // Execute sending with built-in retry mechanism to defend against socket bottlenecks or temporary Resend rate limits
-    const sendTask = () => scheduler.emails.send({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: [cleanEmail],
-      subject: "Welcome to ResumeMorph 🚀",
-      html: compiledHtml,
-    });
+      console.log(`[Welcome Email Service] Verifying SMTP connection settings to ${host}:${port}...`);
+      await transporter.verify();
 
-    console.log(`[Welcome Email Service] Initiating delivery task with retry fallback mechanism...`);
-    const response = await retry(sendTask, 3, 1500);
-
-    if (response.error) {
-      const errName = response.error.name || "Unknown";
-      const errMsg = response.error.message || "No message";
-      console.log(`[Welcome Email Service] Resend API delivery status: ${errName}. Falling back gracefully to Sandbox Simulator...`);
-      return {
-        success: true,
-        simulated: true,
+      const mailOptions = {
+        from: `"${fromName}" <${fromAddress}>`,
+        to: cleanEmail,
+        subject: "Welcome to ResumeMorph 🚀",
         html: compiledHtml,
-        error: `Delivery status returned "${errName}" (${errMsg}). Fell back cleanly to Sandbox Simulation.`,
-        messageId: `sim_${Date.now()}`
+      };
+
+      console.log(`[Welcome Email Service] Transport verified. Dispatching email to ${cleanEmail}...`);
+      const info = await retry(() => transporter.sendMail(mailOptions), 3, 1500);
+      
+      console.log(`[Welcome Email Service] Email successfully delivered via SMTP! Message ID: ${info.messageId}`);
+      return { success: true, messageId: info.messageId, html: compiledHtml, simulated: false };
+    } catch (smtpErr: any) {
+      console.error(`[Welcome Email Service] SMTP Dispatch failed:`, smtpErr);
+      return {
+        success: false,
+        error: `SMTP mailing delivery failure: ${smtpErr.message || String(smtpErr)}`
+      };
+    }
+  }
+
+  // ==========================================
+  // MODE 2: Resend API Delivery (Requires custom domain config or authorized recipient)
+  // ==========================================
+  if (hasResendConfig) {
+    let scheduler: Resend;
+    try {
+      console.log(`[Welcome Email Service] No SMTP config found, using Resend Client...`);
+      scheduler = getResendClient();
+    } catch (initErr: any) {
+      console.error(`[Welcome Email Service] Resend Client failed initialization. Error: ${initErr.message}`);
+      return {
+        success: false,
+        error: `Welcome email delivery failed: Resend Client initialization failed: ${initErr.message}`
       };
     }
 
-    console.log(`[Welcome Email Service] Delivery confirmed by Resend API! Message ID: ${response.data?.id || "N/A"}`);
-    return { success: true, messageId: response.data?.id, html: compiledHtml, simulated: false };
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const fromName = `${welcomeEmailConfig.companyName} Team`;
 
-  } catch (err: any) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.warn(`[Welcome Email Service] Pipeline exception (${errorMsg}). Falling back to Sandbox Simulator.`);
+    try {
+      const sendTask = () => scheduler.emails.send({
+        from: `"${fromName}" <${fromEmail}>`,
+        to: [cleanEmail],
+        subject: "Welcome to ResumeMorph 🚀",
+        html: compiledHtml,
+      });
+
+      console.log(`[Welcome Email Service] Initiating Resend delivery with retry fallback...`);
+      const response = await retry(sendTask, 3, 1500);
+
+      if (response.error) {
+        const errName = response.error.name || "Unknown";
+        const errMsg = response.error.message || "No message";
+        console.error(`[Welcome Email Service] Resend API delivery failed. Error: ${errName} - ${errMsg}`);
+        
+        const isSandboxConstraint = 
+          errMsg.toLowerCase().includes("authorized recipient") || 
+          errMsg.toLowerCase().includes("single recipient") || 
+          errMsg.toLowerCase().includes("verify your domain") ||
+          errMsg.toLowerCase().includes("unverified") ||
+          errName.toLowerCase().includes("restriction") ||
+          errName.toLowerCase().includes("validation");
+
+        if (isSandboxConstraint) {
+          console.warn(`[Welcome Email Service] Detected Resend Sandbox/restriction constraint. Bypassing gracefully with simulation fallback.`);
+          return {
+            success: true,
+            simulated: true,
+            html: compiledHtml,
+            error: `Resend sandbox constraint: Since you are using a Resend account without a verified custom domain, emails can only be sent to the verified Resend account owner. To send to other addresses, add them to Authorized Recipients inside Resend dashboard or verify your domain. (Attempted to send to: ${cleanEmail})`,
+            messageId: `sim_${Date.now()}`
+          };
+        }
+
+        return {
+          success: false,
+          error: `Resend API delivery failure: ${errMsg} (${errName})`
+        };
+      }
+
+      console.log(`[Welcome Email Service] Delivery confirmed by Resend API! Message ID: ${response.data?.id || "N/A"}`);
+      return { success: true, messageId: response.data?.id, html: compiledHtml, simulated: false };
+
+    } catch (err: any) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[Welcome Email Service] Exception during Resend delivery. Error: ${errorMsg}`);
+      return {
+        success: false,
+        error: `Welcome email delivery exception: ${errorMsg}`
+      };
+    }
+  }
+
+  // ==========================================
+  // MODE 3: Fallback Simulation / Informative Guidance Mode
+  // ==========================================
+  if (isAdmin) {
+    console.log(`[Welcome Email Service] Neither SMTP nor Resend config is set. Falling back to Sandbox Simulation for Admin review.`);
     return {
       success: true,
       simulated: true,
       html: compiledHtml,
-      error: `Note: Seamlessly fell back to Sandbox simulation mode because a transmission error occurred: ${errorMsg}`,
+      error: "No mailing service credentials configured. Please set SMTP credentials (SMTP_USER, SMTP_PASS) for free global delivery without domain limits, or RESEND_API_KEY inside AI Studio Secrets.",
       messageId: `sim_${Date.now()}`
     };
+  } else {
+    const errorMsg = "Mailing credentials are not configured. To enable real delivery to all users without domain verification, please define SMTP_USER and SMTP_PASS variables inside AI Studio Secrets.";
+    console.error(`[Welcome Email Service] Check Failed for standard user: ${errorMsg}`);
+    return { success: false, error: errorMsg };
   }
 }

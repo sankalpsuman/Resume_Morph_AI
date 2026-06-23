@@ -6,6 +6,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
 import { sendWelcomeEmail, isValidEmail } from "./src/lib/sendWelcomeEmail.js";
+import { initializeApp } from "firebase/app";
+import { initializeFirestore, collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 
 dotenv.config();
 
@@ -127,7 +129,7 @@ async function startServer() {
   // Welcome Email automation API
   app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
     try {
-      const { email, name, subscriptionDetails } = req.body;
+      const { email, name, subscriptionDetails, simulate, isAdmin } = req.body;
 
       if (!email || typeof email !== "string") {
         console.warn("[Welcome Email API] Aborted - Recipient email is missing or empty.");
@@ -137,9 +139,10 @@ async function startServer() {
       const cleanEmail = email.trim().toLowerCase();
       const cleanName = typeof name === "string" ? name.trim() : "Morph User";
 
-      console.log(`[Welcome Email API] Received manual welcome email trigger:`);
+      console.log(`[Welcome Email API] Received welcome email trigger:`);
       console.log(`  - Recipient: "${cleanEmail}"`);
       console.log(`  - Name: "${cleanName}"`);
+      console.log(`  - Is Admin Requester: ${isAdmin ? "Yes" : "No"}`);
 
       // 1. Validate email address structure
       if (!isValidEmail(cleanEmail)) {
@@ -154,7 +157,7 @@ async function startServer() {
       }
 
       // 3. Dispatch welcome email via Resend API
-      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails, req.body.simulate);
+      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails, simulate, isAdmin);
 
       if (result.success) {
         console.log(`[Welcome Email API] Succeeded - Welcome email successfully processed for "${cleanEmail}" (Simulated: ${result.simulated ? 'Yes' : 'No'})`);
@@ -437,6 +440,88 @@ async function startServer() {
       }
     });
   }
+
+  // Safe background queue listener for real-time iframe email dispatch bypass
+  const startMailQueueListener = () => {
+    try {
+      const configPath = path.resolve(getRoot(), "firebase-applet-config.json");
+      if (!fs.existsSync(configPath)) {
+        console.warn("[Mail Queue Listener] firebase-applet-config.json not found. Queue listener inactive.");
+        return;
+      }
+      const firebaseConfig = JSON.parse(fs.readFileSync(configPath, { encoding: "utf-8" }));
+      const appInst = initializeApp(firebaseConfig);
+      const dbInst = initializeFirestore(appInst, {
+        experimentalForceLongPolling: true,
+      }, firebaseConfig.firestoreDatabaseId || "(default)");
+
+      console.log(`[Mail Queue Listener] Successfully connected. Listening to pending welcome email requests...`);
+
+      const usersRef = collection(dbInst, "users");
+      onSnapshot(usersRef, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === "added" || change.type === "modified") {
+            const userData = change.doc.data();
+            const trigger = userData?.welcomeEmailTrigger;
+            
+            if (trigger && trigger.status === "pending") {
+              const userId = change.doc.id;
+              console.log(`[Mail Queue Listener] Intercepted pending email trigger for: ${userId} (${trigger.email})`);
+              
+              const userDocRef = doc(dbInst, "users", userId);
+              
+              // Transition state immediately to prevent duplicate concurrent runs
+              await updateDoc(userDocRef, {
+                "welcomeEmailTrigger.status": "processing"
+              }).catch(err => console.error("Error setting processing status:", err));
+
+              try {
+                const result = await sendWelcomeEmail(
+                  trigger.email,
+                  trigger.name,
+                  trigger.subscriptionDetails,
+                  trigger.simulate,
+                  trigger.isAdmin
+                );
+
+                if (result.success) {
+                  console.log(`[Mail Queue Listener] Onboarding welcome email delivered to ${trigger.email}`);
+                  await updateDoc(userDocRef, {
+                    "welcomeEmailTrigger.status": "success",
+                    "welcomeEmailTrigger.messageId": result.messageId || `sim_${Date.now()}`,
+                    "welcomeEmailTrigger.processedAt": new Date().toISOString(),
+                    "welcomeEmailTrigger.error": null,
+                    welcomeEmailSent: true,
+                    welcomeEmailSentAt: new Date()
+                  }).catch(err => console.error("Error setting success status:", err));
+                } else {
+                  console.error(`[Mail Queue Listener] Delivery failed for ${trigger.email}:`, result.error);
+                  await updateDoc(userDocRef, {
+                    "welcomeEmailTrigger.status": "error",
+                    "welcomeEmailTrigger.error": result.error || "Mailing service failed to accept dispatch.",
+                    "welcomeEmailTrigger.processedAt": new Date().toISOString()
+                  }).catch(err => console.error("Error setting failure status:", err));
+                }
+              } catch (dispatchErr: any) {
+                console.error(`[Mail Queue Listener] Unexpected crash during processing of ${trigger.email}:`, dispatchErr);
+                await updateDoc(userDocRef, {
+                  "welcomeEmailTrigger.status": "error",
+                  "welcomeEmailTrigger.error": dispatchErr.message || String(dispatchErr),
+                  "welcomeEmailTrigger.processedAt": new Date().toISOString()
+                }).catch(err => console.error("Error setting fail crash status:", err));
+              }
+            }
+          }
+        });
+      }, (error) => {
+        console.error("[Mail Queue Listener] Firestore subscription failed:", error);
+      });
+    } catch (err: any) {
+      console.error("[Mail Queue Listener] Failed to initialize:", err);
+    }
+  };
+
+  startMailQueueListener();
 
   if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {

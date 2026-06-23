@@ -107,7 +107,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
         body: JSON.stringify({
           email: testEmail.trim(),
           name: testName.trim(),
-          simulate: forceSimulate
+          simulate: forceSimulate,
+          isAdmin: true
         })
       });
 
