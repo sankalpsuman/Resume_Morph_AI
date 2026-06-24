@@ -118,7 +118,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       if (isHtmlResponse) {
         setTestResult({
           success: false,
-          error: "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again."
+          error: "API request was blocked by the browser's security/cookie settings in the preview frame. Additionally, Firestore write quota limits may be active on this sandboxed environment.\n\nTo resolve this immediately: Please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again. Bypassing the iframe gives the app full access to first-party cookies and ensures the mailing API routes successfully."
         });
         return;
       }
@@ -129,7 +129,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
       } catch (parseErr) {
         setTestResult({
           success: false,
-          error: "Unable to parse server response as JSON. Please try running the app in a new tab."
+          error: "Unable to parse server response as JSON. Please ensure the app is opened in a new tab to bypass iframe security/cookie blocks."
         });
         return;
       }

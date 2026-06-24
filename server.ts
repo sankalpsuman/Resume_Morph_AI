@@ -32,243 +32,243 @@ const upload = multer({
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-async function startServer() {
-  app.use(cors());
-  app.use(express.json());
+app.use(cors());
+app.use(express.json());
 
-  // Handle invalid/malformed JSON payloads gracefully with JSON responses instead of HTML error pages
-  app.use((err: any, req: Request, res: Response, next: any) => {
-    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
-      console.warn(`[Server Body Parser] Malformed JSON payload received on ${req.method} ${req.url}:`, err.message);
-      return res.status(400).json({ 
-        error: "Malformed JSON body payload. Please verify syntax structure before submitting.",
-        details: err.message
-      });
-    }
-    next(err);
-  });
-
-  // Request logger middleware for detailed API diagnostics
-  app.use((req: Request, res: Response, next: any) => {
-    if (req.originalUrl.startsWith("/api")) {
-      console.log(`[API Logger] ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-    }
-    next();
-  });
-
-  // API Status
-  app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ 
-      status: "ok", 
-      uptime: process.uptime(), 
-      env: process.env.NODE_ENV,
-      root: getRoot(),
-      dir: __dirnameOverride
+// Handle invalid/malformed JSON payloads gracefully with JSON responses instead of HTML error pages
+app.use((err: any, req: Request, res: Response, next: any) => {
+  if (err instanceof SyntaxError && "status" in err && err.status === 400 && "body" in err) {
+    console.warn(`[Server Body Parser] Malformed JSON payload received on ${req.method} ${req.url}:`, err.message);
+    return res.status(400).json({ 
+      error: "Malformed JSON body payload. Please verify syntax structure before submitting.",
+      details: err.message
     });
+  }
+  next(err);
+});
+
+// Request logger middleware for detailed API diagnostics
+app.use((req: Request, res: Response, next: any) => {
+  if (req.originalUrl.startsWith("/api")) {
+    console.log(`[API Logger] ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
+// API Status
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({ 
+    status: "ok", 
+    uptime: process.uptime(), 
+    env: process.env.NODE_ENV,
+    root: getRoot(),
+    dir: __dirnameOverride
   });
+});
 
-  // Simple in-memory rate limiting map for email recipients
-  const emailLimits = new Map<string, { count: number; resetAt: number }>();
+// Simple in-memory rate limiting map for email recipients
+const emailLimits = new Map<string, { count: number; resetAt: number }>();
 
-  function isEmailRateLimited(email: string): boolean {
-    const cleanEmail = email.trim().toLowerCase();
-    
-    // Exempt Owner/Admin from hard rate limiting constraints to facilitate testing & diagnostic dispatches
-    const ownerEmail = (process.env.OWNER_EMAIL || "sankalpsmn@gmail.com").trim().toLowerCase();
-    if (cleanEmail === ownerEmail || cleanEmail === "sankalpsmn@gmail.com") {
-      console.log(`[Welcome Email API] Exempting owner/admin email (${cleanEmail}) from rate limit constraints.`);
-      return false;
-    }
-
-    const now = Date.now();
-    const limitTime = 60 * 60 * 1000; // 1 hour window
-    const maxAttempts = 10; // Raised from 3 to 10 for smoother general trial testing
-
-    const record = emailLimits.get(cleanEmail);
-    if (!record) {
-      emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
-      return false;
-    }
-
-    if (now > record.resetAt) {
-      // Reset window
-      emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
-      return false;
-    }
-
-    if (record.count >= maxAttempts) {
-      return true;
-    }
-
-    record.count += 1;
+function isEmailRateLimited(email: string): boolean {
+  const cleanEmail = email.trim().toLowerCase();
+  
+  // Exempt Owner/Admin from hard rate limiting constraints to facilitate testing & diagnostic dispatches
+  const ownerEmail = (process.env.OWNER_EMAIL || "sankalpsmn@gmail.com").trim().toLowerCase();
+  if (cleanEmail === ownerEmail || cleanEmail === "sankalpsmn@gmail.com") {
+    console.log(`[Welcome Email API] Exempting owner/admin email (${cleanEmail}) from rate limit constraints.`);
     return false;
   }
 
-  // Resend API Status endpoint for Admin Diagnoser view (non-sensitive check)
-  app.get("/api/email-status", (req: Request, res: Response) => {
-    try {
-      const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-      const hasPass = !!process.env.RESEND_API_KEY;
-      console.log(`[Email Status API] Diagnosing parameters: configured=${hasPass}, from=${fromEmail}`);
-      
-      return res.json({
-        host: "api.resend.com",
-        port: 443,
-        user: "Resend HTTPS Agent",
-        hasPass: hasPass,
-        fromEmail: fromEmail,
-        fromName: "ResumeMorph Team",
-        configured: hasPass
-      });
-    } catch (err: any) {
-      console.error("[Email Status API] Diagnosis failed:", err);
-      return res.status(500).json({ error: "Failed to check Resend integration parameters status", details: err.message });
-    }
-  });
+  const now = Date.now();
+  const limitTime = 60 * 60 * 1000; // 1 hour window
+  const maxAttempts = 10; // Raised from 3 to 10 for smoother general trial testing
 
-  // Welcome Email automation API
-  app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
-    try {
-      const { email, name, subscriptionDetails, simulate, isAdmin } = req.body;
+  const record = emailLimits.get(cleanEmail);
+  if (!record) {
+    emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
+    return false;
+  }
 
-      if (!email || typeof email !== "string") {
-        console.warn("[Welcome Email API] Aborted - Recipient email is missing or empty.");
-        return res.status(400).json({ error: "Recipient email is required" });
-      }
+  if (now > record.resetAt) {
+    // Reset window
+    emailLimits.set(cleanEmail, { count: 1, resetAt: now + limitTime });
+    return false;
+  }
 
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanName = typeof name === "string" ? name.trim() : "Morph User";
+  if (record.count >= maxAttempts) {
+    return true;
+  }
 
-      console.log(`[Welcome Email API] Received welcome email trigger:`);
-      console.log(`  - Recipient: "${cleanEmail}"`);
-      console.log(`  - Name: "${cleanName}"`);
-      console.log(`  - Is Admin Requester: ${isAdmin ? "Yes" : "No"}`);
+  record.count += 1;
+  return false;
+}
 
-      // 1. Validate email address structure
-      if (!isValidEmail(cleanEmail)) {
-        console.warn(`[Welcome Email API] Aborted - Email address format check failed for "${cleanEmail}"`);
-        return res.status(400).json({ error: "Invalid recipient email address format" });
-      }
-
-      // 2. Multi-request spam rate limiting
-      if (isEmailRateLimited(cleanEmail)) {
-        console.warn(`[Welcome Email API] Aborted - Rate limit has been reached for "${cleanEmail}"`);
-        return res.status(429).json({ error: "Too many welcome email requests for this address. Please try again in an hour." });
-      }
-
-      // 3. Dispatch welcome email via Resend API
-      const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails, simulate, isAdmin);
-
-      if (result.success) {
-        console.log(`[Welcome Email API] Succeeded - Welcome email successfully processed for "${cleanEmail}" (Simulated: ${result.simulated ? 'Yes' : 'No'})`);
-        return res.json({ 
-          success: true, 
-          message: result.simulated 
-            ? "Welcome email generated in sandbox simulation mode" 
-            : "Welcome email dispatched successfully",
-          simulated: result.simulated,
-          html: result.html,
-          error: result.error
-        });
-      } else {
-        console.error(`[Welcome Email API] Resend Delivery Failed for "${cleanEmail}":`, result.error);
-        return res.status(502).json({ error: result.error || "Email delivery failed" });
-      }
-
-    } catch (err: any) {
-      console.error("[Welcome Email API] Unexpected Error caught in route handler:", err);
-      return res.status(500).json({ error: "Internal server error during email dispatch", details: err.message });
-    }
-  });
-
-  // Resume Text Extraction API
-  app.post("/api/extract-text", upload.single("resume"), async (req: any, res: any) => {
-    try {
-      const file = req.file;
-      if (!file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      console.log(`Processing extraction: ${file.originalname} (${file.mimetype})`);
-
-      let extractedText = "";
-      const fileName = file.originalname.toLowerCase();
-
-      // Case 1: PDF
-      if (file.mimetype === "application/pdf" || fileName.endsWith('.pdf')) {
-        try {
-          // Dynamic import for pdf-parse to avoid ESM/CJS issues at startup
-          const pdf = await import("pdf-parse");
-          const pdfParser = (pdf as any).default || pdf;
-          const data = await pdfParser(file.buffer);
-          extractedText = data.text;
-        } catch (pdfError) {
-          console.error("PDF Parsing Error:", pdfError);
-        }
-      } 
-      // Case 2: DOCX
-      else if (
-        file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-        fileName.endsWith('.docx')
-      ) {
-        try {
-          const mammoth = await import("mammoth");
-          const result = await mammoth.extractRawText({ buffer: file.buffer });
-          extractedText = result.value;
-        } catch (docxError) {
-          console.error("DOCX Parsing Error:", docxError);
-        }
-      }
-      // Case 3: Text-based (txt, html, json, md)
-      else if (
-        file.mimetype.startsWith("text/") || 
-        file.mimetype === "application/json" ||
-        /\.(txt|html|htm|json|md)$/i.test(fileName)
-      ) {
-        extractedText = file.buffer.toString("utf-8");
-      }
-
-      // Cleanup text (remove excessive whitespace)
-      const cleanText = extractedText.replace(/\s+/g, ' ').trim();
-
-      if (!cleanText) {
-        return res.json({ text: "", warning: "Extraction yielded empty result" });
-      }
-
-      console.log(`Extraction successful: ${cleanText.length} characters`);
-      res.json({ text: cleanText });
-
-    } catch (error: any) {
-      console.error("Server Extraction Error:", error);
-      res.status(500).json({ 
-        error: "Server failed to process document",
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  });
-
-  // Explicit catch-all handler for any undefined /api routes to guarantee valid JSON responses instead of HTML fallback error pages
-  app.all("/api/*", (req: Request, res: Response) => {
-    console.warn(`[API Catch-all] 404 - Not Found: ${req.method} ${req.originalUrl}`);
-    return res.status(404).json({
-      error: `API endpoint '${req.method} ${req.originalUrl}' does not exist on this server. Please verify the path.`
+// Resend API Status endpoint for Admin Diagnoser view (non-sensitive check)
+app.get("/api/email-status", (req: Request, res: Response) => {
+  try {
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+    const hasPass = !!process.env.RESEND_API_KEY;
+    console.log(`[Email Status API] Diagnosing parameters: configured=${hasPass}, from=${fromEmail}`);
+    
+    return res.json({
+      success: true,
+      host: "api.resend.com",
+      port: 443,
+      user: "Resend HTTPS Agent",
+      hasPass: hasPass,
+      fromEmail: fromEmail,
+      fromName: "ResumeMorph Team",
+      configured: hasPass
     });
-  });
+  } catch (err: any) {
+    console.error("[Email Status API] Diagnosis failed:", err);
+    return res.status(500).json({ success: false, error: "Failed to check Resend integration parameters status", details: err.message });
+  }
+});
 
-  // Global Error Handler for API routes and rendering to prevent HTML stack traces or non-JSON errors on /api endpoints
-  app.use((err: any, req: Request, res: Response, next: any) => {
-    console.error("[Global Server Error Handlers] Catch:", err);
-    if (req.originalUrl.startsWith("/api") || req.baseUrl?.startsWith("/api")) {
-      return res.status(err.status || err.statusCode || 500).json({
-        error: err.message || "An unexpected internal error occurred on our server.",
-        status: err.status || err.statusCode || 500,
-        details: process.env.NODE_ENV === "development" ? err.stack : undefined
-      });
+// Welcome Email automation API
+app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
+  try {
+    const { email, name, subscriptionDetails } = req.body;
+
+    if (!email || typeof email !== "string") {
+      console.warn("[Welcome Email API] Aborted - Recipient email is missing or empty.");
+      return res.status(400).json({ success: false, error: "Recipient email is required" });
     }
-    next(err);
-  });
 
-  // Dynamic Metadata Helper
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = typeof name === "string" ? name.trim() : "Morph User";
+
+    console.log(`[Welcome Email API] Received welcome email trigger:`);
+    console.log(`  - Recipient: "${cleanEmail}"`);
+    console.log(`  - Name: "${cleanName}"`);
+
+    // 1. Validate email address structure
+    if (!isValidEmail(cleanEmail)) {
+      console.warn(`[Welcome Email API] Aborted - Email address format check failed for "${cleanEmail}"`);
+      return res.status(400).json({ success: false, error: "Invalid recipient email address format" });
+    }
+
+    // 2. Multi-request spam rate limiting
+    if (isEmailRateLimited(cleanEmail)) {
+      console.warn(`[Welcome Email API] Aborted - Rate limit has been reached for "${cleanEmail}"`);
+      return res.status(429).json({ success: false, error: "Too many welcome email requests for this address. Please try again in an hour." });
+    }
+
+    // 3. Dispatch welcome email via Resend API
+    const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails);
+
+    if (result.success) {
+      console.log(`[Welcome Email API] Succeeded - Welcome email successfully processed for "${cleanEmail}"`);
+      return res.json({ 
+        success: true, 
+        message: "Welcome email dispatched successfully",
+        messageId: result.messageId,
+        html: result.html
+      });
+    } else {
+      console.error(`[Welcome Email API] Resend Delivery Failed for "${cleanEmail}":`, result.error);
+      return res.status(502).json({ success: false, error: result.error || "Email delivery failed" });
+    }
+
+  } catch (err: any) {
+    console.error("[Welcome Email API] Unexpected Error caught in route handler:", err);
+    return res.status(500).json({ success: false, error: "Internal server error during email dispatch", details: err.message });
+  }
+});
+
+// Resume Text Extraction API
+app.post("/api/extract-text", upload.single("resume"), async (req: any, res: any) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, error: "No file uploaded" });
+    }
+
+    console.log(`Processing extraction: ${file.originalname} (${file.mimetype})`);
+
+    let extractedText = "";
+    const fileName = file.originalname.toLowerCase();
+
+    // Case 1: PDF
+    if (file.mimetype === "application/pdf" || fileName.endsWith('.pdf')) {
+      try {
+        // Dynamic import for pdf-parse to avoid ESM/CJS issues at startup
+        const pdf = await import("pdf-parse");
+        const pdfParser = (pdf as any).default || pdf;
+        const data = await pdfParser(file.buffer);
+        extractedText = data.text;
+      } catch (pdfError) {
+        console.error("PDF Parsing Error:", pdfError);
+      }
+    } 
+    // Case 2: DOCX
+    else if (
+      file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
+      fileName.endsWith('.docx')
+    ) {
+      try {
+        const mammoth = await import("mammoth");
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        extractedText = result.value;
+      } catch (docxError) {
+        console.error("DOCX Parsing Error:", docxError);
+      }
+    }
+    // Case 3: Text-based (txt, html, json, md)
+    else if (
+      file.mimetype.startsWith("text/") || 
+      file.mimetype === "application/json" ||
+      /\.(txt|html|htm|json|md)$/i.test(fileName)
+    ) {
+      extractedText = file.buffer.toString("utf-8");
+    }
+
+    // Cleanup text (remove excessive whitespace)
+    const cleanText = extractedText.replace(/\s+/g, ' ').trim();
+
+    if (!cleanText) {
+      return res.json({ success: true, text: "", warning: "Extraction yielded empty result" });
+    }
+
+    console.log(`Extraction successful: ${cleanText.length} characters`);
+    res.json({ success: true, text: cleanText });
+
+  } catch (error: any) {
+    console.error("Server Extraction Error:", error);
+    res.status(500).json({ 
+      success: false,
+      error: "Server failed to process document",
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Explicit catch-all handler for any undefined /api routes to guarantee valid JSON responses instead of HTML fallback error pages
+app.all("/api/*", (req: Request, res: Response) => {
+  console.warn(`[API Catch-all] 404 - Not Found: ${req.method} ${req.originalUrl}`);
+  return res.status(404).json({
+    success: false,
+    error: `API endpoint '${req.method} ${req.originalUrl}' does not exist on this server. Please verify the path.`
+  });
+});
+
+// Global Error Handler for API routes and rendering to prevent HTML stack traces or non-JSON errors on /api endpoints
+app.use((err: any, req: Request, res: Response, next: any) => {
+  console.error("[Global Server Error Handlers] Catch:", err);
+  if (req.originalUrl.startsWith("/api") || req.baseUrl?.startsWith("/api")) {
+    return res.status(err.status || err.statusCode || 500).json({
+      success: false,
+      error: err.message || "An unexpected internal error occurred on our server.",
+      status: err.status || err.statusCode || 500,
+      details: process.env.NODE_ENV === "development" ? err.stack : undefined
+    });
+  }
+  next(err);
+});
+
+// Start listening and register asset/Vite middlewares
+async function startServer() {
   const getMetadata = (req: Request) => {
     const urlPath = req.originalUrl || '/';
     // Better host detection for Cloud Run / Proxies
@@ -479,9 +479,7 @@ async function startServer() {
                 const result = await sendWelcomeEmail(
                   trigger.email,
                   trigger.name,
-                  trigger.subscriptionDetails,
-                  trigger.simulate,
-                  trigger.isAdmin
+                  trigger.subscriptionDetails
                 );
 
                 if (result.success) {

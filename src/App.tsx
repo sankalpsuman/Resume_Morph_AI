@@ -4,20 +4,41 @@
  */
 
 import React, { useState, useEffect } from 'react';
-const ResumeBuilder = React.lazy(() => import('./components/ResumeBuilder'));
-const About = React.lazy(() => import('./components/About'));
-const PrivacyPolicy = React.lazy(() => import('./components/PrivacyPolicy'));
-const Contact = React.lazy(() => import('./components/Contact'));
-const Feedback = React.lazy(() => import('./components/Feedback'));
-const PortfolioGenerator = React.lazy(() => import('./components/PortfolioGenerator'));
-const Login = React.lazy(() => import('./components/Login'));
-const SmartEditor = React.lazy(() => import('./components/SmartEditor'));
-const CoverLetterGenerator = React.lazy(() => import('./components/CoverLetterGenerator'));
-const ApplyTracker = React.lazy(() => import('./components/ApplyTracker'));
-const AccountModal = React.lazy(() => import('./components/AccountModal'));
-const UserGuide = React.lazy(() => import('./components/UserGuide'));
-const Resources = React.lazy(() => import('./components/Resources'));
-const ResumeAIAssistant = React.lazy(() => import('./components/ResumeAIAssistant'));
+
+// Resilient wrapper for lazy loaded components to recover from stale/rebuilding chunks gracefully
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> {
+  return React.lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      console.warn("Dynamic import failed, retrying once...", error);
+      try {
+        return await componentImport();
+      } catch (retryError) {
+        console.error("Dynamic import retry failed. Reloading the page...", retryError);
+        window.location.reload();
+        return new Promise(() => {}); // keeps suspension state active during reload
+      }
+    }
+  });
+}
+
+const ResumeBuilder = lazyWithRetry(() => import('./components/ResumeBuilder'));
+const About = lazyWithRetry(() => import('./components/About'));
+const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
+const Contact = lazyWithRetry(() => import('./components/Contact'));
+const Feedback = lazyWithRetry(() => import('./components/Feedback'));
+const PortfolioGenerator = lazyWithRetry(() => import('./components/PortfolioGenerator'));
+const Login = lazyWithRetry(() => import('./components/Login'));
+const SmartEditor = lazyWithRetry(() => import('./components/SmartEditor'));
+const CoverLetterGenerator = lazyWithRetry(() => import('./components/CoverLetterGenerator'));
+const ApplyTracker = lazyWithRetry(() => import('./components/ApplyTracker'));
+const AccountModal = lazyWithRetry(() => import('./components/AccountModal'));
+const UserGuide = lazyWithRetry(() => import('./components/UserGuide'));
+const Resources = lazyWithRetry(() => import('./components/Resources'));
+const ResumeAIAssistant = lazyWithRetry(() => import('./components/ResumeAIAssistant'));
 
 import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy, LogIn } from 'lucide-react';
 import { cn } from './lib/utils';

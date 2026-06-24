@@ -186,6 +186,11 @@ export default function AccountModal({
       }
     } catch (err: any) {
       console.warn("Firestore trigger failed, falling back to direct API route:", err);
+      const firestoreErrMsg = err?.message || String(err);
+      const isFirestoreQuotaError = firestoreErrMsg.includes("resource-exhausted") || 
+                                    firestoreErrMsg.includes("quota") || 
+                                    firestoreErrMsg.includes("exhausted") ||
+                                    firestoreErrMsg.includes("unavailable");
       
       // Secondary fallback to API endpoint in case firestore update fails
       try {
@@ -208,9 +213,13 @@ export default function AccountModal({
         const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
 
         if (isHtmlResponse) {
+          let errorMsg = "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again.";
+          if (isFirestoreQuotaError) {
+            errorMsg = "Your Firestore database write quota or bandwidth limit has been exceeded for today (which causes direct database sync to standby). Additionally, our secure API fallback request was blocked by the browser's security/cookie settings in this preview frame.\n\nTo resolve this and send the email instantly: Please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner of your screen, then try again! Running in a separate tab bypasses third-party cookie filters entirely, allowing the mail API to securely process and deliver your on-demand welcome email successfully.";
+          }
           setResendStatus({
             success: false,
-            message: "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again."
+            message: errorMsg
           });
           return;
         }
