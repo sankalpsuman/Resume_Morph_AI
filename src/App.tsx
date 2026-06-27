@@ -80,16 +80,40 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Backward compatibility redirects for legacy routes
+  useEffect(() => {
+    const path = location.pathname.replace(/^\//, '');
+    const firstPart = path.split('/')[0];
+    
+    const legacyRedirects: Record<string, string> = {
+      'ai-assistant': 'assistant',
+      'help-center': 'help',
+      'privacy-policy': 'privacy',
+      'terms-of-service': 'terms',
+      'terms-and-conditions': 'terms',
+      'user-guide': 'guide'
+    };
+
+    if (firstPart && legacyRedirects[firstPart]) {
+      const targetTab = legacyRedirects[firstPart];
+      const remainingPath = path.substring(firstPart.length);
+      const targetPath = `/${targetTab}${remainingPath}`;
+      console.log(`[Routing] Redirecting legacy route: /${path} -> ${targetPath}`);
+      navigate(targetPath, { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const activeTab = (() => {
     const path = location.pathname.replace(/^\//, '');
     const firstPart = path.split('/')[0] as Tab;
     const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help', 'status', 'api'];
+    const legacyRoutes = ['ai-assistant', 'help-center', 'privacy-policy', 'terms-of-service', 'terms-and-conditions', 'user-guide'];
     
     if (firstPart && validTabs.includes(firstPart)) {
       return firstPart;
     }
     
-    if (path && !validTabs.includes(firstPart)) {
+    if (path && !validTabs.includes(firstPart) && !legacyRoutes.includes(firstPart)) {
       console.warn(`[Routing] Invalid path detected: /${path}. Falling back to builder.`);
     }
     
@@ -1301,14 +1325,9 @@ export default function App() {
                       <Link
                           key={item.id}
                           to={item.id === 'builder' ? '/' : `/${item.id}`}
-                          onClick={(e) => { 
-                            if (isLocked) {
-                              e.preventDefault();
-                              triggerLogin();
-                            } else {
-                              setIsMenuOpen(false); 
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }
+                          onClick={() => { 
+                            setIsMenuOpen(false); 
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
