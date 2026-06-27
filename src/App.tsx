@@ -71,7 +71,7 @@ import LoginModal from './components/LoginModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, AlertTriangle, Lock } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api' | '404';
 
 import { PLANS } from './constants';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
@@ -109,12 +109,17 @@ export default function App() {
     const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help', 'status', 'api'];
     const legacyRoutes = ['ai-assistant', 'help-center', 'privacy-policy', 'terms-of-service', 'terms-and-conditions', 'user-guide'];
     
+    if (!path || path === '/') {
+      return 'builder';
+    }
+
     if (firstPart && validTabs.includes(firstPart)) {
       return firstPart;
     }
     
     if (path && !validTabs.includes(firstPart) && !legacyRoutes.includes(firstPart)) {
-      console.warn(`[Routing] Invalid path detected: /${path}. Falling back to builder.`);
+      console.warn(`[Routing] Invalid path detected: /${path}. Resolving to custom 404 page.`);
+      return '404';
     }
     
     return 'builder';
@@ -1608,6 +1613,33 @@ export default function App() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === '404' && (
+            <div className="max-w-md mx-auto px-4 py-16 text-center flex flex-col items-center justify-center min-h-[50vh]">
+              <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/80 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-indigo-500/5">
+                <AlertTriangle className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <h1 className="text-3xl font-black text-[var(--text-primary)] mb-2 tracking-tight">Page Not Found</h1>
+              <p className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-4">Error Code: 404</p>
+              <p className="text-sm text-[var(--text-secondary)] font-medium max-w-sm mb-8 leading-relaxed">
+                The career node you are trying to reach does not exist, has been archived, or moved to a different tab coordinate.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+                <Link
+                  to="/"
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-2xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-indigo-500/20 active:scale-95 transition-all text-center"
+                >
+                  Return to Engine
+                </Link>
+                <Link
+                  to="/resources"
+                  className="px-6 py-3 bg-[var(--bg-secondary)] border border-[var(--border-color)] hover:bg-[var(--border-color)] text-[var(--text-primary)] rounded-2xl text-xs font-bold uppercase tracking-wider active:scale-95 transition-all text-center"
+                >
+                  Help Desk
+                </Link>
+              </div>
             </div>
           )}
         </React.Suspense>
