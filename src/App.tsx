@@ -685,16 +685,8 @@ export default function App() {
     };
     window.addEventListener('set-tab', handleSetTab);
     
-    const handlePopState = () => {
-      const path = window.location.pathname.replace(/^\//, '') as Tab;
-      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
-      setActiveTab(validTabs.includes(path) ? path : 'builder');
-    };
-    window.addEventListener('popstate', handlePopState);
-
     return () => {
       window.removeEventListener('set-tab', handleSetTab);
-      window.removeEventListener('popstate', handlePopState);
     };
   }, []); 
 
@@ -1326,6 +1318,21 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+                
+                {user && (
+                  <button
+                    onClick={() => { handleTabChange('account'); setIsMenuOpen(false); }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                      activeTab === 'account' 
+                        ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600" 
+                        : "text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
+                    )}
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    My Account Details
+                  </button>
+                )}
                 
                 <button 
                   onClick={() => { 
