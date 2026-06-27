@@ -2379,7 +2379,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                           <div className={cn(
                             "relative flex-1 flex flex-col min-h-0 bg-slate-100/50 overflow-y-auto overflow-x-hidden scroll-smooth touch-pan-y",
                             isStyleMatcherActive ? "w-1/2" : "w-full"
-                          )} id="preview-scroll-area" style={{ overscrollBehavior: 'contain' }}>
+                          )} id="preview-scroll-area" style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
                             <div className="flex flex-col items-center py-8 md:py-12 min-h-full w-full">
                               {generatedHtml ? (
                                 <ResumeIframe 
