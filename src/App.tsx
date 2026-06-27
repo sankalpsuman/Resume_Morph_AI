@@ -74,10 +74,14 @@ import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, Ale
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help-center' | 'status' | 'api';
 
 import { PLANS } from './constants';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const path = window.location.pathname.replace(/^\//, '');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const activeTab = (() => {
+    const path = location.pathname.replace(/^\//, '');
     const firstPart = path.split('/')[0] as Tab;
     const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
     
@@ -90,7 +94,7 @@ export default function App() {
     }
     
     return 'builder';
-  });
+  })();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => {
@@ -116,10 +120,12 @@ export default function App() {
     
     const protectedTabs: Tab[] = ['portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'account'];
     if (!user && protectedTabs.includes(activeTab)) {
-      setActiveTab('builder');
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
       triggerLogin();
     }
-  }, [user, loading, activeTab]);
+  }, [user, loading, activeTab, navigate, location.pathname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -233,26 +239,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      const path = window.location.pathname.replace(/^\//, '');
-      const firstPart = path.split('/')[0] as Tab;
-      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
-      
-      const targetTab = validTabs.includes(firstPart) ? firstPart : 'builder';
-      
-      // Log for production diagnostics
-      console.log(`[Routing] PopState triggered. Path: ${path || 'root'} -> Tab: ${targetTab}`);
-      
-      setActiveTab(targetTab);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    
     // Initial routing log with environment check
     console.log(`[Routing] App initialized. Tab: ${activeTab}, Origin: ${window.location.origin}, UA: ${navigator.userAgent}`);
-    
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [activeTab]);
 
   useEffect(() => {
     ensureConnection().catch(console.error);
@@ -895,7 +884,6 @@ export default function App() {
       return;
     }
 
-    setActiveTab(tab);
     setIsMenuOpen(false);
     setIsResourcesOpen(false);
     setIsUserDropdownOpen(false);
@@ -903,9 +891,9 @@ export default function App() {
 
     // Update URL without full page reload
     const newPath = tab === 'builder' ? '/' : `/${tab}`;
-    if (window.location.pathname !== newPath) {
-      console.log(`[Routing] Navigating: ${window.location.pathname} -> ${newPath}`);
-      window.history.pushState({ tab }, '', newPath);
+    if (location.pathname !== newPath) {
+      console.log(`[Routing] Navigating: ${location.pathname} -> ${newPath}`);
+      navigate(newPath);
     }
   };
 
@@ -1695,7 +1683,9 @@ export default function App() {
         onClose={() => {
           setShowGreetingModal(false);
           if (!user && !isGuest) {
-            setActiveTab('builder');
+            if (location.pathname !== '/') {
+              navigate('/');
+            }
           }
         }}
         userName={user?.displayName || userData?.name}
