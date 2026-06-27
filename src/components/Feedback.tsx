@@ -8,10 +8,9 @@ import {
   collection, addDoc, query, orderBy, onSnapshot, 
   serverTimestamp, deleteDoc, doc, updateDoc, getDoc
 } from 'firebase/firestore';
-import { 
-  signInWithPopup, GoogleAuthProvider, GithubAuthProvider, signOut, onAuthStateChanged 
-} from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { db, auth } from '../firebase';
+import { loginWithGoogle, loginWithGithub } from '../lib/auth';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 
@@ -24,13 +23,13 @@ interface FeedbackItem {
   uid: string;
 }
 
-export default function Feedback() {
+export default function Feedback({ user: propUser, isAdmin: propIsAdmin }: { user?: any, isAdmin?: boolean }) {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<any>(propUser || auth.currentUser);
+  const [isAdmin, setIsAdmin] = useState(propIsAdmin || false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
@@ -41,28 +40,14 @@ export default function Feedback() {
   const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        // Check if user is admin
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          const data = userDoc.data();
-          setUserData(data);
-          if (data?.role === 'admin' || user.email === 'sankalpsmn@gmail.com') {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
-          }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-        }
-      } else {
-        setIsAdmin(false);
-        setUserData(null);
-      }
-    });
+    if (propUser !== undefined) setUser(propUser);
+  }, [propUser]);
 
+  useEffect(() => {
+    if (propIsAdmin !== undefined) setIsAdmin(propIsAdmin);
+  }, [propIsAdmin]);
+
+  useEffect(() => {
     const q = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'));
     const unsubscribeFeedbacks = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
@@ -71,21 +56,30 @@ export default function Feedback() {
       })) as FeedbackItem[];
       setFeedbacks(items);
     }, (error) => {
+      // Silent handling for expected idle stream disconnects (Code: 1 CANCELLED)
+      if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+        return;
+      }
       handleFirestoreError(error, OperationType.LIST, 'feedbacks');
     });
 
     return () => {
-      unsubscribeAuth();
       unsubscribeFeedbacks();
     };
   }, []);
 
   const handleLogin = async (providerType: 'google' | 'github') => {
     if (isLoggingIn) return;
+    
+    // Force immediate visual update of login state
     setIsLoggingIn(providerType);
-    const provider = providerType === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
+
     try {
-      await signInWithPopup(auth, provider);
+      if (providerType === 'google') {
+        await loginWithGoogle();
+      } else {
+        await loginWithGithub();
+      }
     } catch (error: any) {
       if (error.code === 'auth/popup-blocked') {
         alert("The login popup was blocked by your browser. Please allow popups for this site and try again.");

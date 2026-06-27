@@ -4,7 +4,8 @@ import {
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
   RefreshCw, FileCode, FileType, Files, ShieldCheck, Target, Layers,
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
-  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, Fingerprint, Check
+  Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, ChevronUp, Fingerprint, Check,
+  Camera, Columns, Minus, Plus, Expand, History
 } from 'lucide-react';
 // Dynamic imports for heavy libraries
 // These will be loaded on demand to reduce initial bundle size
@@ -13,7 +14,7 @@ const loadHtml2Canvas = () => import('html2canvas').then(m => (m as any).default
 const loadJsPDF = () => import('jspdf').then(m => (m as any).jsPDF || (m as any).default?.jsPDF || (m as any).default || m);
 const loadHtmlToImage = () => import('html-to-image');
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, checkIsPremium } from '../lib/utils';
 import { auth, db, storage } from '../firebase';
 import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment } from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
@@ -42,6 +43,8 @@ interface ResumeBuilderProps {
   onUpgrade: () => void;
   user?: any;
   onLogin?: () => void;
+  isLoginProgress?: boolean;
+  isGuest?: boolean;
 }
 
 function extractRawHtml(wrappedHtml: string): string {
@@ -197,29 +200,49 @@ const StatsBar = React.memo(({
   );
 });
 
-const ResumeIframe = React.memo(React.forwardRef<HTMLIFrameElement, { html: string, onLoad: () => void, isReady: boolean }>(({ html, onLoad, isReady }, ref) => {
+const ResumeIframe = React.memo(React.forwardRef<HTMLIFrameElement, { html: string, onLoad: () => void, isReady: boolean, height?: number }>(({ html, onLoad, isReady, height }, ref) => {
   return (
-    <div className="flex-1 overflow-hidden relative">
+    <div className="relative w-full flex justify-center">
       <iframe 
         key={html.length} 
         ref={ref}
-        className="w-full h-full border-none bg-slate-50 transition-all duration-300"
+        style={height ? { height: `${height}px` } : { height: '1000px' }}
+        className={cn(
+          "w-full border-none transition-all duration-300",
+          isReady ? "opacity-100" : "opacity-0"
+        )}
         onLoad={onLoad}
         srcDoc={html}
+        scrolling="no"
         title="Resume Preview Internal"
       ></iframe>
 
       {!isReady && (
-        <div className="absolute inset-0 z-10 bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Resume...</p>
+        <div className="absolute inset-0 z-10 bg-[var(--card-bg)] flex flex-col items-center justify-center p-8 space-y-6 overflow-hidden">
+          <div className="w-full max-w-md space-y-4">
+            <div className="h-8 w-2/3 skeleton-shimmer rounded-xl mx-auto mb-8" />
+            <div className="space-y-2.5">
+              <div className="h-4 w-full skeleton-shimmer rounded-lg" />
+              <div className="h-4 w-5/6 skeleton-shimmer rounded-lg" />
+              <div className="h-4 w-4/6 skeleton-shimmer rounded-lg" />
+            </div>
+            <div className="pt-6 space-y-2">
+              <div className="h-3 w-full skeleton-shimmer rounded" />
+              <div className="h-3 w-11/12 skeleton-shimmer rounded" />
+              <div className="h-3 w-9/12 skeleton-shimmer rounded" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Rendering AI Canvas...</span>
+          </div>
         </div>
       )}
     </div>
   );
 }));
 
-function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProps) {
+function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, isGuest }: ResumeBuilderProps) {
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
     return localStorage.getItem('hasUsedFreeMorph') === 'true';
   });
@@ -228,15 +251,18 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [guestLoadingStep, setGuestLoadingStep] = useState(0);
   const [isSyncingModal, setIsSyncingModal] = useState(false);
   const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
+  const [isPendingGeneration, setIsPendingGeneration] = useState(false);
   const usedMorphs = userData?.usedMorphs !== undefined ? userData.usedMorphs : (userData?.morphCount || 0);
   const planLimit = userData?.planLimit === -1 ? Infinity : (userData?.planLimit || PLANS[0].limit);
   const isLimitReached = planLimit !== Infinity && usedMorphs >= (planLimit as number);
   const progress = planLimit === Infinity ? 0 : Math.min((usedMorphs / (planLimit as number)) * 100, 100);
-  const isPremium = (userData?.plan && userData?.plan !== 'free') || !!userData?.premiumExpiryDate;
+  const isPremium = checkIsPremium(userData);
   const [referenceFile, setReferenceFile] = useState<FileData | null>(null);
   const [isDnaValidated, setIsDnaValidated] = useState(false);
   const [dnaAnalysisStatus, setDnaAnalysisStatus] = useState<string | null>(null);
   const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [iframeHeight, setIframeHeight] = useState(1000);
+  const [reportedZoom, setReportedZoom] = useState(100);
   const [isValidationInProgress, setIsValidationInProgress] = useState(false);
   const [contentFile, setContentFile] = useState<FileData | null>(null);
   const [layoutAnalysis, setLayoutAnalysis] = useState<string | null>(null);
@@ -255,12 +281,17 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [error, setError] = useState<string | null>(null);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [isPreviewFull, setIsPreviewFull] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [missingKeywords, setMissingKeywords] = useState<string[]>([]);
   const [isMatching, setIsMatching] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
+  const [isStyleMatcherActive, setIsStyleMatcherActive] = useState(false);
+  const [styleMatcherReference, setStyleMatcherReference] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   // Consolidated states
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -278,20 +309,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const [linkedinText, setLinkedinText] = useState('');
   const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
 
-  // Measure Left Panel Height for fixed height on preview panel
+  // Measure Left Panel Height
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const [leftPanelHeight, setLeftPanelHeight] = useState<number | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)');
-    setIsDesktop(media.matches);
-    const listener = (e: MediaQueryListEvent) => {
-      setIsDesktop(e.matches);
-    };
-    media.addEventListener('change', listener);
-    return () => media.removeEventListener('change', listener);
-  }, []);
 
   useEffect(() => {
     if (!leftPanelRef.current) return;
@@ -327,11 +347,23 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
     const checkAuthAndDismiss = () => {
       if ((user || auth.currentUser) && showLoginPrompt) {
         setShowLoginPrompt(false);
-        setIsLoginPendingForDownload(false);
+        if (isLoginPendingForDownload) {
+          setIsLoginPendingForDownload(false);
+          // Small delay to let modal close before showing next UI
+          setTimeout(() => setShowDownloadMenu(true), 300);
+        }
       }
     };
     checkAuthAndDismiss();
-  }, [user, showLoginPrompt]);
+  }, [user, showLoginPrompt, isLoginPendingForDownload]);
+
+  // Handle auto-continuation after login
+  useEffect(() => {
+    if (user && isPendingGeneration && referenceFile && contentFile) {
+      setIsPendingGeneration(false);
+      handleGenerate();
+    }
+  }, [user, isPendingGeneration]);
 
   const dismissResetSurprise = async () => {
     if (!auth.currentUser) return;
@@ -361,6 +393,60 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
   const previewRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'RESUME_ZOOM_UPDATE') {
+        setReportedZoom(event.data.zoom);
+      }
+      if (event.data?.type === 'RESUME_HEIGHT_UPDATE') {
+        setIframeHeight(event.data.height);
+        if (event.data.totalPages) setTotalPages(event.data.totalPages);
+      }
+      if (event.data?.type === 'REQUEST_PARENT_SCROLL') {
+        const scrollArea = document.getElementById('preview-scroll-area');
+        if (scrollArea) {
+          scrollArea.scrollTo({ top: event.data.top, behavior: 'smooth' });
+        }
+      }
+      if (event.data?.type === 'PAGINATION_COMPLETE') {
+        setTotalPages(event.data.totalPages);
+      }
+      if (event.data?.type === 'CURRENT_PAGE_UPDATE') {
+        setCurrentPage(event.data.page);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [totalPages]);
+
+  const scrollToPage = (pageNumber: number) => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: 'SCROLL_TO_PAGE', page: pageNumber }, '*');
+    }
+  };
+
+  // Scroll tracking for parent container
+  useEffect(() => {
+    const scrollArea = document.getElementById('preview-scroll-area');
+    if (!scrollArea) return;
+
+    const handleScroll = () => {
+      const scrollPos = scrollArea.scrollTop;
+      const pageHeight = 1123;
+      const GAP = 60;
+      const scale = reportedZoom / 100;
+      const scaledPageTotal = (pageHeight + GAP) * scale;
+      
+      const newPage = Math.max(1, Math.min(totalPages, Math.round((scrollPos + 200) / scaledPageTotal) + 1));
+      if (newPage !== currentPage) {
+        setCurrentPage(newPage);
+      }
+    };
+
+    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollArea.removeEventListener('scroll', handleScroll);
+  }, [reportedZoom, totalPages, currentPage]);
 
   const previewHtml = useMemo(() => {
     if (!generatedHtml) return '';
@@ -596,7 +682,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
     const hasSubmittedFeedback = userData.hasReviewed || localStorage.getItem('morph_user_submitted_feedback') === 'true';
 
-    if (actionType === 'morph' && userData.morphCount === 1 && !hasSubmittedFeedback) {
+    if (actionType === 'morph' && userData.morphCount === 1 && !hasSubmittedFeedback && !isPremium) {
       setShowFeedbackModal(true);
       return false;
     }
@@ -732,17 +818,23 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
   const handleGenerate = async () => {
     if (!referenceFile || !contentFile) return;
 
-    if (!user && hasUsedFreeMorph) {
-      setShowLoginPrompt(true);
-      return;
+    if (!user) {
+      if (isGuest) {
+        // Guest mode one-time check
+        const hasUsedFreeMorph = localStorage.getItem('morph_guest_free_used') === 'true';
+        if (hasUsedFreeMorph) {
+          setIsPendingGeneration(true);
+          if (onLogin) onLogin();
+          return;
+        }
+      } else {
+        setIsPendingGeneration(true);
+        setShowLoginPrompt(true);
+        if (onLogin) onLogin(); // Trigger the main login dialog in App.tsx
+        return;
+      }
     }
 
-    await runGuestBooting();
-    if (!user && hasUsedFreeMorph) {
-      setShowLoginPrompt(true);
-      return;
-    }
-    
     if (!checkUsageLimits('morph')) return;
 
     setIsGenerating(true);
@@ -784,12 +876,14 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       setIsPreviewReady(true);
 
       if (!user) {
-        setHasUsedFreeMorph(true);
-        localStorage.setItem('hasUsedFreeMorph', 'true');
+        // Guest just used their one free morph
+        if (isGuest) {
+          localStorage.setItem('morph_guest_free_used', 'true');
+        }
+        
+        // Post-morph login trigger as per requirement
         setTimeout(() => {
-          setShowLoginPrompt(true);
-          setIsSyncingModal(true);
-          setTimeout(() => setIsSyncingModal(false), 2000);
+          if (onLogin) onLogin();
         }, 1500);
       } else {
         await deductMorphCredit();
@@ -1128,50 +1222,31 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
-        
-        // Ensure we measure and capture the FULL content if it's overfull
-        const originalOverflow = page.style.overflow;
-        const originalHeight = page.style.height;
-        page.style.overflow = 'visible';
-        page.style.height = 'auto';
-        
         const realHeight = page.offsetHeight;
         
-        // Use html-to-image for pixel-perfect rendering
         const imgData = await htmlToImage.toPng(page, {
           quality: 1.0,
-          pixelRatio: 4, 
+          pixelRatio: 3, 
           backgroundColor: '#ffffff',
+          width: 794,
+          height: realHeight,
           style: {
             margin: '0',
             boxShadow: 'none',
             border: 'none',
             transform: 'none',
-            width: '794px',
-            height: 'auto', // Allow it to capture the full expanded height
-            overflow: 'visible',
             textRendering: 'optimizeLegibility'
           } as any,
           cacheBust: true,
           skipFonts: false 
         });
 
-        // Restore original styles
-        page.style.overflow = originalOverflow;
-        page.style.height = originalHeight;
-
-        // Determine if this single DOM page spans multiple PDF pages
-        const pagesNeeded = Math.ceil(realHeight / (standardA4HeightPx + 5)); // small buffer
+        const pagesNeeded = Math.max(1, Math.ceil(realHeight / (standardA4HeightPx + 2)));
 
         for (let j = 0; j < pagesNeeded; j++) {
            if (i > 0 || j > 0) pdf.addPage();
-           
-           // We use the same image but different view windows
-           // pdf.addImage(data, format, x, y, width, height, alias, compression)
-           // If it's a multi-page slice, we shift the Y position
            const position = -(j * pageHeight);
            const totalPdfHeight = (realHeight * pageWidth) / 794;
-           
            pdf.addImage(imgData, 'PNG', 0, position, pageWidth, totalPdfHeight, undefined, 'NONE');
         }
       }
@@ -1614,18 +1689,20 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       </div>
       <main className="max-w-[1440px] mx-auto px-4 md:px-8 py-4">
         {/* Morph Stats Bar */}
-        <div className="mb-6 md:mb-12">
-          <StatsBar 
-            isLimitReached={isLimitReached}
-            usedMorphs={usedMorphs}
-            planLimit={planLimit}
-            progress={progress}
-            userData={userData}
-            strictLayout={strictLayout}
-            setStrictLayout={setStrictLayout}
-            onUpgrade={onUpgrade}
-          />
-        </div>
+        {user && (
+          <div className="mb-6 md:mb-12">
+            <StatsBar 
+              isLimitReached={isLimitReached}
+              usedMorphs={usedMorphs}
+              planLimit={planLimit}
+              progress={progress}
+              userData={userData}
+              strictLayout={strictLayout}
+              setStrictLayout={setStrictLayout}
+              onUpgrade={onUpgrade}
+            />
+          </div>
+        )}
         <div className="flex lg:hidden mb-6 bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border-color)] shadow-sm">
           <button 
             onClick={() => setActiveMobileTab('edit')}
@@ -1637,10 +1714,16 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
             )}
           >
             <Settings className="w-4 h-4" />
-            Editor
+            Morph DNA
           </button>
           <button 
-            onClick={() => setActiveMobileTab('preview')}
+            onClick={() => {
+              if (!user) {
+                if (onLogin) onLogin();
+                return;
+              }
+              setActiveMobileTab('preview');
+            }}
             className={cn(
               "flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
               activeMobileTab === 'preview' 
@@ -1671,7 +1754,13 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                     <h2 className="font-black text-lg md:text-xl tracking-tight text-[var(--text-primary)]">Layout DNA</h2>
                   </div>
                   <button
-                    onClick={() => setIsImportingLinkedIn(true)}
+                    onClick={() => {
+                      if (!user) {
+                        if (onLogin) onLogin();
+                        return;
+                      }
+                      setIsImportingLinkedIn(true);
+                    }}
                     title="Import your professional data directly from your LinkedIn profile to save time"
                     className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all border border-blue-100 dark:border-blue-900/30 w-fit ml-auto xs:ml-0"
                   >
@@ -1954,24 +2043,63 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
           {/* Right Column: Preview */}
           <div className={cn(
-            "transition-all duration-700 ease-in-out w-full mt-8 lg:mt-0",
+            "transition-all duration-700 ease-in-out w-full mt-8 lg:mt-0 flex flex-col min-h-0",
             isPreviewFull 
-              ? "fixed inset-0 z-[500] bg-[var(--bg-primary)] p-0 sm:p-4 md:p-8 overflow-y-auto" 
+              ? "fixed inset-0 z-[500] bg-[#020617] p-0 sm:p-6 overflow-hidden" 
               : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32",
             !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:block"
           )}>
+            {!isPreviewFull && userData?.resumeHistory && userData.resumeHistory.length > 0 && (
+              <div className="mb-6 flex items-center justify-between bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                    <History className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">Saved Versions</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Load from History</p>
+                  </div>
+                </div>
+                <div className="relative max-w-xs w-full sm:w-[320px]">
+                  <select
+                    value={selectedResumeId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedResumeId(val);
+                      const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
+                      if (selected) {
+                        setGeneratedHtml(extractRawHtml(selected.html));
+                        setResumeMetadata({
+                          name: selected.name || 'Untitled Resume',
+                          yoe: '',
+                          profile: ''
+                        });
+                      }
+                    }}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner"
+                  >
+                    <option value="">Select a saved resume ({userData.resumeHistory.length})</option>
+                    {userData.resumeHistory.map((resume: any) => (
+                      <option key={resume.id} value={resume.id}>
+                        {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+            )}
             <div 
-              style={(!isPreviewFull && isDesktop && leftPanelHeight) ? { height: `${leftPanelHeight}px` } : undefined}
               className={cn(
-                "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col overflow-hidden group transition-all duration-500",
+                "bg-[var(--bg-primary)] rounded-[24px] md:rounded-[48px] border border-[var(--border-color)] shadow-2xl shadow-indigo-200/5 flex flex-col group transition-all duration-500",
                 isPreviewFull 
-                  ? "h-[100dvh] sm:h-[calc(100vh-80px)] w-full max-w-[1200px] mx-auto" 
-                  : (isDesktop && leftPanelHeight 
-                      ? "w-full" 
-                      : "h-[calc(100dvh-220px)] sm:h-[85vh] lg:h-[calc(100vh-140px)] lg:min-h-[700px] sm:min-h-[500px] w-full")
+                  ? "h-full w-full max-w-[1400px] mx-auto border-slate-800" 
+                  : "h-[calc(100vh-280px)] lg:h-[calc(100vh-160px)] w-full"
               )}
             >
-              <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0">
+              <div className="h-14 md:h-16 border-b border-[var(--border-color)] px-4 md:px-10 flex items-center justify-between bg-[var(--bg-secondary)] shrink-0 z-30">
                 <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
                   <div className="flex items-center gap-2 md:gap-3 shrink-0">
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500" />
@@ -2007,56 +2135,36 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                     </motion.div>
                   )}
 
-                  {/* Saved Resume select dropdown (Moved to outer persistent container header) */}
-                  {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
-                    <div className="relative max-w-xs min-w-[130px] sm:min-w-[180px] md:min-w-[220px] ml-auto select-dropdown-outer">
-                      <select
-                        value={selectedResumeId}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSelectedResumeId(val);
-                          const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
-                          if (selected) {
-                            setGeneratedHtml(extractRawHtml(selected.html));
-                            setResumeMetadata({
-                              name: selected.name || 'Untitled Resume',
-                              yoe: '',
-                              profile: ''
-                            });
-                          }
-                        }}
-                        className="w-full bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-[10px] md:text-xs py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 appearance-none font-sans"
-                      >
-                        <option value="">-- Load Saved Resume ({userData.resumeHistory.length}) --</option>
-                        {userData.resumeHistory.map((resume: any) => (
-                          <option key={resume.id} value={resume.id}>
-                            {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[var(--text-tertiary)]">
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </div>
-                    </div>
-                  )}
+                  {/* Saved Resume select dropdown (Removed - moved to outer container) */}
                 </div>
                 <div className="flex items-center gap-2">
-                    {generatedHtml && (
                     <button 
-                      onClick={handleShare}
+                      onClick={() => setIsStyleMatcherActive(!isStyleMatcherActive)}
+                      title="Style Matcher: Compare side-by-side with a reference image"
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all border",
+                        isStyleMatcherActive 
+                          ? "bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-100" 
+                          : "bg-[var(--bg-primary)] text-[var(--text-primary)] border-[var(--border-color)] hover:border-indigo-500"
+                      )}
+                    >
+                      <Columns className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Style Matcher</span>
+                    </button>
+                  {/* Share button kept here for accessibility */}
+                  {generatedHtml && (
+                    <button 
+                      onClick={() => {
+                        if (!user) {
+                          if (onLogin) onLogin();
+                          return;
+                        }
+                        handleShare();
+                      }}
                       title="Share link"
                       className="p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
                     >
                       <Globe className="w-4 h-4" />
-                    </button>
-                  )}
-                  {generatedHtml && (
-                    <button 
-                      onClick={() => setIsPreviewFull(!isPreviewFull)}
-                      title={isPreviewFull ? "Exit fullscreen" : "Full View"}
-                      className="p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition-all shadow-sm text-[var(--text-primary)]"
-                    >
-                      {isPreviewFull ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
                   )}
                 </div>
@@ -2077,7 +2185,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                 )}
 
                 <div className={cn(
-                  "bg-[var(--bg-primary)] border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden transition-all duration-500 mx-auto relative h-full w-full",
+                  "bg-[var(--bg-primary)] border-[var(--border-color)] shadow-2xl flex flex-col transition-all duration-500 mx-auto relative h-full w-full",
                   isPreviewFull ? "rounded-[32px] md:rounded-[48px] border" : "rounded-none border-t md:border-t-0"
                 )}>
                   <AnimatePresence mode="wait">
@@ -2146,88 +2254,195 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center text-center space-y-6 bg-[var(--bg-primary)] z-10"
+                      className="absolute inset-0 flex flex-col items-center justify-center text-center space-y-8 bg-[var(--bg-primary)]/90 backdrop-blur-2xl z-10 p-6"
                     >
-                      <div className="relative">
-                        <div className="w-20 h-20 border-4 border-indigo-100 dark:border-indigo-900/30 border-t-indigo-600 rounded-full animate-spin" />
-                        <RefreshCw className="absolute inset-0 m-auto w-8 h-8 text-indigo-600 animate-pulse" />
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute w-36 h-36 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-full blur-2xl animate-pulse-glow" />
+                        <div className="w-24 h-24 border-4 border-indigo-100 dark:border-indigo-950 border-t-indigo-600 dark:border-t-indigo-400 border-r-purple-500 rounded-full animate-spin shadow-xl" />
+                        <Sparkles className="absolute w-9 h-9 text-indigo-600 dark:text-indigo-400 animate-bounce" />
                       </div>
-                      <div className="space-y-4 w-full max-w-sm px-6">
-                        <div>
-                          <p className="font-black text-2xl tracking-tight text-[var(--text-primary)]">{generationStatus || 'Morphing Content...'}</p>
-                          <p className="text-sm text-[var(--text-secondary)] font-medium mt-1">Applying visual DNA to your professional data</p>
+                      <div className="space-y-4 w-full max-w-sm">
+                        <div className="space-y-1.5">
+                          <p className="font-black text-2xl md:text-3xl tracking-tight text-[var(--text-primary)] saas-gradient-text inline-block">{generationStatus || 'Morphing Content...'}</p>
+                          <p className="text-xs md:text-sm text-[var(--text-secondary)] font-medium">Synthesizing visual hierarchy and ATS semantics</p>
                         </div>
-                        <div className="h-1.5 w-full bg-[var(--bg-secondary)] rounded-full overflow-hidden px-0 border border-[var(--border-color)]">
+                        <div className="h-2 w-full bg-[var(--bg-secondary)] rounded-full overflow-hidden p-0.5 border border-[var(--border-color)] shadow-inner">
                           <motion.div 
                             initial={{ width: "0%" }}
                             animate={{ width: "100%" }}
-                            transition={{ duration: 5, ease: "linear" }}
-                            className="h-full bg-indigo-600 rounded-full"
+                            transition={{ duration: 5.5, ease: "easeInOut", repeat: Infinity }}
+                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full"
                           />
                         </div>
-                        <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">Est. time: 5-8 seconds</p>
+                        <div className="flex items-center justify-between text-[10px] font-mono font-bold text-[var(--text-tertiary)] uppercase tracking-wider">
+                          <span>AI Engine Active</span>
+                          <span className="text-indigo-500 animate-pulse">~5s remaining</span>
+                        </div>
                       </div>
                     </motion.div>
                   ) : (generatedHtml || (userData?.resumeHistory && userData.resumeHistory.length > 0)) ? (
-                    <div className="relative flex-1 flex flex-col min-h-0 bg-slate-50">
-                      {/* Simplified Preview Toolbar */}
-                      <div className="h-12 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-2 sm:py-0 z-20 shrink-0 gap-2">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                          <span className="text-[10px] font-black uppercase tracking-tight text-slate-600">Resume Preview</span>
+                    <div className="relative flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
+                      {/* Minimalist Preview Toolbar */}
+                      <div className="h-16 border-b border-slate-100 bg-white flex items-center justify-between px-6 z-40 shrink-0 shadow-sm">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 shadow-sm shrink-0">
+                          <div className="text-[12px] font-bold text-indigo-600 flex items-center gap-1">
+                            {currentPage} <span className="text-slate-300 font-medium">/</span> {totalPages}
+                          </div>
+                          <div className="text-[8px] font-black text-slate-400 uppercase tracking-tight">PAGES</div>
                         </div>
 
-
-                        
-                        <div className="flex items-center gap-2 shrink-0">
-                          {generatedHtml && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setShowPrintPreview(prev => !prev);
-                                  setIsPreviewReady(false);
-                                }}
-                                type="button"
-                                className={cn(
-                                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border",
-                                  showPrintPreview 
-                                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300" 
-                                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-                                )}
-                                title="Toggle A4 dashed outline to visualize physical page boundaries"
-                              >
-                                <span className={cn("w-1.5 h-1.5 rounded-full transition-all", showPrintPreview ? "bg-indigo-600 dark:bg-indigo-400 animate-pulse" : "bg-slate-400")} />
-                                <span>{showPrintPreview ? "A4 Bounds: On" : "A4 Bounds: Off"}</span>
-                              </button>
-                              <button
-                                onClick={handleGenerate}
-                                disabled={isGenerating}
-                                className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[9px] font-black uppercase tracking-widest transition-all shadow-sm disabled:opacity-50"
-                              >
-                                <RefreshCw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
-                                <span>Regenerate</span>
-                              </button>
-                            </>
-                          )}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button 
+                            onClick={() => setIsPreviewFull(!isPreviewFull)}
+                            className={cn(
+                              "p-2.5 rounded-xl transition-colors border",
+                              isPreviewFull ? "text-indigo-600 bg-indigo-50 border-indigo-100 shadow-sm" : "text-slate-400 hover:bg-slate-50 border-transparent"
+                            )}
+                            title="Toggle Full Preview"
+                          >
+                            <Expand className="w-5 h-5" />
+                          </button>
+                          
+                          <div className="w-px h-6 bg-slate-100 mx-1" />
+                          
+                          <button 
+                            onClick={handleGenerate} 
+                            disabled={isGenerating}
+                            className="h-10 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black px-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-indigo-200/50"
+                          >
+                            <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
+                            <span className="hidden sm:inline uppercase">{isGenerating ? "Morphing..." : "Regenerate"}</span>
+                          </button>
                         </div>
                       </div>
 
-                      {generatedHtml ? (
-                        <ResumeIframe 
-                          html={previewHtml} 
-                          onLoad={() => setIsPreviewReady(true)} 
-                          isReady={isPreviewReady} 
-                          ref={iframeRef}
-                        />
-                      ) : (
-                        <div className="flex-grow flex flex-col items-center justify-center p-8 text-center bg-slate-50 min-h-0 py-12">
-                          <FileText className="w-16 h-16 text-indigo-200 mb-4 stroke-1 animate-pulse" />
-                          <h3 className="font-extrabold text-base tracking-tight text-slate-500 uppercase">Select a Saved Resume</h3>
-                          <p className="text-xs text-slate-400 max-w-xs mt-2 font-medium">
-                            Choose one of your saved resumes from the dropdown above to load and view its layout on the screen.
-                          </p>
+                      <div className="flex-1 flex min-h-0 overflow-hidden">
+                        <div className={cn(
+                          "relative flex-1 flex min-h-0",
+                          isStyleMatcherActive ? "flex-row divide-x divide-slate-200" : "flex-col"
+                        )}>
+                          {isStyleMatcherActive && (
+                            <div className="w-1/2 bg-slate-100 relative overflow-hidden flex flex-col">
+                              {styleMatcherReference ? (
+                                <div className="flex-1 relative p-4 md:p-8">
+                                  <img 
+                                    src={styleMatcherReference} 
+                                    alt="Reference Layout" 
+                                    className="w-full h-full object-contain shadow-2xl rounded-lg"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <button 
+                                    onClick={() => setStyleMatcherReference(null)}
+                                    className="absolute top-6 right-6 p-2 bg-white/80 backdrop-blur shadow-lg rounded-full text-slate-500 hover:text-red-500 transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                                  <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-sm mb-6 border border-slate-200">
+                                    <ImageIcon className="w-10 h-10 text-slate-300" />
+                                  </div>
+                                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">No Reference Captured</h4>
+                                  <p className="text-[10px] text-slate-400 font-medium max-w-[200px] mb-6">
+                                    Use your camera or upload an image to compare your layout against a target structure.
+                                  </p>
+                                  <div className="flex flex-col gap-3 w-full max-w-[200px]">
+                                    <button 
+                                      onClick={() => setIsCameraOpen(true)}
+                                      className="w-full py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
+                                    >
+                                      <Camera className="w-3.5 h-3.5" />
+                                      Open Camera
+                                    </button>
+                                    <label className="w-full py-3 bg-white text-slate-600 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                                      <Upload className="w-3.5 h-3.5" />
+                                      Upload Image
+                                      <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            const base64 = await fileToBase64(file);
+                                            setStyleMatcherReference(base64);
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className={cn(
+                            "relative flex-1 flex flex-col min-h-0 bg-slate-100/50 overflow-y-auto overflow-x-hidden scroll-smooth touch-pan-y",
+                            isStyleMatcherActive ? "w-1/2" : "w-full"
+                          )} id="preview-scroll-area" style={{ overscrollBehavior: 'contain' }}>
+                            <div className="flex flex-col items-center py-8 md:py-12 min-h-full w-full">
+                              {generatedHtml ? (
+                                <ResumeIframe 
+                                  html={previewHtml} 
+                                  onLoad={() => setIsPreviewReady(true)} 
+                                  isReady={isPreviewReady} 
+                                  height={iframeHeight}
+                                  ref={iframeRef}
+                                />
+                              ) : (
+                                <div className="flex-grow flex flex-col items-center justify-center p-8 text-center bg-[#f8fafc] min-h-0 py-12">
+                                  <FileText className="w-16 h-16 text-indigo-200 mb-4 stroke-1 animate-pulse" />
+                                  <h3 className="font-extrabold text-base tracking-tight text-slate-500 uppercase">Select a Saved Resume</h3>
+                                  <p className="text-xs text-slate-400 max-w-xs mt-2 font-medium">
+                                    Choose one of your saved resumes from the dropdown above to load and view its layout on the screen.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
+
+                        {generatedHtml && totalPages > 0 && (
+                          <div className="w-[140px] bg-slate-50 border-l border-slate-200 hidden lg:flex flex-col items-center py-6 gap-6 overflow-y-auto no-scrollbar">
+                            <div className="px-4 w-full flex flex-col gap-4">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Outline</div>
+                              <div className="flex flex-col gap-6 w-full">
+                                {Array.from({ length: totalPages }).map((_, i) => (
+                                  <button 
+                                    key={i}
+                                    onClick={() => scrollToPage(i + 1)}
+                                    className="flex flex-col items-center gap-2 group transition-all"
+                                  >
+                                    <div className={cn(
+                                      "w-full aspect-[1/1.41] bg-white rounded shadow-sm transition-all overflow-hidden relative border",
+                                      currentPage === i + 1 
+                                        ? "border-indigo-500 ring-4 ring-indigo-500/10 scale-105" 
+                                        : "border-slate-200 group-hover:border-slate-300 group-hover:shadow-md"
+                                    )}>
+                                      <div className="absolute inset-0 bg-slate-50 flex flex-col p-2 gap-1 opacity-20 group-hover:opacity-30 transition-opacity">
+                                        <div className="h-1 w-3/4 bg-slate-400 rounded-full" />
+                                        <div className="h-1 w-full bg-slate-300 rounded-full" />
+                                        <div className="h-1 w-5/6 bg-slate-300 rounded-full" />
+                                        <div className="mt-2 h-1 w-1/2 bg-slate-400 rounded-full" />
+                                        <div className="h-1 w-full bg-slate-300 rounded-full" />
+                                      </div>
+                                      {currentPage === i + 1 && (
+                                        <div className="absolute top-1 right-1 w-3 h-3 bg-indigo-500 rounded-full flex items-center justify-center">
+                                          <div className="w-1 h-1 bg-white rounded-full animate-ping" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className={cn(
+                                      "text-[10px] font-bold tracking-tight uppercase",
+                                      currentPage === i + 1 ? "text-indigo-600" : "text-slate-400"
+                                    )}>Page {i + 1}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <motion.div 
@@ -2253,6 +2468,52 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
       </div>
     </div>
   </div>
+
+      <AnimatePresence>
+        {isCameraOpen && (
+          <div className="fixed inset-0 z-[1001] flex items-center justify-center p-4 sm:p-6 bg-slate-950/90 backdrop-blur-xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-800 flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-600 flex items-center justify-center text-white">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white tracking-tight">Capture Reference</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Style Matcher Input</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsCameraOpen(false)}
+                  className="p-2 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 bg-black relative aspect-video sm:aspect-square max-h-[60vh] flex items-center justify-center overflow-hidden">
+                <CameraPreview 
+                  onCapture={(base64) => {
+                    setStyleMatcherReference(base64);
+                    setIsCameraOpen(false);
+                  }} 
+                />
+              </div>
+
+              <div className="p-6 bg-slate-900/50 flex items-center justify-center gap-4">
+                <p className="text-[10px] text-slate-500 font-medium text-center max-w-xs">
+                  Position the resume clearly in the frame. Captured images are processed locally and never stored.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showPlanModal && (
@@ -2725,7 +2986,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
 
                       <button 
                         onClick={async () => {
-                          if (onLogin) {
+                          if (onLogin && !isLoginProgress) {
                             await onLogin();
                             if (auth.currentUser) {
                               setShowLoginPrompt(false);
@@ -2733,12 +2994,17 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
                             }
                           }
                         }}
-                        className="group relative w-full py-5 sm:py-6 bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] sm:rounded-[2rem] font-black text-sm sm:text-base uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-500/20 dark:shadow-white/10 flex items-center justify-center gap-3 overflow-hidden border border-slate-800 dark:border-slate-200"
+                        disabled={isLoginProgress}
+                        className="group relative w-full py-5 sm:py-6 bg-slate-950 dark:bg-white text-white dark:text-slate-900 rounded-[1.5rem] sm:rounded-[2rem] font-black text-sm sm:text-base uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-500/20 dark:shadow-white/10 flex items-center justify-center gap-3 overflow-hidden border border-slate-800 dark:border-slate-200 disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                         <span className="relative z-10 flex items-center gap-2 sm:gap-3">
-                          <LogIn className="w-4 h-4 sm:w-5 h-5 group-hover:animate-pulse" />
-                          Continue with Google
+                          {isLoginProgress ? (
+                            <Loader2 className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+                          ) : (
+                            <LogIn className="w-4 h-4 sm:w-5 h-5 group-hover:animate-pulse" />
+                          )}
+                          {isLoginProgress ? 'Connecting...' : 'Continue with Google'}
                         </span>
                       </button>
                     </>
@@ -2763,6 +3029,96 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin }: ResumeBuilderProp
         )}
       </AnimatePresence>
       </main>
+    </div>
+  );
+}
+
+function CameraPreview({ onCapture }: { onCapture: (base64: string) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isActive, setIsActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsActive(true);
+        }
+      } catch (err) {
+        console.error("Camera error:", err);
+        setError("Could not access camera. Please check permissions.");
+      }
+    }
+
+    startCamera();
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const capture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg', 0.9);
+        onCapture(base64);
+      }
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-black group">
+      {error ? (
+        <div className="text-center p-8">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-white text-sm font-bold uppercase tracking-widest">{error}</p>
+        </div>
+      ) : (
+        <>
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            className="w-full h-full object-cover"
+          />
+          <canvas ref={canvasRef} className="hidden" />
+          
+          {isActive && (
+            <div className="absolute inset-0 border-2 border-white/20 pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-4/5 border-2 border-dashed border-indigo-400/50 rounded-2xl" />
+            </div>
+          )}
+
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-4">
+            <button 
+              onClick={capture}
+              className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all group/btn"
+            >
+              <div className="w-16 h-16 border-4 border-slate-900 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-indigo-600 rounded-full group-hover/btn:bg-indigo-700 transition-colors" />
+              </div>
+            </button>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white bg-black/40 backdrop-blur px-4 py-1.5 rounded-full">
+              Click to capture DNA
+            </span>
+          </div>
+        </>
+      )}
     </div>
   );
 }

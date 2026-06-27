@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 
 type Status = 'Applied' | 'Interview' | 'Offer' | 'Rejected' | 'Wishlist';
 
@@ -37,9 +38,29 @@ const STATUS_COLORS: Record<Status, { bg: string, text: string, dot: string }> =
 
 interface ApplyTrackerProps {
   user: any;
+  onLogin?: () => void;
 }
 
-export default function ApplyTracker({ user }: ApplyTrackerProps) {
+export default function ApplyTracker({ user, onLogin }: ApplyTrackerProps) {
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mb-6 shadow-lg shadow-indigo-100 dark:shadow-none">
+          <Briefcase className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Job Tracker Restricted</h2>
+        <p className="text-[var(--text-secondary)] mb-8 max-w-md font-medium text-lg leading-relaxed">Sign in to manage your job applications, track interview status, and view your career progress.</p>
+        <button 
+          onClick={onLogin}
+          className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center gap-3"
+        >
+          <Target className="w-5 h-5" />
+          Unlock Tracker
+        </button>
+      </div>
+    );
+  }
+
   const [apps, setApps] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -76,6 +97,10 @@ export default function ApplyTracker({ user }: ApplyTrackerProps) {
       setApps(data);
       setLoading(false);
     }, (error) => {
+      // Silent handling for expected idle stream disconnects
+      if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+        return;
+      }
       // Only report if still logged in
       if (auth.currentUser) {
         handleFirestoreError(error, OperationType.LIST, 'applications');
@@ -173,6 +198,71 @@ export default function ApplyTracker({ user }: ApplyTrackerProps) {
               <p className={cn("text-2xl font-black tabular-nums", stat.color)}>{stat.count}</p>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Progress Dashboard */}
+      <div className="bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[36px] p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center">
+            <Target className="text-indigo-600 w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Application Pipeline</h2>
+            <p className="text-sm font-medium text-[var(--text-secondary)]">Your progress toward career goals</p>
+          </div>
+        </div>
+        
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={[
+                { name: 'Wishlist', count: apps.filter(a => a.status === 'Wishlist').length, color: '#6b7280' },
+                { name: 'Applied', count: apps.filter(a => a.status === 'Applied').length, color: '#3b82f6' },
+                { name: 'Interview', count: stats.interviews, color: '#f59e0b' },
+                { name: 'Offer', count: stats.offers, color: '#10b981' },
+                { name: 'Rejected', count: apps.filter(a => a.status === 'Rejected').length, color: '#ef4444' }
+              ]}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+              <XAxis 
+                dataKey="name" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--text-tertiary)', fontSize: 12, fontWeight: 700 }}
+                dy={10}
+              />
+              <YAxis 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: 'var(--text-tertiary)', fontSize: 12, fontWeight: 700 }}
+              />
+              <Tooltip
+                cursor={{ fill: 'var(--bg-secondary)' }}
+                contentStyle={{ 
+                  backgroundColor: 'var(--bg-primary)', 
+                  borderColor: 'var(--border-color)',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                }}
+                itemStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
+              />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={60}>
+                {
+                  [
+                    { name: 'Wishlist', count: apps.filter(a => a.status === 'Wishlist').length, color: '#6b7280' },
+                    { name: 'Applied', count: apps.filter(a => a.status === 'Applied').length, color: '#3b82f6' },
+                    { name: 'Interview', count: stats.interviews, color: '#f59e0b' },
+                    { name: 'Offer', count: stats.offers, color: '#10b981' },
+                    { name: 'Rejected', count: apps.filter(a => a.status === 'Rejected').length, color: '#ef4444' }
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))
+                }
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

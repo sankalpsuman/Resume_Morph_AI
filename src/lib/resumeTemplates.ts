@@ -15,9 +15,16 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   <title>${name}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" crossorigin="anonymous">
   <style>
+    /* Prevent potential CSS rule reading errors from breaking the preview */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap');
+    
     html {
+      height: 100%;
+      background: #f1f5f9;
       overflow-x: hidden;
     }
     body { 
@@ -27,27 +34,30 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       background: #f1f5f9; 
       color: #1a1a1a; 
       display: flex;
-      justify-content: center;
-      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100%;
+      width: 100%;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: geometricPrecision;
+      overflow-y: auto !important;
+      scroll-behavior: smooth;
     }
     .page { 
       background: white;
       width: 794px;
-      min-height: 1123px;
-      padding: 24px 32px; /* FIXED MARGINS: Top/Bottom 24px, Left/Right 32px */
-      margin: 0 auto 20px auto;
+      height: 1123px;
+      padding: 24px 32px;
+      margin: 0 auto;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
       position: relative;
-      /* overflow: hidden; -- Removed to allow vertical growth during pagination */
       box-sizing: border-box;
-      /* Consistency Lock */
       font-variant-ligatures: none;
       letter-spacing: normal;
       word-spacing: normal;
       page-break-after: always;
+      flex-shrink: 0;
     }
     /* PDF Consistency Overrides */
     .page * {
@@ -69,7 +79,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      overflow: visible;
+      overflow-x: hidden;
       position: relative;
     }
     /* Compatibility with old templates that might not have .page yet */
@@ -81,69 +91,105 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       margin: 0 auto;
       box-sizing: border-box;
     }
-    /* Fixed usable height constant: 1123 - (24 * 2) = 1075px */
-    
     /* New Scaling approach ONLY for preview */
     .preview-mode body {
-      background: #f1f5f9;
+      background: #f8fafc;
       padding: 0 !important;
       margin: 0 !important;
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100vh;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
+      min-height: 100vh;
+      width: 100%;
+      overflow-y: auto;
+    }
+    .preview-mode #resume-preview-container {
+      width: 100% !important;
+      margin: 0 auto !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 0 !important;
+      box-sizing: border-box;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
     .preview-mode #resume-preview {
-      transform-origin: top left;
-      transition: transform 0.2s ease-out;
+      transform-origin: top center;
       width: 794px;
       display: flex;
       flex-direction: column;
-      gap: 15px;
-      padding: 40px 0;
+      gap: 60px;
+      padding: 0;
       margin: 0;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      position: relative;
     }
     .preview-mode .page {
+      background: white;
       margin: 0 auto;
-      box-shadow: ${showA4Border ? '0 0 0 4px rgba(99, 102, 241, 0.15), 0 12px 30px rgba(0,0,0,0.15)' : '0 10px 25px rgba(0,0,0,0.1)'};
-      border: ${showA4Border ? '2.5px dashed #6366f1' : '1px solid transparent'};
-      border-radius: ${showA4Border ? '4px' : '2px'};
+      width: 794px;
+      height: 1123px;
       page-break-after: always;
       position: relative;
-      transition: all 0.3s ease-in-out;
+      flex-shrink: 0;
+      box-shadow: 0 12px 60px rgba(0,0,0,0.06), 0 0 1px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.02);
+      transition: all 0.3s ease;
+    }
+    .preview-mode .page:hover {
+      box-shadow: 0 30px 80px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .page-number-float {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      color: #6366f1;
+      padding: 6px 16px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid #eef2ff;
+      z-index: 50;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .page-number-float::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #6366f1;
+      border-radius: 50%;
     }
     .page-break-indicator {
       position: absolute;
-      left: -80px;
-      right: -80px;
-      height: 24px;
-      background: #f1f5f9;
-      border-top: 1px solid #cbd5e1;
-      border-bottom: 1px solid #cbd5e1;
-      box-shadow: 
-        0 -4px 6px -1px rgba(0, 0, 0, 0.05),
-        0 4px 6px -1px rgba(0, 0, 0, 0.05),
-        inset 0 3px 6px rgba(0, 0, 0, 0.02),
-        inset 0 -3px 6px rgba(0, 0, 0, 0.02);
+      left: -20px;
+      right: -20px;
+      height: 1px;
+      border-bottom: 1px dashed #cbd5e1;
+      bottom: -16px;
       pointer-events: none;
-      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .page-break-indicator::after {
       content: 'PAGE BREAK';
-      position: absolute;
-      right: 48px;
-      top: 4px;
       background: #f1f5f9;
-      padding: 2px 10px;
+      padding: 0 8px;
       font-size: 8px;
       font-weight: 800;
-      color: #6366f1;
-      border-radius: 4px;
+      color: #94a3b8;
       letter-spacing: 0.1em;
-      border: 1px solid #c7d2fe;
-      z-index: 10000;
     }
 
     @media print {
@@ -211,7 +257,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
   </style>
 </head>
 <body class="${previewMode ? 'preview-mode' : ''}">
-  <div id="resume-preview-container" class="print-resume-center" style="position: relative; width: 794px; margin: 0 auto; overflow: visible;">
+  <div id="resume-preview-container" class="print-resume-center" style="position: relative; width: 100%; margin: 0 auto; overflow: visible; display: flex; flex-direction: column; align-items: center; min-height: 100vh;">
     <div id="resume-preview" style="opacity: 0">
       ${contentHtml}
     </div>
@@ -224,416 +270,219 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       const container = document.getElementById('resume-preview-container');
       if (!root || !container) return;
       
-      const containerWidth = document.documentElement.clientWidth;
-      const targetWidth = 840; // 794 + some breathing room
-      const scale = Math.min(1, (containerWidth - 24) / targetWidth);
+      const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      const padding = 20; 
+      const pageHeight = 1123;
+      const pageWidth = 794;
+
+      let scale = 1;
+      if (viewportWidth < pageWidth + padding) {
+        scale = (viewportWidth - padding) / pageWidth;
+      }
       
+      scale = Math.max(0.1, Math.min(scale, 2.0));
+
       root.style.transform = "scale(" + scale + ")";
-      root.style.transformOrigin = "top left";
+      root.style.transformOrigin = "top center";
       
-      // Get unscaled element height
-      const unscaledHeight = root.offsetHeight;
+      const pages = root.querySelectorAll('.page');
+      const GAP = 60;
+      const totalUnscaledHeight = pages.length > 0 
+        ? (pages.length * pageHeight + (pages.length - 1) * GAP)
+        : root.scrollHeight;
       
-      // Update parent container dimensions to perfectly match visible scale footprint
-      container.style.width = (794 * scale) + "px";
-      container.style.height = (unscaledHeight * scale) + "px";
-      container.style.overflow = "hidden";
-      container.style.margin = "0 auto";
+      const scaledHeight = totalUnscaledHeight * scale;
+
+      window.parent.postMessage({ 
+        type: 'RESUME_HEIGHT_UPDATE', 
+        height: scaledHeight + 100,
+        totalPages: pages.length 
+      }, '*');
       
-      document.body.style.height = 'auto';
-      document.body.style.minHeight = '100vh';
-      document.body.style.overflowY = 'auto';
+      window.parent.postMessage({ type: 'RESUME_ZOOM_UPDATE', zoom: Math.round(scale * 100) }, '*');
     }
+
+    window.onerror = function(msg, url, line, col, error) {
+      if (msg && (msg.includes('CSSRules') || msg.includes('SecurityError'))) return true;
+      return false;
+    };
+
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'SCROLL_TO_PAGE') {
+        const root = document.getElementById('resume-preview');
+        if (!root) return;
+        const scaleStr = root.style.transform;
+        const match = scaleStr.match(/scale\(([^)]+)\)/);
+        const scale = match ? parseFloat(match[1]) : 1;
+        const pageHeight = 1123;
+        const GAP = 60;
+        
+        window.parent.postMessage({ 
+          type: 'REQUEST_PARENT_SCROLL', 
+          top: (event.data.page - 1) * (pageHeight + GAP) * scale + 40
+        }, '*');
+      }
+    });
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(updateScale, 50);
+    });
 
     async function paginate() {
       const root = document.getElementById('resume-preview');
-      if (!root) return;
-
-      if (window._paginating) return;
+      if (!root || window._paginating) return;
       window._paginating = true;
 
-      console.log("[Paginator Debug] Initializing cascading page pagination...");
-
-      // Cache and restore the original unpaginated HTML so multiple paginate calls work flawlessly
       if (!window._originalHTML) {
         window._originalHTML = root.innerHTML;
       } else {
         root.innerHTML = window._originalHTML;
       }
 
-      // Reset scale and width to allow pristine layout measurements
       root.style.transform = 'none';
       root.style.width = '794px';
+      root.style.opacity = '0';
       
       const container = document.getElementById('resume-preview-container');
       if (container) {
-        container.style.width = '794px';
+        container.style.width = '100%';
         container.style.height = 'auto';
-        container.style.overflow = 'visible';
       }
 
-      function getContainerContentHeight(col) {
-        // Find the ancestor .page element (or root if not found)
-        let pageEl = col;
-        while (pageEl && !pageEl.classList.contains('page')) {
-          pageEl = pageEl.parentElement;
-        }
-        if (!pageEl) {
-          pageEl = document.querySelector('.page') || root;
-        }
-
-        const children = col.children ? Array.from(col.children) : [];
-        if (children.length === 0) return 0;
-
-        const pageRect = pageEl.getBoundingClientRect();
-        let maxBottom = 0;
-        
-        children.forEach(child => {
-          if (child.nodeType !== 1) return;
-          const childRect = child.getBoundingClientRect();
-          const bottom = childRect.bottom - pageRect.top;
-          if (bottom > maxBottom) {
-            maxBottom = bottom;
-          }
-        });
-
-        // Detect if there is a transform scale active on the preview container to adjust coordinates
-        let scale = 1;
-        const previewEl = document.getElementById('resume-preview');
-        if (previewEl && previewEl.style.transform && previewEl.style.transform !== 'none') {
-          const match = previewEl.style.transform.match(/scale\(([^)]+)\)/);
-          if (match && match[1]) {
-            scale = parseFloat(match[1]) || 1;
-          }
-        }
-
-        return maxBottom / scale;
-      }
+      const PAGE_HEIGHT = 1123;
+      const MARGIN_VERTICAL = 24;
+      const SAFE_HEIGHT = PAGE_HEIGHT - (MARGIN_VERTICAL * 2) - 10; 
 
       function getPageColumns(page) {
-        // Look for sidebar and main elements using various selectors
-        const sidebar = page.querySelector('.layout-sidebar, .sidebar, aside, [class*="layout-sidebar"], [class*="sidebar"], [class*="aside"]');
-        const main = page.querySelector('.layout-main, .main-column, .main, [class*="layout-main"], [class*="main-column"], [class*="main-content"]');
-        
-        if (sidebar && main) {
-          return [sidebar, main];
-        }
-
-        // Structural detection of 2-column layouts under .content or page
-        const contentArea = page.querySelector('.content') || page;
-        const potentialContainers = [contentArea, page, ...Array.from(page.querySelectorAll('[class*="flex"], [class*="grid"], [style*="display: flex"], [style*="display: grid"]'))];
-        
-        for (const container of potentialContainers) {
-          if (!container) continue;
-          
-          const directChildren = Array.from(container.children).filter(child => {
-            if (child.nodeType !== 1) return false;
-            const tag = child.tagName.toUpperCase();
-            return tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'SVG' && 
-                   !child.classList.contains('page-break-indicator') && 
-                   !child.classList.contains('watermark') && 
-                   !child.classList.contains('page-number');
-          });
-
-          if (directChildren.length === 2) {
-            const style = window.getComputedStyle(container);
-            const isFlexRow = style.display === 'flex' && (style.flexDirection === 'row' || !style.flexDirection);
-            const isGrid = style.display === 'grid';
-            
-            const classes = container.className || '';
-            const hasFlexRowClass = classes.includes('flex') && !classes.includes('flex-col');
-            const hasGridClass = classes.includes('grid');
-            
-            if (isFlexRow || isGrid || hasFlexRowClass || hasGridClass) {
-              console.log("[Paginator Debug] Dynamically detected 2-column layout columns:", directChildren);
-              return directChildren;
-            }
-          }
-        }
-        
+        const sidebar = page.querySelector('.sidebar, .layout-sidebar, aside, [class*="sidebar"], [class*="layout-sidebar"]');
+        const main = page.querySelector('.main, .layout-main, .main-column, [class*="main"], [class*="layout-main"]');
+        if (sidebar && main) return [sidebar, main];
         const content = page.querySelector('.content') || page;
         return [content];
       }
 
-      function isSplitable(node) {
-        if (node.nodeType !== 1) return false;
-        const tag = node.tagName.toUpperCase();
-        const atomicTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'LI', 'A', 'SPAN', 'IMG', 'BUTTON', 'I', 'B', 'STRONG', 'EM', 'svg', 'path'];
-        if (atomicTags.includes(tag)) return false;
-        
-        // If it has children and is not a small button/icon container
-        if (node.children.length === 0) return false;
-        
-        return true;
+      function getElementHeight(el, relativeTo) {
+        const rect = el.getBoundingClientRect();
+        const baseRect = relativeTo.getBoundingClientRect();
+        return rect.bottom - baseRect.top;
       }
 
-      function splitNode(node, availableHeight) {
-        const fits = node.cloneNode(false);
-        const overflow = node.cloneNode(false);
-        
-        const tempContainer = document.createElement('div');
-        tempContainer.style.cssText = 'position: absolute; left: -9999px; width: 794px; opacity: 0;';
-        document.body.appendChild(tempContainer);
-        tempContainer.appendChild(fits);
-        
-        const children = Array.from(node.childNodes);
-        let splitPointReached = false;
-        
-        for (let i = 0; i < children.length; i++) {
-          const child = children[i];
-          
-          if (splitPointReached) {
-            overflow.appendChild(child.cloneNode(true));
-            continue;
-          }
-          
-          const childClone = child.cloneNode(true);
-          fits.appendChild(childClone);
-          
-          const currentHeight = fits.offsetHeight;
-          
-          if (currentHeight <= availableHeight || i === 0) {
-            // keep it
-          } else {
-            fits.removeChild(childClone);
-            splitPointReached = true;
-            
-            // Try sub-splitting this child
-            if (child.nodeType === 1 && isSplitable(child)) {
-              const currentFitsHeight = fits.offsetHeight;
-              const remainingSpace = availableHeight - currentFitsHeight;
-              
-              if (remainingSpace > 60) {
-                const subSplit = splitNode(child, remainingSpace);
-                if (subSplit.fits && subSplit.fits.children.length > 0) {
-                  fits.appendChild(subSplit.fits);
-                }
-                if (subSplit.overflow && subSplit.overflow.childNodes.length > 0) {
-                  overflow.appendChild(subSplit.overflow);
-                }
-                continue;
-              }
-            }
-            
-            overflow.appendChild(child.cloneNode(true));
-          }
-        }
-        
-        document.body.removeChild(tempContainer);
-        return { fits, overflow };
+      function shouldAvoidSplit(el) {
+        if (el.nodeType !== 1) return false;
+        const classes = el.className || '';
+        const tag = el.tagName.toUpperCase();
+        return /section-title|experience-item|job-item|education-item|project-item|skill-item|card|block|section|item/i.test(classes) || 
+               ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tag);
       }
 
-      try {
-        const SAFE_INNER_HEIGHT = 1060; // 1123px standard page minus padding buffer
-        
-        // Ensure there is at least one page wrapper
+      async function processPagination() {
         let firstPage = root.querySelector('.page');
         if (!firstPage) {
-          console.log("[Paginator Debug] Wrapping naked HTML in .page");
-          const originalHTML = root.innerHTML;
-          root.innerHTML = '<div class="page"><div class="content">' + originalHTML + '</div></div>';
-          firstPage = root.querySelector('.page');
+          const content = root.innerHTML;
+          root.innerHTML = '<div class="page"><div class="content">' + content + '</div></div>';
         }
 
-        // Add proper styling overrides to pages to allow visible overflow
-        root.querySelectorAll('.page').forEach(p => {
-          p.style.minHeight = '1123px';
-          p.style.height = '1123px';
-          p.style.maxHeight = '1123px';
-          p.style.overflow = 'visible';
-          p.style.boxSizing = 'border-box';
-          p.style.position = 'relative';
-          
-          const c = p.querySelector('.content');
-          if (c) {
-            c.style.overflow = 'visible';
-            c.style.position = 'relative';
-          }
-          
-          // Dynamically override overflow styles on all layout columns to ensure correct page measurements
-          try {
-            const cols = getPageColumns(p);
-            cols.forEach(col => {
-              if (col && typeof col.style !== 'undefined') {
-                col.style.overflow = 'visible';
-                col.style.position = 'relative';
-              }
-            });
-          } catch (colErr) {
-            console.warn("[Paginator Styling] Failed to style dynamic columns:", colErr);
-          }
-        });
-
-        // Loop over pages. Remember new pages can be created dynamically.
-        let pageIdx = 0;
-        while (pageIdx < root.children.length) {
-          const currentPage = root.children[pageIdx];
-          
-          // Ensure classes are applied
-          if (!currentPage.classList.contains('page')) {
-            currentPage.classList.add('page');
-          }
-          
+        let currentPageIdx = 0;
+        while (currentPageIdx < root.children.length) {
+          const currentPage = root.children[currentPageIdx];
           const cols = getPageColumns(currentPage);
-          console.log("[Paginator Debug] Processing Page " + (pageIdx + 1) + " with " + cols.length + " columns.");
-          
-          let nextPageCreated = false;
           let nextPage = null;
           let nextCols = null;
 
-          cols.forEach((col, colIdx) => {
+          for (let colIdx = 0; colIdx < cols.length; colIdx++) {
+            const col = cols[colIdx];
             const children = Array.from(col.children);
-            let overflowStartIndex = -1;
-            
-            // Check heights by rebuilding column children list
-            col.innerHTML = '';
-            
+            if (children.length === 0) continue;
+
+            let splitIdx = -1;
             for (let i = 0; i < children.length; i++) {
-              const child = children[i];
-              col.appendChild(child);
-              
-              const height = getContainerContentHeight(col);
-              console.log("[Paginator Debug] Page " + (pageIdx + 1) + " col " + colIdx + " height after item " + i + ": " + height + "px (limit: " + SAFE_INNER_HEIGHT + "px)");
-              
-              if (height > SAFE_INNER_HEIGHT) {
-                let splitSuccess = false;
-                
-                // Try to split this item if possible
-                if (isSplitable(child)) {
-                  col.removeChild(child);
-                  const currentFitsHeight = getContainerContentHeight(col);
-                  const remainingSpace = SAFE_INNER_HEIGHT - currentFitsHeight;
-                  
-                  if (remainingSpace > 80) {
-                    const splitResult = splitNode(child, remainingSpace);
-                    if (splitResult.fits && splitResult.fits.children.length > 0) {
-                      col.appendChild(splitResult.fits);
-                      children[i] = splitResult.overflow;
-                      overflowStartIndex = i;
-                      console.log("[Paginator Debug] Successfully split overflowing node.");
-                      splitSuccess = true;
-                      break;
-                    }
-                  }
-                  
-                  // Put the child back if we couldn't split it successfully
-                  if (!splitSuccess) {
-                    col.appendChild(child);
+              if (getElementHeight(children[i], currentPage) > SAFE_HEIGHT) {
+                splitIdx = i;
+                for (let j = i; j > 0; j--) {
+                  if (!shouldAvoidSplit(children[j])) {
+                    splitIdx = j;
+                    break;
                   }
                 }
-                
-                if (splitSuccess) {
-                  break;
-                }
-                
-                // Orphan/infinite loop defense
-                if (i === 0) {
-                  console.log("[Paginator Debug] First item overflows page and cannot be split! Retaining to avoid infinite loop.");
-                  continue;
-                }
-                
-                if (col.contains(child)) {
-                  col.removeChild(child);
-                }
-                
-                overflowStartIndex = i;
+                if (splitIdx <= 0 && i > 0) splitIdx = i;
                 break;
               }
             }
 
-            // Move any overflowing nodes to next page
-            if (overflowStartIndex !== -1) {
-              if (!nextPageCreated) {
-                console.log("[Paginator Debug] Overflow detected! Creating Page " + (pageIdx + 2));
+            if (splitIdx !== -1 && splitIdx < children.length) {
+              if (!nextPage) {
                 nextPage = currentPage.cloneNode(true);
-                
-                // Cleanup header on non-first page
-                const header = nextPage.querySelector('.resume-header') || nextPage.querySelector('.profile-header');
-                if (header) {
-                  header.remove();
-                }
-                
+                const header = nextPage.querySelector('.resume-header, .profile-header, header');
+                if (header) header.remove();
                 nextCols = getPageColumns(nextPage);
-                nextCols.forEach(c => {
-                  c.innerHTML = '';
-                  c.style.overflow = 'visible';
-                });
-                nextPageCreated = true;
+                nextCols.forEach(c => c.innerHTML = '');
+                root.insertBefore(nextPage, currentPage.nextSibling);
               }
-              
               const targetCol = nextCols[colIdx];
-              for (let k = overflowStartIndex; k < children.length; k++) {
-                targetCol.appendChild(children[k]);
+              for (let i = splitIdx; i < children.length; i++) {
+                targetCol.appendChild(children[i]);
               }
             }
-          });
-
-          if (nextPageCreated && nextPage) {
-            currentPage.parentNode.insertBefore(nextPage, currentPage.nextSibling);
-            
-            // Apply layout styles to newly created page
-            nextPage.style.minHeight = '1123px';
-            nextPage.style.height = '1123px';
-            nextPage.style.maxHeight = '1123px';
-            nextPage.style.overflow = 'visible';
-            nextPage.style.boxSizing = 'border-box';
           }
-
-          pageIdx++;
+          currentPageIdx++;
+          if (currentPageIdx > 20) break;
         }
 
-        // 5. Update Page Numbers and break indicators
-        const pages = root.querySelectorAll('.page');
-        pages.forEach((pg, i) => {
-          let pageNumEl = pg.querySelector('.page-number');
-          if (!pageNumEl) {
-            pageNumEl = document.createElement('div');
-            pageNumEl.className = 'page-number';
-            pageNumEl.style.cssText = 'position: absolute; bottom: 10px; right: 32px; font-size: 9px; font-weight: 600; color: #94a3b8; font-family: sans-serif;';
-            pg.appendChild(pageNumEl);
+        // Remove trailing empty pages
+        let currentPages = Array.from(root.querySelectorAll('.page'));
+        for (let i = currentPages.length - 1; i >= 1; i--) {
+          const page = currentPages[i];
+          const cols = getPageColumns(page);
+          const hasContent = cols.some(col => col.children.length > 0);
+          if (!hasContent) {
+            page.remove();
+          } else {
+            break;
           }
-          pageNumEl.textContent = (i + 1) + ' / ' + pages.length;
-        });
+        }
 
-        // Add visual page-break-indicators
-        pages.forEach((pg, i) => {
-          pg.querySelectorAll('.page-break-indicator').forEach(el => el.remove());
-          if (i < pages.length - 1) {
+        const finalPages = root.querySelectorAll('.page');
+        finalPages.forEach((page, i) => {
+          page.style.height = PAGE_HEIGHT + 'px';
+          page.style.overflow = 'hidden';
+          
+          let num = page.querySelector('.page-number-float');
+          if (!num) {
+            num = document.createElement('div');
+            num.className = 'page-number-float';
+            page.appendChild(num);
+          }
+          num.textContent = (i + 1) + ' / ' + finalPages.length;
+
+          if (i < finalPages.length - 1) {
             const indicator = document.createElement('div');
             indicator.className = 'page-break-indicator';
-            indicator.style.top = '1123px'; // Place directly at the bottom boundary of the A4 page
-            pg.appendChild(indicator);
+            page.appendChild(indicator);
           }
         });
+
+        window.parent.postMessage({ type: 'RESUME_PAGINATION_UPDATE', totalPages: finalPages.length }, '*');
 
         if (window.lucide) window.lucide.createIcons();
         updateScale();
-      } catch (err) {
-        console.error("Pagination error:", err);
-      } finally {
+        root.style.opacity = '1';
         window._paginating = false;
-        const root = document.getElementById('resume-preview');
-        if (root) root.style.opacity = '1';
       }
+
+      const images = Array.from(root.querySelectorAll('img'));
+      await Promise.all(images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+      }));
+      if (document.fonts) await document.fonts.ready;
+      await processPagination();
     }
 
     window.addEventListener('load', () => {
-      if (window.lucide) window.lucide.createIcons();
-      
-      // Delay slightly to ensure fonts and layouts are settled
       setTimeout(paginate, 100);
-      
-      // Recalculate once fonts are fully ready
-      if (document.fonts) {
-        document.fonts.ready.then(() => {
-          setTimeout(paginate, 200);
-        });
-      }
-      
-      // Listen for window resizes
       window.addEventListener('resize', updateScale);
-      
-      // Initial scale attempt
       updateScale();
     });
   </script>

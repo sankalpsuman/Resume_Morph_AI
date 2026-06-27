@@ -41,3 +41,19 @@ export async function compressImage(base64: string, maxDim = 800): Promise<strin
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export function checkIsPremium(userData: any): boolean {
+  if (!userData) return false;
+  if (userData.plan && userData.plan !== 'free') {
+    if (userData.premiumExpiryDate) {
+      const expiry = userData.premiumExpiryDate.toDate ? userData.premiumExpiryDate.toDate() : new Date(userData.premiumExpiryDate);
+      if (expiry instanceof Date && !isNaN(expiry.getTime())) {
+        if (Date.now() >= expiry.getTime()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+  return false;
+}

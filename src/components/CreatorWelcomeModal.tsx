@@ -3,78 +3,58 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Linkedin, Github, Instagram, Mail, 
   Sparkles, Rocket, Globe, Zap, Heart,
-  ArrowRight, CheckCircle2, MessageCircle
+  ArrowRight, CheckCircle2, MessageCircle,
+  ExternalLink, Command, ShieldCheck, Target
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export default function CreatorWelcomeModal() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [modalType, setModalType] = useState<'welcome' | 'congrats'>('welcome');
+interface CreatorWelcomeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type?: 'welcome' | 'congrats';
+}
+
+export default function CreatorWelcomeModal({ isOpen, onClose, type = 'welcome' }: CreatorWelcomeModalProps) {
+  const [modalType, setModalType] = useState<'welcome' | 'congrats'>(type);
   const [displayText, setDisplayText] = useState('');
   
-  const welcomeMessage = "Hi, I'm Sankalp Suman, creator of this platform.";
-  const congratsMessage = "Boom! That's your first professional Morph. Welcome to the elite tier.";
+  const welcomeMessage = "Hi, I'm Sankalp Suman, architect and creator of Resume Morph. My goal is to mathematically bridge the gap between your talent and elite visual standards.";
+  const congratsMessage = "Strategic Victory! You've just executed your first professional Morph. Welcome to the elite tier of job seeking.";
   const [congratsData, setCongratsData] = useState<{ title: string; content: string; points: string[] } | null>(null);
-  
-  useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('morph_creator_welcome_seen');
-    if (!hasSeenWelcome) {
-      const timer = setTimeout(() => {
-        setModalType('welcome');
-        setIsOpen(true);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
+  useEffect(() => {
+    if (type) setModalType(type);
+  }, [type]);
+  
   useEffect(() => {
     const handleOpenAbout = () => {
       setModalType('welcome');
       setCongratsData(null);
-      setIsOpen(true);
     };
 
     const handleMorphSuccess = (e?: any) => {
       const featureId = e?.detail?.feature || 'morph';
-      const storageKey = `morph_congrats_seen_${featureId}`;
-      const hasSeenCongrats = localStorage.getItem(storageKey) || localStorage.getItem('morph_congrats_any_seen') === 'true';
-      
-      if (!hasSeenCongrats) {
-        const featureConfig: Record<string, any> = {
-          morph: {
-            title: "Morph Engine Success",
-            content: "You've just cloned your first elite layout. Your visual identity is now structurally superior.",
-            points: ["AI Precision", "Visual Cloning", "Structural Mastery"]
-          },
-          portfolio: {
-            title: "Portfolio Success",
-            content: "Your digital storefront is live. You're no longer just applying; you're attracting.",
-            points: ["Responsive Design", "SEO Ready", "Modern Stack"]
-          },
-          coverletter: {
-            title: "Cover Letter Mastery",
-            content: "That's a high-impact narrative. You've just replaced generic intro text with a calculated pitch.",
-            points: ["Psychological Triggers", "ATS Proof", "Tailored Strategy"]
-          },
-          coach: {
-            title: "AI Analysis Complete",
-            content: "Your career roadmap is optimized. Data-driven strategy always beats guessing.",
-            points: ["Skill Mapping", "Gap Analysis", "Market Fit"]
-          },
-          tracker: {
-            title: "System Online",
-            content: "Your first application is tracked. The difference between a job hunter and a career engineer is the system they use.",
-            points: ["Application Funnel", "Interview Prep", "Status Mastery"]
-          }
-        };
+      const featureConfig: Record<string, any> = {
+        morph: {
+          title: "Morph Engine Success",
+          content: "You've just cloned your first elite layout. Your visual identity is now structurally superior.",
+          points: ["AI Precision", "Visual Cloning", "Structural Mastery"]
+        },
+        portfolio: {
+          title: "Portfolio Success",
+          content: "Your digital storefront is live. You're no longer just applying; you're attracting.",
+          points: ["Responsive Design", "SEO Ready", "Modern Stack"]
+        },
+        coverletter: {
+          title: "Narrative Victory",
+          content: "That's a high-impact story. You've just replaced generic text with a calculated strategic pitch.",
+          points: ["Psychological Triggers", "ATS Proof", "Tailored Flow"]
+        }
+      };
 
-        const config = featureConfig[featureId] || featureConfig.morph;
-        setCongratsData(config);
-        setModalType('congrats');
-        setIsOpen(true);
-        localStorage.setItem(storageKey, 'true');
-        localStorage.setItem('morph_congrats_any_seen', 'true');
-      }
+      const config = featureConfig[featureId] || featureConfig.morph;
+      setCongratsData(config);
+      setModalType('congrats');
     };
 
     window.addEventListener('open-creator-about', handleOpenAbout);
@@ -97,32 +77,25 @@ export default function CreatorWelcomeModal() {
         setDisplayText(message.slice(0, index));
         index++;
         if (index > message.length) clearInterval(timer);
-      }, 30);
+      }, 25);
       
       return () => clearInterval(timer);
     }
   }, [isOpen, modalType, congratsData]);
 
-  const handleClose = () => {
-    setIsOpen(false);
-    if (modalType === 'welcome') {
-      localStorage.setItem('morph_creator_welcome_seen', 'true');
-    }
-  };
-
   const welcomeSteps = [
     {
-      title: "The Vision",
-      icon: <Rocket className="w-6 h-6 text-indigo-500" />,
-      content: "Traditional resumes are dead. I built the Morph Engine to turn your static narrative into a high-performance career asset.",
-      points: ["Solve real problems", "Save users time", "Modern engineering", "Elite UX"]
+      title: "The Architecture",
+      icon: <Rocket className="w-5 h-5 text-indigo-500" />,
+      content: "Traditional resumes are static data. Resume Morph is a living career asset designed for the modern algorithmic talent market.",
+      points: ["Neural Layout Mapping", "ATS Pattern Safety", "Elite Typography"]
     }
   ];
 
   const congratsSteps = [
     {
-      title: congratsData?.title || "Trust First",
-      icon: <Heart className="w-6 h-6 text-pink-500" />,
+      title: congratsData?.title || "System Online",
+      icon: <Target className="w-5 h-5 text-pink-500" />,
       content: congratsData?.content || "Thank you for trusting the Morph AI Engine. You've just taken the first step toward total professional dominance.",
       points: congratsData?.points || ["AI Precision", "Visual Cloning", "Structural Mastery"]
     }
@@ -133,103 +106,114 @@ export default function CreatorWelcomeModal() {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            onClick={onClose}
+            className="absolute inset-0 bg-black/85 backdrop-blur-2xl"
           />
           
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            initial={{ opacity: 0, scale: 0.95, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            className="relative w-full max-w-4xl bg-[var(--bg-primary)] sm:rounded-[32px] md:rounded-[48px] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.5)] border border-[var(--border-color)] overflow-hidden flex flex-col md:flex-row max-h-screen sm:max-h-[90vh] my-auto"
+            exit={{ opacity: 0, scale: 0.95, y: 40 }}
+            className="relative w-full max-w-5xl bg-[var(--bg-primary)] sm:rounded-[40px] md:rounded-[56px] shadow-[0_32px_120px_-20px_rgba(0,0,0,0.6)] border border-white/10 overflow-hidden flex flex-col md:flex-row max-h-screen sm:max-h-[85vh] my-auto"
           >
-            {/* Left Sidebar (Desktop Only Branding) */}
-            <div className="hidden md:flex w-72 bg-indigo-600 dark:bg-indigo-950 p-6 md:p-10 flex-col items-center text-center text-white relative shrink-0">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+            {/* Left Sidebar - Creator Persona */}
+            <div className="hidden md:flex w-80 bg-indigo-600 dark:bg-indigo-950/80 p-12 flex-col items-center text-center text-white relative shrink-0">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl opacity-50" />
+              <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full -ml-20 -mb-20 blur-3xl opacity-50" />
               
-              <div className="relative mb-6">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white/20 p-1 overflow-hidden">
+              <div className="relative mb-8 group">
+                <div className="w-28 h-28 rounded-[36px] border-4 border-white/20 p-1 overflow-hidden rotate-3 group-hover:rotate-0 transition-all duration-500 shadow-2xl">
                   <img 
                     src="https://media.licdn.com/dms/image/v2/D5603AQF4O0y_H_L1_w/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1718227652758?e=1751328000&v=beta&t=7l3uAn6v3S7X-T-Z_jX_k7P1_-n5S_9G7l_8X-C_i6U" 
                     alt="Sankalp Suman" 
-                    className="w-full h-full rounded-full object-cover"
+                    className="w-full h-full rounded-[30px] object-cover scale-110"
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 md:w-8 md:h-8 bg-amber-500 rounded-full flex items-center justify-center border-2 border-indigo-600">
-                  <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-white fill-white" />
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center border-4 border-indigo-600 shadow-lg group-hover:scale-110 transition-transform">
+                  <Sparkles className="w-5 h-5 text-white fill-white" />
                 </div>
               </div>
               
-              <h3 className="text-lg md:text-xl font-black tracking-tight leading-none mb-1 md:mb-2">Sankalp Suman</h3>
-              <p className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70 mb-6 md:mb-8">Architect & Creator</p>
-              
-              <div className="grid grid-cols-2 gap-2 md:gap-3 w-full">
-                <a href="https://www.linkedin.com/in/sankalpsuman/" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
-                  <Linkedin className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
-                </a>
-                <a href="https://github.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
-                  <Github className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
-                </a>
-                <a href="https://instagram.com/sankalpsmn" target="_blank" rel="noopener noreferrer" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
-                  <Instagram className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
-                </a>
-                <a href="mailto:sankalpsmn@gmail.com" className="p-2 md:p-3 bg-white/10 hover:bg-white/20 rounded-xl md:rounded-2xl transition-colors flex items-center justify-center group">
-                  <Mail className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
-                </a>
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black tracking-tight leading-none">Sankalp Suman</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300/80">Architect & Founder</p>
+              </div>
+
+              <div className="w-full mt-12 grid grid-cols-2 gap-3">
+                {[
+                  { icon: Linkedin, href: "https://www.linkedin.com/in/sankalpsuman/", color: "hover:bg-[#0077b5]" },
+                  { icon: Github, href: "https://github.com/sankalpsmn", color: "hover:bg-black" },
+                  { icon: Instagram, href: "https://instagram.com/sankalpsmn", color: "hover:bg-[#E1306C]" },
+                  { icon: Mail, href: "mailto:sankalpsmn@gmail.com", color: "hover:bg-emerald-600" }
+                ].map((social, i) => (
+                  <a 
+                    key={i} 
+                    href={social.href} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={cn("p-4 bg-white/5 rounded-2xl transition-all flex items-center justify-center group", social.color)}
+                  >
+                    <social.icon className="w-5 h-5 group-hover:scale-110 transition-transform text-indigo-100" />
+                  </a>
+                ))}
               </div>
               
-              <div className="mt-auto pt-6 md:pt-8 flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest text-indigo-300">
-                <Globe className="w-2.5 h-2.5 md:w-3 md:h-3" />
+              <div className="mt-auto flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.4em] text-indigo-300">
+                <Globe className="w-3 h-3" />
                 Sankalp Suman
               </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 p-5 sm:p-8 md:p-14 flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="flex-1 p-8 sm:p-12 md:p-16 lg:p-20 flex flex-col overflow-y-auto custom-scrollbar relative">
               <button 
-                onClick={handleClose}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-xl transition-all z-20"
+                onClick={onClose}
+                className="absolute top-8 right-8 p-3 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] rounded-2xl transition-all z-20 group"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6 group-hover:rotate-90 transition-transform" />
               </button>
 
-              <div className="flex-1 space-y-8">
-                <div>
-                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest mb-4">
-                    {modalType === 'welcome' ? <MessageCircle className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-                    {modalType === 'welcome' ? 'Creator Greeting' : 'Morph Achieved'}
+              <div className="flex-1 space-y-12">
+                <div className="space-y-6">
+                  <div className="inline-flex items-center gap-3 px-4 py-2 bg-indigo-500/10 rounded-full border border-indigo-500/20">
+                    {modalType === 'welcome' ? <MessageCircle className="w-4 h-4 text-indigo-500" /> : <ShieldCheck className="w-4 h-4 text-emerald-500" />}
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">
+                      {modalType === 'welcome' ? 'System Intelligence: Greeting' : 'Milestone Log: Success'}
+                    </span>
                   </div>
-                  <h2 className="text-3xl md:text-5xl font-black text-[var(--text-primary)] tracking-tighter leading-none mb-6">
-                    {modalType === 'welcome' ? '👋 Greetings.' : '🎉 Congratulations!'}
+                  
+                  <h2 className="text-4xl md:text-6xl font-black text-[var(--text-primary)] tracking-tighter leading-[0.9] max-w-md">
+                    {modalType === 'welcome' ? 'Bridging the Gap.' : 'Mission Accomplished.'}
                   </h2>
-                  <div className="min-h-[80px] md:min-h-[100px]">
-                    <p className="text-lg md:text-2xl font-bold text-[var(--text-secondary)] leading-relaxed">
-                      {displayText}<span className="inline-block w-1.5 h-6 bg-indigo-600 ml-1 animate-pulse" />
+                  
+                  <div className="min-h-[120px] max-w-xl">
+                    <p className="text-xl md:text-2xl font-bold text-[var(--text-secondary)] leading-tight tracking-tight">
+                      {displayText}<span className="inline-block w-2 h-8 bg-indigo-600 ml-1 animate-pulse rounded-full" />
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-8">
                   {steps.map((step, idx) => (
-                    <div key={idx} className="p-6 md:p-8 bg-[var(--bg-secondary)] rounded-[24px] md:rounded-[32px] space-y-4 border border-[var(--border-color)]">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-[var(--bg-primary)] rounded-xl shadow-sm border border-[var(--border-color)]">
+                    <div key={idx} className="p-8 md:p-10 bg-[var(--bg-secondary)]/50 backdrop-blur-sm rounded-[32px] md:rounded-[40px] border border-white/5 space-y-6 group hover:border-indigo-500/20 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-[var(--bg-primary)] rounded-2xl shadow-xl border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
                           {step.icon}
                         </div>
-                        <h4 className="text-xs md:text-sm font-black text-[var(--text-primary)] uppercase tracking-widest">{step.title}</h4>
+                        <h4 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">{step.title}</h4>
                       </div>
-                      <p className="text-sm md:text-base font-medium text-[var(--text-secondary)] leading-relaxed">
+                      <p className="text-base md:text-lg font-medium text-[var(--text-secondary)] leading-relaxed">
                         {step.content}
                       </p>
-                      <div className="flex flex-wrap gap-2 pt-2">
+                      <div className="flex flex-wrap gap-2.5 pt-2">
                         {step.points.map((point, pIdx) => (
-                          <div key={pIdx} className="px-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-full text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-wider flex items-center gap-2">
-                            <CheckCircle2 className="w-3 h-3 text-green-500" />
+                          <div key={pIdx} className="px-4 py-2 bg-[var(--bg-primary)] border border-white/5 rounded-full text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-wider flex items-center gap-2.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                             {point}
                           </div>
                         ))}
@@ -238,21 +222,21 @@ export default function CreatorWelcomeModal() {
                   ))}
                 </div>
 
-                <div className="pt-8 mt-auto flex flex-col sm:flex-row items-center gap-4">
+                <div className="pt-10 mt-auto flex flex-col sm:flex-row items-center gap-5">
                   <button 
-                    onClick={handleClose}
-                    className="w-full sm:flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 group"
+                    onClick={onClose}
+                    className="w-full sm:flex-1 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[24px] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-indigo-500/20 transition-all flex items-center justify-center gap-4 group active:scale-95"
                   >
-                    {modalType === 'welcome' ? 'Let\'s Begin' : 'Master Next Design'}
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    {modalType === 'welcome' ? 'Enter Workspace' : 'Continue Mission'}
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                   </button>
                   <a 
                     href="https://www.linkedin.com/in/sankalpsuman/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-8 py-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] hover:bg-[var(--border-color)] text-[var(--text-primary)] rounded-2xl font-black text-xs uppercase tracking-widest transition-all text-center"
+                    className="w-full sm:w-auto px-10 py-6 bg-transparent border border-white/10 hover:bg-white/5 text-[var(--text-primary)] rounded-[24px] font-black text-[10px] uppercase tracking-[0.2em] transition-all text-center flex items-center justify-center gap-3 group"
                   >
-                    LinkedIn Profile
+                    Founders LinkedIn <ExternalLink className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
                   </a>
                 </div>
               </div>

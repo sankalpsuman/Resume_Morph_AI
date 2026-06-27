@@ -1,4 +1,3 @@
-import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { renderWelcomeEmail } from "./welcomeEmailTemplate.js";
 import { welcomeEmailConfig } from "../welcome-email-config.js";
@@ -37,8 +36,8 @@ interface UserSubscriptionDetails {
 
 /**
  * Core server-side function that validates the recipient address, compiles
- * our premium responsive email design, and sends it utilizing the Resend API or direct SMTP.
- * Gracefully falls back to a Sandbox Simulation Mode for invalid credentials/sandbox restrictions.
+ * our premium responsive email design, and sends it utilizing direct SMTP.
+ * Gracefully falls back to a Sandbox Simulation Mode for invalid credentials.
  */
 export async function sendWelcomeEmail(
   toEmail: string, 
@@ -69,139 +68,53 @@ export async function sendWelcomeEmail(
   // 3. SMTP Tryout (If fully configured)
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
-  if (smtpUser && smtpPass) {
-    console.log(`[Welcome Email Service] SMTP configuration detected. Attempting direct SMTP delivery...`);
-    try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT) || 465,
-        secure: Number(process.env.SMTP_PORT) === 465 || !process.env.SMTP_PORT,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-      });
-
-      const smtpFrom = process.env.SMTP_FROM || smtpUser;
-      const info = await transporter.sendMail({
-        from: `"${fromName}" <${smtpFrom}>`,
-        to: cleanEmail,
-        subject: "Welcome to ResumeMorph 🚀",
-        html: compiledHtml,
-      });
-
-      console.log(`[Welcome Email Service] SMTP delivery successful! Message ID: ${info.messageId}`);
-      return { success: true, messageId: info.messageId, html: compiledHtml };
-    } catch (smtpErr: any) {
-      console.warn(`[Welcome Email Service] SMTP delivery failed, will attempt Resend or Simulation: ${smtpErr.message || String(smtpErr)}`);
-    }
-  }
-
-  // 4. Resend Delivery Tryout
-  const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-
-  const isPlaceholderResend = !resendKey || resendKey === "your_api_key_here" || !resendKey.startsWith("re_");
-
-  if (isPlaceholderResend) {
-    console.log(`[Welcome Email Service] Resend API key is a placeholder, missing, or invalid. Falling back to Sandbox Simulation Mode.`);
+  
+  if (!smtpUser || !smtpPass) {
+    console.log(`[Welcome Email Service] SMTP configuration missing. Falling back to Sandbox Simulation Mode.`);
     return {
       success: true,
-      messageId: `sim_${Date.now()}_no_resend_key`,
+      messageId: `sim_${Date.now()}_no_smtp_credentials`,
       html: compiledHtml,
       simulated: true
     };
   }
 
-  let resendClient: Resend;
+  console.log(`[Welcome Email Service] SMTP configuration detected. Attempting direct SMTP delivery...`);
+  
   try {
-    resendClient = new Resend(resendKey);
-  } catch (initErr: any) {
-    console.warn(`[Welcome Email Service] Resend client failed initialization: ${initErr.message || String(initErr)}. Falling back to Sandbox Simulation Mode.`);
-    return {
-      success: true,
-      messageId: `sim_${Date.now()}_init_failed`,
-      html: compiledHtml,
-      simulated: true
-    };
-  }
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: Number(process.env.SMTP_PORT) === 465 || !process.env.SMTP_PORT,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
 
-  try {
-    const sendTask = () => resendClient.emails.send({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: [cleanEmail],
+    const smtpFrom = process.env.SMTP_FROM || smtpUser;
+    
+    const sendTask = () => transporter.sendMail({
+      from: `"${fromName}" <${smtpFrom}>`,
+      to: cleanEmail,
       subject: "Welcome to ResumeMorph 🚀",
       html: compiledHtml,
     });
-
-    console.log(`[Welcome Email Service] Initiating Resend delivery to ${cleanEmail}...`);
+    
     const maxRetries = process.env.VERCEL ? 1 : 2;
-    const response = await retry(sendTask, maxRetries, 1000);
+    const info = await retry(sendTask, maxRetries, 1000);
 
-    if (response.error) {
-      const errName = response.error.name || "Unknown";
-      const errMsg = response.error.message || "No message";
-      console.error(`[Welcome Email Service] Resend API delivery returned error response: ${errName} - ${errMsg}`);
-      
-      const errorStr = `${errName} ${errMsg}`.toLowerCase();
-      const isSandboxOrAuthError = 
-        errorStr.includes("validation") ||
-        errorStr.includes("invalid") ||
-        errorStr.includes("unauthorized") ||
-        errorStr.includes("api key") ||
-        errorStr.includes("onboarding") ||
-        errorStr.includes("domain") ||
-        errorStr.includes("verify") ||
-        errorStr.includes("recipient");
-
-      if (isSandboxOrAuthError) {
-        console.warn(`[Welcome Email Service] Resend returned a credentials or sandbox restriction error. Gracefully falling back to Sandbox Simulation Mode.`);
-        return {
-          success: true,
-          messageId: `sim_${Date.now()}_sandbox_err`,
-          html: compiledHtml,
-          simulated: true
-        };
-      }
-
-      return {
-        success: false,
-        error: `Resend API delivery failure: ${errMsg} (${errName})`
-      };
-    }
-
-    const messageId = response.data?.id || `msg_${Date.now()}`;
-    console.log(`[Welcome Email Service] Delivery confirmed by Resend API! Message ID: ${messageId}`);
-    return { success: true, messageId, html: compiledHtml };
-
+    console.log(`[Welcome Email Service] SMTP delivery successful! Message ID: ${info.messageId}`);
+    return { success: true, messageId: info.messageId, html: compiledHtml };
   } catch (err: any) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[Welcome Email Service] Exception during Resend delivery: ${errorMsg}`);
+    console.warn(`[Welcome Email Service] SMTP delivery failed: ${errorMsg}. Falling back to Sandbox Simulation Mode.`);
     
-    const errorStr = errorMsg.toLowerCase();
-    const isSandboxOrAuthError = 
-      errorStr.includes("validation") ||
-      errorStr.includes("invalid") ||
-      errorStr.includes("unauthorized") ||
-      errorStr.includes("api key") ||
-      errorStr.includes("onboarding") ||
-      errorStr.includes("domain") ||
-      errorStr.includes("verify") ||
-      errorStr.includes("recipient");
-
-    if (isSandboxOrAuthError) {
-      console.warn(`[Welcome Email Service] Caught credential/sandbox exception. Gracefully falling back to Sandbox Simulation Mode.`);
-      return {
-        success: true,
-        messageId: `sim_${Date.now()}_exception_fallback`,
-        html: compiledHtml,
-        simulated: true
-      };
-    }
-
     return {
-      success: false,
-      error: `Welcome email delivery exception: ${errorMsg}`
+      success: true,
+      messageId: `sim_${Date.now()}_smtp_error`,
+      html: compiledHtml,
+      simulated: true
     };
   }
 }

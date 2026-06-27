@@ -58,8 +58,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     activePremium: 0
   });
 
-  // Resend Premium Email API Config states
-  const [resendStatus, setResendStatus] = useState<{
+  // SMTP Premium Email API Config states
+  const [emailStatus, setEmailStatus] = useState<{
     host: string | null;
     port: number | null;
     user: string | null;
@@ -72,25 +72,25 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [testName, setTestName] = useState(auth.currentUser?.displayName || 'Morph Admin');
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message?: string; error?: string; simulated?: boolean; html?: string } | null>(null);
-  const [resendLoading, setResendLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [forceSimulate, setForceSimulate] = useState(false);
 
-  const fetchResendStatus = async () => {
-    setResendLoading(true);
+  const fetchEmailStatus = async () => {
+    setEmailLoading(true);
     try {
       const response = await fetch('/api/email-status');
       if (response.ok) {
         const data = await response.json();
-        setResendStatus(data);
+        setEmailStatus(data);
         if (!data.configured) {
           setForceSimulate(true);
         }
       }
     } catch (err) {
-      console.error("Failed to fetch Resend status info:", err);
+      console.error("Failed to fetch Email status info:", err);
     } finally {
-      setResendLoading(false);
+      setEmailLoading(false);
     }
   };
 
@@ -156,12 +156,12 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     if (isOpen) {
       if (activeTab === 'users') fetchUsers();
       else if (activeTab === 'requests') fetchRequests();
-      else if (activeTab === 'email') fetchResendStatus();
+      else if (activeTab === 'email') fetchEmailStatus();
     }
   }, [isOpen, activeTab]);
 
   const fetchUsers = async () => {
-    setLoading(true);
+    if (users.length === 0) setLoading(true);
     try {
       const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
       const snapshot = await getDocs(q);
@@ -178,7 +178,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   };
 
   const fetchRequests = async () => {
-    setLoading(true);
+    if (requests.length === 0) setLoading(true);
     try {
       const q = query(collection(db, 'premium_requests'), orderBy('timestamp', 'desc'));
       const snapshot = await getDocs(q);
@@ -422,14 +422,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-6xl bg-[var(--bg-primary)] sm:rounded-[40px] shadow-2xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-screen sm:max-h-[90vh] my-auto"
+            className="relative w-full max-w-5xl bg-[var(--bg-primary)] sm:rounded-3xl shadow-xl overflow-hidden border border-[var(--border-color)] flex flex-col max-h-screen sm:max-h-[90vh] my-auto"
           >
             {/* Header */}
             <div className="p-4 sm:p-6 md:p-8 border-b border-[var(--border-color)] flex flex-col gap-4 bg-[var(--bg-secondary)]/50 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 md:gap-4">
-                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 dark:shadow-none shrink-0">
-                    <Shield className="text-white w-5 h-5 md:w-6 md:h-6" />
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30 shrink-0">
+                    <Shield className="w-5 h-5 md:w-6 md:h-6" />
                   </div>
                   <div>
                     <h2 className="text-xl md:text-2xl font-black text-[var(--text-primary)] tracking-tight">Admin Dashboard</h2>
@@ -444,7 +444,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 bg-[var(--bg-primary)] p-1 rounded-2xl shadow-sm border border-[var(--border-color)] overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] p-1.5 rounded-2xl border border-[var(--border-color)] overflow-x-auto no-scrollbar">
                 <button
                   onClick={() => setActiveTab('admin')}
                   className={cn(
@@ -515,7 +515,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               ) : activeTab === 'admin' ? (
                 <div className="space-y-8">
                   {/* Admin Profile Card */}
-                  <div className="bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] p-6 md:p-8 border border-[var(--border-color)] shadow-sm">
+                  <div className="bg-[var(--bg-primary)] rounded-2xl p-6 md:p-8 border border-[var(--border-color)] shadow-sm">
                     <div className="flex flex-col md:flex-row items-center md:items-center gap-4 md:gap-6 text-center md:text-left">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-100 dark:bg-indigo-900/20 rounded-2xl md:rounded-3xl flex items-center justify-center">
                         <Shield className="w-8 h-8 md:w-10 md:h-10 text-indigo-600" />
@@ -533,7 +533,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-5 md:p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-blue-200 dark:hover:border-blue-900/30 transition-colors">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
                         <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Users className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
@@ -542,7 +542,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       </div>
                       <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.totalUsers}</div>
                     </div>
-                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-5 md:p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-purple-200 dark:hover:border-purple-900/30 transition-colors">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
                         <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Zap className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
@@ -551,7 +551,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       </div>
                       <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.totalMorphs}</div>
                     </div>
-                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-5 md:p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-orange-200 dark:hover:border-orange-900/30 transition-colors">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
                         <div className="w-8 h-8 md:w-10 md:h-10 bg-orange-50 dark:bg-orange-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Clock className="w-4 h-4 md:w-5 md:h-5 text-orange-600" />
@@ -560,7 +560,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                       </div>
                       <div className="text-xl md:text-3xl font-black text-[var(--text-primary)]">{stats.pendingRequests}</div>
                     </div>
-                    <div className="bg-[var(--bg-primary)] p-4 md:p-6 rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm">
+                    <div className="bg-[var(--bg-primary)] p-5 md:p-6 rounded-2xl border border-[var(--border-color)] shadow-sm hover:border-green-200 dark:hover:border-green-900/30 transition-colors">
                       <div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-4">
                         <div className="w-8 h-8 md:w-10 md:h-10 bg-green-50 dark:bg-green-900/20 rounded-xl md:rounded-2xl flex items-center justify-center">
                           <Crown className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
@@ -583,8 +583,8 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                         layout
                         key={user.id}
                         className={cn(
-                          "p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] border transition-all duration-300",
-                          pending ? "border-indigo-200 dark:border-indigo-800 shadow-xl shadow-indigo-50/50 dark:shadow-none ring-1 ring-indigo-100 dark:ring-indigo-900/20" : "border-[var(--border-color)] shadow-sm hover:shadow-md"
+                          "p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl border transition-all duration-300",
+                          pending ? "border-indigo-300 dark:border-indigo-700 shadow-md ring-2 ring-indigo-100 dark:ring-indigo-900/20" : "border-[var(--border-color)] shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900/30"
                         )}
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 md:gap-8">
@@ -748,7 +748,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                   {filteredRequests.map((request) => (
                     <div 
                       key={request.id}
-                      className="p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] border border-[var(--border-color)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6"
+                      className="p-4 md:p-6 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6"
                     >
                       <div className="flex items-center gap-3 md:gap-4">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -803,7 +803,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     </div>
                   ))}
                   {filteredRequests.length === 0 && (
-                    <div className="text-center py-20 bg-[var(--bg-primary)] rounded-[40px] border border-dashed border-[var(--border-color)]">
+                    <div className="text-center py-20 bg-[var(--bg-primary)] rounded-3xl border border-dashed border-[var(--border-color)]">
                       <p className="text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-xs">No requests found.</p>
                     </div>
                   )}
@@ -811,15 +811,15 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
               ) : (
                 <div className="space-y-6 max-w-4xl mx-auto">
                   {/* Email Diagnoser Header Card */}
-                  <div className="bg-[var(--bg-primary)] rounded-2xl md:rounded-[32px] p-6 border border-[var(--border-color)] shadow-sm">
+                  <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl">
                         <Mail className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="text-base md:text-lg font-black text-[var(--text-primary)]">Resend Premium Email API Diagnoser</h3>
+                        <h3 className="text-base md:text-lg font-black text-[var(--text-primary)]">SMTP Premium Email API Diagnoser</h3>
                         <p className="text-xs text-[var(--text-secondary)] font-medium mt-1 leading-relaxed">
-                          Verify your Resend API configuration instantly. ResumeMorph triggers styled welcome emails to newly registered users automatically when they sign up under full-stack server security. Use this panel to test deliveries.
+                          Verify your SMTP API configuration instantly. ResumeMorph triggers styled welcome emails to newly registered users automatically when they sign up under full-stack server security. Use this panel to test deliveries.
                         </p>
                       </div>
                     </div>
@@ -829,14 +829,14 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     {/* Column 1: Configuration Status */}
                     <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm flex flex-col justify-between">
                       <div>
-                        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">Resend Integration Status</h4>
+                        <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">SMTP Integration Status</h4>
                         
-                        {resendLoading ? (
+                        {emailLoading ? (
                           <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-tertiary)] py-4">
                             <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                             Checking environment parameters...
                           </div>
-                        ) : !resendStatus ? (
+                        ) : !emailStatus ? (
                           <div className="text-xs text-red-500 font-bold py-4">
                             Failed to read status from backend. Confirm server is running.
                           </div>
@@ -844,15 +844,15 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           <div className="space-y-4">
                             {/* Overall badge status */}
                             <div className="flex items-center gap-2">
-                              {resendStatus.configured ? (
+                              {emailStatus.configured ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-full text-[10px] font-black uppercase tracking-wider">
                                   <CheckSquare className="w-3.5 h-3.5" />
-                                  Resend Ready & Configured
+                                  SMTP Ready & Configured
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/15 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-wider">
                                   <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
-                                  API Key Missing
+                                  SMTP Config Missing
                                 </span>
                               )}
                             </div>
@@ -865,26 +865,26 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   <span className="col-span-2 font-bold text-[var(--text-tertiary)]">Status / Value</span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">RESEND_API_KEY</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PASS</span>
                                   <span className="col-span-2 font-medium text-[var(--text-primary)]">
-                                    {resendStatus.hasPass ? "✅ Configured (Hidden)" : "❌ Missing (Set in Settings)"}
+                                    {emailStatus.hasPass ? "✅ Configured (Hidden)" : "❌ Missing (Set in Settings)"}
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">RESEND_FROM_EMAIL</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{resendStatus.fromEmail || "ℹ️ onboarding@resend.dev"}</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_FROM</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{emailStatus.fromEmail || "ℹ️ hello@gmail.com"}</span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">API_GATEWAY</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{resendStatus.host || "api.resend.com"}</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_HOST</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{emailStatus.host || "smtp.gmail.com"}</span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SECURE_PORT</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{resendStatus.port || 443} (HTTPS Secure TLS)</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_PORT</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)]">{emailStatus.port || 465} (HTTPS Secure TLS)</span>
                                 </div>
                                 <div className="grid grid-cols-3 p-2.5">
-                                  <span className="font-medium text-[var(--text-secondary)]">SENDER_NAME</span>
-                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{resendStatus.fromName || "ResumeMorph Team"}</span>
+                                  <span className="font-medium text-[var(--text-secondary)]">SMTP_FROM_NAME</span>
+                                  <span className="col-span-2 font-mono text-[var(--text-primary)] break-all">{emailStatus.fromName || "ResumeMorph Team"}</span>
                                 </div>
                               </div>
                             </div>
@@ -894,17 +894,16 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
 
                       {/* Diagnostic suggestions */}
                       <div className="mt-6 p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] text-[11px] text-[var(--text-secondary)] leading-relaxed space-y-2">
-                        <p className="font-bold text-[var(--text-primary)]">💡 Setup Guideline for Resend Email dispatch:</p>
-                        <p>1. Register your account at <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold">resend.com</a></p>
-                        <p>2. Create and retrieve your secure Key from the Resend **API Keys** menu panel.</p>
-                        <p>3. Set <strong>RESEND_API_KEY</strong> environment variable in your server configuration.</p>
-                        <p>4. <strong>Important Limitation</strong>: The default `onboarding@resend.dev` email can only dispatch welcome emails to your own registered address. To email external clients, verify your domain DNS records in the Resend Domains tab.</p>
+                        <p className="font-bold text-[var(--text-primary)]">💡 Setup Guideline for SMTP Email dispatch:</p>
+                        <p>1. Verify your SMTP credentials in your environment configuration.</p>
+                        <p>2. Set <strong>SMTP_HOST</strong>, <strong>SMTP_PORT</strong>, <strong>SMTP_USER</strong>, and <strong>SMTP_PASS</strong>.</p>
+                        <p>3. If using Gmail, you may need to generate an App Password rather than using your standard account password.</p>
                       </div>
                     </div>
 
                     {/* Column 2: Test Sender Widget */}
                     <div className="bg-[var(--bg-primary)] rounded-2xl p-6 border border-[var(--border-color)] shadow-sm">
-                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">Resend API Test Dispatcher</h4>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-[var(--text-tertiary)] mb-4">Email API Test Dispatcher</h4>
 
                       <form onSubmit={handleTestSend} className="space-y-4">
                         <div>
@@ -962,7 +961,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           ) : (
                             <>
                               <Send className="w-3.5 h-3.5" />
-                              Dispatch Welcome test (Live Resend)
+                              Dispatch Welcome test (Live SMTP)
                             </>
                           )}
                         </button>
@@ -1003,7 +1002,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                                   <p className="font-bold text-green-700 dark:text-green-400">🎉 Live Welcome Email Dispatched!</p>
                                 </div>
                                 <p className="text-green-600 dark:text-green-500/80 leading-relaxed font-medium">
-                                  Submitted to api.resend.com successfully. Since onboarding domains are restricted, verify your spam folder if sending to unverified addresses.
+                                  Submitted to SMTP server successfully.
                                 </p>
                                 {testResult.html && (
                                   <button
@@ -1018,19 +1017,19 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                             )
                           ) : (
                             <div className="p-3.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 rounded-xl text-xs space-y-1.5">
-                              <p className="font-bold text-red-700 dark:text-red-400">❌ Resend API Dispatch Failed</p>
+                              <p className="font-bold text-red-700 dark:text-red-400">❌ SMTP API Dispatch Failed</p>
                               <p className="font-mono text-[10px] text-red-600 dark:text-red-400/90 whitespace-pre-wrap break-all select-all bg-red-100/50 dark:bg-red-900/20 p-2 rounded border border-red-200/50">
                                 {testResult.error || "Unknown Error during dispatch."}
                               </p>
                               <div className="text-[10px] text-red-600 dark:text-red-400 mt-2 space-y-1 leading-normal">
                                 <p className="font-bold">Advice based on failure type:</p>
-                                {testResult.error?.toLowerCase().includes("unauthorized") || testResult.error?.toLowerCase().includes("api key") ? (
-                                  <p>👉 Key Error: RESEND_API_KEY might be incorrect, inactive, or not reloaded. Verify your key token string.</p>
+                                {testResult.error?.toLowerCase().includes("unauthorized") || testResult.error?.toLowerCase().includes("auth") ? (
+                                  <p>👉 Auth Error: SMTP credentials might be incorrect.</p>
                                 ) : (
-                                  <p>👉 Setup Guideline: Verify that you are sending to an authorized test recipient if you are on the Resend free trial plan.</p>
+                                  <p>👉 Setup Guideline: Verify your SMTP host and port configuration.</p>
                                 )}
                                 <p className="font-semibold text-indigo-600 dark:text-indigo-400 mt-1 cursor-pointer hover:underline" onClick={() => setForceSimulate(true)}>
-                                  💡 Tip: Check "Run inside Sandbox Simulation Mode" above to test immediately without an API KEY.
+                                  💡 Tip: Check "Run inside Sandbox Simulation Mode" above to test immediately without SMTP credentials.
                                 </p>
                               </div>
                             </div>

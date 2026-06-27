@@ -4,7 +4,26 @@ import { FileText, Send, Loader2, Copy, Check, Download, Wand2 } from 'lucide-re
 import { generateCoverLetter } from '../lib/gemini';
 import { cn } from '../lib/utils';
 
-export default function CoverLetterGenerator({ resumeData }: { resumeData: any }) {
+export default function CoverLetterGenerator({ resumeData, user, onLogin }: { resumeData: any; user?: any; onLogin?: () => void }) {
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mb-6 shadow-lg shadow-indigo-100 dark:shadow-none">
+          <FileText className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Cover Letter Locked</h2>
+        <p className="text-[var(--text-secondary)] mb-8 max-w-md font-medium text-lg leading-relaxed">Sign in to generate professional, tailored cover letters that perfectly complement your resume DNA.</p>
+        <button 
+          onClick={onLogin}
+          className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center gap-3"
+        >
+          <Wand2 className="w-5 h-5" />
+          Unlock Generator
+        </button>
+      </div>
+    );
+  }
+
   const [jobTitle, setJobTitle] = useState('');
   const [company, setCompany] = useState('');
   const [jobDescription, setJobDescription] = useState('');

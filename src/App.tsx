@@ -39,12 +39,26 @@ const AccountModal = lazyWithRetry(() => import('./components/AccountModal'));
 const UserGuide = lazyWithRetry(() => import('./components/UserGuide'));
 const Resources = lazyWithRetry(() => import('./components/Resources'));
 const ResumeAIAssistant = lazyWithRetry(() => import('./components/ResumeAIAssistant'));
+const GreetingModal = lazyWithRetry(() => import('./components/GreetingModal'));
+
+const Analyzer = lazyWithRetry(() => import('./components/Analyzer'));
+const Careers = lazyWithRetry(() => import('./components/Careers'));
+const Blog = lazyWithRetry(() => import('./components/Blog'));
+const Terms = lazyWithRetry(() => import('./components/Terms'));
+const Cookies = lazyWithRetry(() => import('./components/Cookies'));
+const Security = lazyWithRetry(() => import('./components/Security'));
+const HelpCenter = lazyWithRetry(() => import('./components/HelpCenter'));
+const Status = lazyWithRetry(() => import('./components/Status'));
+const API = lazyWithRetry(() => import('./components/API'));
 
 import { RefreshCw, Layout, Info, Shield, Send, Menu, X, MessageSquare, LogOut, User as UserIcon, ChevronDown, Calendar, FileText, Download, Eye, Trash2, Globe, Sparkles, Briefcase, LifeBuoy, LogIn } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, storage, ensureConnection } from './firebase';
-import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { loginWithGoogle } from './lib/auth';
+
+// Pre-initialized GoogleAuthProvider moved to lib/auth.ts
 import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc, getDocFromServer } from 'firebase/firestore';
 import { ref } from 'firebase/storage';
 import { deleteWithRetry } from './lib/storage';
@@ -53,27 +67,49 @@ import PremiumModal from './components/PremiumModal';
 import CreatorWelcomeModal from './components/CreatorWelcomeModal';
 import InteractiveTour from './components/InteractiveTour';
 import AppChatbot from './components/AppChatbot';
+import LoginModal from './components/LoginModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
-import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon } from 'lucide-react';
+import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, AlertTriangle, Lock } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help-center' | 'status' | 'api';
 
 import { PLANS } from './constants';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const path = window.location.pathname.replace(/^\//, '') as Tab;
-    const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+    const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
     return validTabs.includes(path) ? path : 'builder';
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isGuest, setIsGuest] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('morph_is_guest') === 'true';
+    }
+    return false;
+  });
   const [userData, setUserData] = useState<any>(null);
+  const [isAuthProgress, setIsAuthProgress] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [splashStatus, setSplashStatus] = useState('Initializing Morph Engine...');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showGreetingModal, setShowGreetingModal] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const mountTimeRef = React.useRef(Date.now());
   const sendingWelcomeEmailRef = React.useRef("");
+
+  // Route Protection & Guest Enforcement
+  useEffect(() => {
+    if (loading) return;
+    
+    const protectedTabs: Tab[] = ['portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'account'];
+    if (!user && protectedTabs.includes(activeTab)) {
+      setActiveTab('builder');
+      triggerLogin();
+    }
+  }, [user, loading, activeTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -189,7 +225,7 @@ export default function App() {
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const path = window.location.pathname.replace(/^\//, '') as Tab;
-      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
       const targetTab = validTabs.includes(path) ? path : 'builder';
       setActiveTab(targetTab);
     };
@@ -202,7 +238,10 @@ export default function App() {
     ensureConnection().catch(console.error);
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (!user) {
+      if (user) {
+        setIsGuest(false);
+        sessionStorage.removeItem('morph_is_guest');
+      } else {
         setUserData(null);
         setLoading(false);
       }
@@ -242,8 +281,7 @@ export default function App() {
           try {
             const expiry = data.premiumExpiryDate.toDate ? data.premiumExpiryDate.toDate() : new Date(data.premiumExpiryDate);
             if (expiry instanceof Date && !isNaN(expiry.getTime())) {
-              // 30 minute buffer to account for minor clock drifts/skew
-              const isExpired = Date.now() > (expiry.getTime() + 1800000); 
+              const isExpired = Date.now() >= expiry.getTime(); 
               if (isExpired) {
                 const currentPlan = data.plan; // Capture current plan for logging
                 const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
@@ -293,6 +331,7 @@ export default function App() {
             plan: PLANS[0].id,
             planLimit: PLANS[0].limit,
             hasReviewed: false,
+            hasSeenWelcome: false,
             role: 'user',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -316,6 +355,13 @@ export default function App() {
       // Note: if docSnap doesn't exist AND it's from cache, we wait for the next fire (server fire)
       // We don't set loading to false yet to avoid showing guest mode prematurely
     }, (error) => {
+      // Silent handling for expected idle stream disconnects (Code: 1 CANCELLED) 
+      // This is common in proxied or high-latency environments like development containers.
+      if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+        console.warn("Morph: Firestore idle stream disconnected. SDK will automatically reconnect.");
+        return;
+      }
+
       console.error("Firestore user snapshot error:", error);
       if (error.code === 'unavailable') {
         setIsOffline(true);
@@ -340,6 +386,41 @@ export default function App() {
     
     updateActivity();
   }, [user?.uid]);
+
+  // Automatic Subscription Expiry Watcher
+  useEffect(() => {
+    if (!userData || !userData.plan || userData.plan === 'free' || !userData.premiumExpiryDate || !user?.uid) return;
+
+    const expiry = userData.premiumExpiryDate.toDate ? userData.premiumExpiryDate.toDate() : new Date(userData.premiumExpiryDate);
+    if (!(expiry instanceof Date) || isNaN(expiry.getTime())) return;
+
+    const timeUntilExpiry = expiry.getTime() - Date.now();
+    
+    // Max timeout is 2147483647 (24.8 days).
+    if (timeUntilExpiry > 2147483647) return;
+
+    const downgrade = async () => {
+      const freePlan = PLANS.find(p => p.id === 'free') || PLANS[0];
+      const currentUsed = userData.usedMorphs !== undefined ? userData.usedMorphs : (userData.morphCount || 0);
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        plan: freePlan.id,
+        planLimit: freePlan.limit,
+        remainingMorphs: Math.max(0, freePlan.limit - currentUsed),
+        premiumExpiryDate: null,
+        showExpiryNotice: true,
+        lastExpiryCheck: Date.now()
+      }).catch(console.error);
+    };
+
+    if (timeUntilExpiry <= 0) {
+      downgrade();
+      return;
+    }
+
+    const timeout = setTimeout(downgrade, timeUntilExpiry);
+    return () => clearTimeout(timeout);
+  }, [userData?.plan, userData?.premiumExpiryDate, user?.uid]);
 
   // Automatic Welcome Email Trigger Effect
   useEffect(() => {
@@ -455,6 +536,10 @@ export default function App() {
               }
             }
           }, (error) => {
+            // Silent handling for expected idle stream disconnects (Code: 1 CANCELLED)
+            if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+              return;
+            }
             clearTimeout(timeoutId);
             if (unsubscribe) unsubscribe();
             reject(error);
@@ -538,6 +623,40 @@ export default function App() {
     triggerWelcomeEmail();
   }, [userData?.userId, userData?.welcomeEmailSent, userData?.email, user?.uid]);
 
+  // Popup Logic for Welcome & Greeting
+  useEffect(() => {
+    if (showSplash) return;
+
+    const checkPopups = () => {
+      // Intro Popup (GreetingModal) for everyone on first visit
+      const introKey = `morph_intro_seen_v1`;
+      const hasSeenIntro = localStorage.getItem(introKey);
+      
+      if (!hasSeenIntro) {
+        setShowGreetingModal(true);
+        localStorage.setItem(introKey, 'true');
+        return;
+      }
+
+      // Welcome popup for first-timers (only if not seen before and logged in)
+      if (user && userData && userData.hasSeenWelcome === false) {
+        setShowWelcomeModal(true);
+        return;
+      }
+    };
+
+    const timer = setTimeout(checkPopups, 2000);
+    return () => clearTimeout(timer);
+  }, [userData?.hasSeenWelcome, user?.uid, showSplash]);
+
+  const handleCloseWelcome = async () => {
+    setShowWelcomeModal(false);
+    if (user?.uid) {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, { hasSeenWelcome: true }).catch(console.error);
+    }
+  };
+
   useEffect(() => {
     const handleSetTab = (e: any) => {
       if (e.detail) {
@@ -548,7 +667,7 @@ export default function App() {
     
     const handlePopState = () => {
       const path = window.location.pathname.replace(/^\//, '') as Tab;
-      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources'];
+      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
       setActiveTab(validTabs.includes(path) ? path : 'builder');
     };
     window.addEventListener('popstate', handlePopState);
@@ -622,6 +741,8 @@ export default function App() {
 
   const handleLogout = () => {
     signOut(auth);
+    setIsGuest(false);
+    localStorage.removeItem('morph_is_guest');
   };
 
   const handleDeleteResume = async (resumeId: string) => {
@@ -721,20 +842,19 @@ export default function App() {
     return { name: 'Novice', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200' };
   };
 
-  const triggerLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      
-      if (!auth) {
-        throw new Error('Auth instance not initialized');
-      }
+  const performGoogleLogin = async () => {
+    if (isAuthProgress) return;
+    
+    // Force immediate visual update of auth progress state
+    setIsAuthProgress(true);
 
-      console.log('Attempting login with Google popup (trigger)...');
-      const result = await signInWithPopup(auth, provider);
+    try {
+      console.log('Attempting login with Google popup...');
+      const result = await loginWithGoogle();
       if (result.user) {
-        console.log('Login successful (trigger) for user:', result.user.email);
+        console.log('Login successful for user:', result.user.email);
         setUser(result.user);
+        setIsLoginModalOpen(false);
       }
     } catch (error: any) {
       if (error.code === 'auth/popup-blocked') {
@@ -742,12 +862,27 @@ export default function App() {
       } else if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
         console.warn('Login popup closed by user or cancelled');
       } else {
-        console.error('Login error (trigger):', error);
+        console.error('Login error:', error);
       }
+    } finally {
+      setIsAuthProgress(false);
     }
   };
 
+  const triggerLogin = () => {
+    if (user || isAuthProgress) return;
+    setIsLoginModalOpen(true);
+  };
+
   const handleTabChange = (tab: Tab) => {
+    // Protected Tabs for Guest
+    const protectedTabs: Tab[] = ['ai-assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+    
+    if (!user && protectedTabs.includes(tab)) {
+      triggerLogin();
+      return;
+    }
+
     setActiveTab(tab);
     setIsMenuOpen(false);
     setIsResourcesOpen(false);
@@ -827,9 +962,6 @@ export default function App() {
     );
   }
 
-  if (!user && activeTab !== 'builder') {
-    return <Login onTryGuest={() => setActiveTab('builder')} theme={theme} toggleTheme={toggleTheme} />;
-  }
 
   const userLevel = getLevel(userData?.morphCount || 0);
   const isAdmin = user?.email === 'sankalpsmn@gmail.com';
@@ -853,53 +985,95 @@ export default function App() {
             Connecting to Morph Cloud... (Check connection)
           </motion.div>
         )}
+        
+        {userData?.showExpiryNotice && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-red-500 text-white text-[10px] font-black uppercase tracking-widest text-center py-2 z-[200] flex items-center justify-center gap-3"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Your Premium Subscription has expired. You are now on the Free Plan.
+            <button 
+              onClick={async () => {
+                if (user?.uid) {
+                  await updateDoc(doc(db, 'users', user.uid), { showExpiryNotice: false });
+                }
+              }}
+              className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[9px] transition-colors"
+            >
+              Dismiss
+            </button>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Global Top Header */}
       <header className={cn(
-        "fixed top-0 left-0 right-0 h-16 md:h-20 bg-[var(--header-bg)] backdrop-blur-xl border-b border-[var(--border-color)] z-[120] shadow-sm transition-transform duration-500",
+        "fixed top-0 left-0 right-0 h-16 md:h-18 bg-[var(--bg-primary)]/80 backdrop-blur-2xl border-b border-[var(--border-color)] z-[120] shadow-sm transition-all duration-500",
         isPortfolioFullscreen && activeTab === 'portfolio' && "-translate-y-full hover:translate-y-0" 
       )}>
-          <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4">
             {/* Logo Section */}
-            <div className="flex items-center gap-2 md:gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
-              <div className="w-9 h-9 md:w-11 md:h-11 bg-indigo-600 rounded-lg md:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 rotate-3 transition-transform group-hover:scale-105">
-                <RefreshCw className="text-white w-4 h-4 md:w-6 md:h-6" />
+            <div className="flex items-center gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 transition-all duration-300 group-hover:scale-105 group-hover:rotate-6">
+                <RefreshCw className="text-white w-4 h-4 md:w-5 md:h-5 animate-spin-slow" />
               </div>
-              <div className="xs:block">
-                <h1 className="text-sm md:text-lg font-black tracking-tight text-[var(--text-primary)] leading-none">Morph</h1>
-                <p className="text-[7px] md:text-[8px] uppercase tracking-[0.2em] text-indigo-500 font-black mt-0.5">AI Engine</p>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-sm md:text-base font-black tracking-tight text-[var(--text-primary)] leading-none">Resume<span className="saas-gradient-text">Morph</span></h1>
+                  <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[9px] uppercase rounded tracking-wider hidden sm:inline-block">v2.5</span>
+                </div>
+                <p className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mt-0.5">AI Career OS</p>
               </div>
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 xl:gap-2">
-              {mainTabs.map((tab) => (
-                <div key={tab.id} className="relative group">
-                  <button 
-                    id={`tab-${tab.id}`}
-                    onClick={() => handleTabChange(tab.id as Tab)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs font-black transition-all duration-300 whitespace-nowrap",
-                      activeTab === tab.id 
-                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                        : "text-[var(--text-secondary)] hover:text-indigo-600 hover:bg-indigo-50"
-                    )}
-                  >
-                    <tab.icon className="w-3.5 h-3.5" />
-                    <span className={activeTab === tab.id ? "inline" : "hidden lg:inline"}>{tab.label}</span>
-                  </button>
+            <nav className="hidden md:flex items-center gap-1 p-1 bg-[var(--bg-secondary)]/80 border border-[var(--border-color)] rounded-2xl">
+              {mainTabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const isLocked = !user && tab.id !== 'builder';
+                return (
+                  <div key={tab.id} className="relative group">
+                    <button 
+                      id={`tab-${tab.id}`}
+                      onClick={() => handleTabChange(tab.id as Tab)}
+                      className={cn(
+                        "relative flex items-center gap-2 px-3 xl:px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap z-10",
+                        isActive 
+                          ? "text-white dark:text-white" 
+                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                        isLocked && "opacity-60 cursor-not-allowed group-hover:opacity-100"
+                      )}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="desktopNavIndicator"
+                          className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-md shadow-indigo-500/25 -z-10"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                        />
+                      )}
+                      <tab.icon className={cn(
+                        "w-3.5 h-3.5 transition-transform group-hover:scale-110", 
+                        isActive ? "text-white" : "text-[var(--text-tertiary)] group-hover:text-indigo-500 dark:group-hover:text-indigo-400",
+                        isLocked && "grayscale"
+                      )} />
+                      <span className={isActive ? "inline" : "hidden lg:inline"}>{tab.label}</span>
+                      {isLocked && <Lock className="w-2.5 h-2.5 ml-1 text-gray-400" />}
+                    </button>
 
-                  {/* Tooltip */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[150]">
-                    <div className="bg-gray-900 text-white p-3 rounded-2xl shadow-2xl relative">
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">{tab.label}</p>
-                      <p className="text-[9px] font-bold text-gray-300 leading-relaxed capitalize">{tab.desc}</p>
+                    {/* Tooltip */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 translate-y-1 group-hover:translate-y-0 z-[150]">
+                      <div className="bg-gray-900/95 backdrop-blur-md text-white p-3 rounded-2xl shadow-2xl border border-white/10 relative">
+                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 border-t border-l border-white/10" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">{tab.label}</p>
+                        <p className="text-[10px] font-medium text-gray-300 leading-snug">{tab.desc}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </nav>
 
             {/* Actions Section */}
@@ -1033,10 +1207,15 @@ export default function App() {
                 ) : (
                   <button
                     onClick={triggerLogin}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-100"
+                    disabled={isAuthProgress}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-100 disabled:opacity-50"
                   >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Login</span>
+                    {isAuthProgress ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <LogIn className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">{isAuthProgress ? 'Connecting...' : 'Login'}</span>
                   </button>
                 )}
               </div>
@@ -1066,21 +1245,28 @@ export default function App() {
                 <div>
                   <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-4">Main Navigation</p>
                   <div className="space-y-1">
-                    {mainTabs.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
-                          activeTab === item.id 
-                            ? "bg-indigo-600 text-white" 
-                            : "text-[var(--text-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600"
-                        )}
-                      >
-                        <item.icon className="w-5 h-5" />
-                        {item.label}
-                      </button>
-                    ))}
+                    {mainTabs.map((item) => {
+                      const isLocked = !user && ['ai-assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'].includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
+                            activeTab === item.id 
+                              ? "bg-indigo-600 text-white" 
+                              : "text-[var(--text-secondary)] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600",
+                            isLocked && "opacity-70"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <item.icon className="w-5 h-5" />
+                            {item.label}
+                          </div>
+                          {isLocked && <Lock className="w-4 h-4 text-zinc-400" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1121,7 +1307,14 @@ export default function App() {
                 </div>
                 
                 <button 
-                  onClick={() => { setShowUpgradeModal(true); setIsMenuOpen(false); }}
+                  onClick={() => { 
+                    if (!user) {
+                      triggerLogin();
+                      return;
+                    }
+                    setShowUpgradeModal(true); 
+                    setIsMenuOpen(false); 
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none mt-4"
                 >
                   <Zap className="w-5 h-5 fill-white" />
@@ -1145,19 +1338,34 @@ export default function App() {
           </div>
         }>
           {activeTab === 'builder' && (
-            <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-              <ResumeBuilder 
-                userData={userData} 
-                onUpgrade={() => setShowUpgradeModal(true)} 
-                user={user}
-                onLogin={triggerLogin}
+            !user && !isGuest ? (
+              <Login 
+                onTryGuest={() => {
+                  setIsGuest(true);
+                  localStorage.setItem('morph_is_guest', 'true');
+                }} 
+                onLogin={performGoogleLogin}
+                theme={theme} 
+                toggleTheme={toggleTheme}
+                isLoginProgress={isAuthProgress}
               />
-            </div>
+            ) : (
+              <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+                <ResumeBuilder 
+                  userData={userData} 
+                  onUpgrade={() => setShowUpgradeModal(true)} 
+                  user={user}
+                  onLogin={triggerLogin}
+                  isLoginProgress={isAuthProgress}
+                  isGuest={isGuest}
+                />
+              </div>
+            )
           )}
 
           {activeTab === 'ai-assistant' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <ResumeAIAssistant />
+              <ResumeAIAssistant user={user} onLogin={triggerLogin} />
             </div>
           )}
           
@@ -1168,6 +1376,7 @@ export default function App() {
                 user={user}
                 onUpgrade={() => setShowUpgradeModal(true)}
                 onLogin={triggerLogin}
+                isLoginProgress={isAuthProgress}
                 isAdmin={isAdmin}
               />
             </div>
@@ -1175,13 +1384,17 @@ export default function App() {
           
           {activeTab === 'cover-letter' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <CoverLetterGenerator resumeData={userData?.resumeHistory?.[0]?.originalText || ""} />
+              <CoverLetterGenerator 
+                resumeData={userData?.resumeHistory?.[0]?.originalText || ""} 
+                user={user}
+                onLogin={triggerLogin}
+              />
             </div>
           )}
           
           {activeTab === 'tracker' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <ApplyTracker user={user} />
+              <ApplyTracker user={user} onLogin={triggerLogin} />
             </div>
           )}
           
@@ -1189,6 +1402,8 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <PortfolioGenerator 
                 onFullscreenChange={setIsPortfolioFullscreen} 
+                user={user}
+                onLogin={triggerLogin}
               />
             </div>
           )}
@@ -1219,7 +1434,7 @@ export default function App() {
           
           {activeTab === 'feedback' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <Feedback />
+              <Feedback user={user} isAdmin={isAdmin} />
             </div>
           )}
           
@@ -1228,20 +1443,88 @@ export default function App() {
               <Resources onTabChange={handleTabChange} />
             </div>
           )}
+
+          {activeTab === 'analyzer' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Analyzer user={user} onLogin={triggerLogin} />
+            </div>
+          )}
+          {activeTab === 'careers' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Careers />
+            </div>
+          )}
+          {activeTab === 'blog' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Blog />
+            </div>
+          )}
+          {activeTab === 'terms' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Terms />
+            </div>
+          )}
+          {activeTab === 'cookies' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Cookies />
+            </div>
+          )}
+          {activeTab === 'security' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Security />
+            </div>
+          )}
+          {activeTab === 'help-center' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <HelpCenter />
+            </div>
+          )}
+          {activeTab === 'status' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <Status />
+            </div>
+          )}
+          {activeTab === 'api' && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <API />
+            </div>
+          )}
           
           {activeTab === 'account' && (
             <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8">
-              <AccountModal 
-                isOpen={true} 
-                onClose={() => handleTabChange('builder')} 
-                user={user}
-                userData={userData}
-                onLogout={handleLogout}
-                onUpgrade={() => setShowUpgradeModal(true)}
-                onOpenAdmin={() => setIsAdminOpen(true)}
-                onDeleteResume={handleDeleteResume}
-                isTabMode={true}
-              />
+              {user && userData ? (
+                <AccountModal 
+                  isOpen={true} 
+                  onClose={() => handleTabChange('builder')} 
+                  user={user}
+                  userData={userData}
+                  onLogout={handleLogout}
+                  onUpgrade={() => setShowUpgradeModal(true)}
+                  onOpenAdmin={() => setIsAdminOpen(true)}
+                  onDeleteResume={handleDeleteResume}
+                  isTabMode={true}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                  <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mb-6 shadow-lg shadow-indigo-100 dark:shadow-none">
+                    <UserIcon className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Access Your Profile</h2>
+                  <p className="text-[var(--text-secondary)] mb-8 max-w-md font-medium text-lg leading-relaxed">Sign in to view your saved resumes, manage your subscription, and track your career growth.</p>
+                  <button 
+                    onClick={triggerLogin}
+                    disabled={isAuthProgress}
+                    className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center gap-3 disabled:opacity-50"
+                  >
+                    {isAuthProgress ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <LogIn className="w-5 h-5" />
+                    )}
+                    {isAuthProgress ? 'Connecting...' : 'Sign In with Google'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </React.Suspense>
@@ -1250,7 +1533,7 @@ export default function App() {
       {/* Premium Floating Bottom Navigation (Mobile-first Redesign) */}
       {!isPortfolioFullscreen && (
         <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-sm">
-          <div className="bg-[#0b0f19]/95 dark:bg-black/95 backdrop-blur-2xl border border-white/10 rounded-full p-2 flex items-center justify-between shadow-[0_16px_40px_rgba(0,0,0,0.6)] relative">
+          <div className="bg-[#0b0f19]/90 dark:bg-black/90 backdrop-blur-2xl border border-white/15 rounded-full p-1.5 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative">
             {[
               { id: 'builder', icon: Layout, label: 'Morph' },
               { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach' },
@@ -1259,18 +1542,22 @@ export default function App() {
               { id: 'account', icon: UserIcon, label: 'Profile' },
             ].map((item) => {
               const isActive = activeTab === item.id;
+              const isLocked = !user && item.id !== 'builder';
               return (
                 <button
                   key={item.id}
                   id={`mobile-tab-${item.id}`}
                   onClick={() => handleTabChange(item.id as Tab)}
-                  className="relative py-2 px-3 rounded-full flex flex-col items-center justify-center transition-all focus:outline-none flex-1 select-none cursor-pointer"
+                  className={cn(
+                    "relative py-2 px-3 rounded-full flex flex-col items-center justify-center transition-all focus:outline-none flex-1 select-none cursor-pointer",
+                    isLocked && "opacity-50"
+                  )}
                 >
                   {/* Fluid sliding background pill on active */}
                   {isActive && (
                     <motion.div
                       layoutId="mobileActiveIndicator"
-                      className="absolute inset-x-1 inset-y-1 bg-white/10 dark:bg-white/15 rounded-full z-0"
+                      className="absolute inset-x-1 inset-y-1 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg shadow-indigo-500/30 z-0"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -1284,25 +1571,29 @@ export default function App() {
                           alt="Profile" 
                           className={cn(
                             "w-5 h-5 rounded-full object-cover border transition-all duration-300",
-                            isActive ? "border-indigo-400 scale-110" : "border-white/20"
+                            isActive ? "border-white scale-110 shadow-sm" : "border-white/30"
                           )}
                           referrerPolicy="no-referrer"
                         />
                         {/* Interactive Notification live active dot */}
                         <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
                         </span>
                       </div>
                     ) : (
-                      <item.icon className={cn(
-                        "w-5 h-5 transition-transform duration-300",
-                        isActive ? "text-white scale-110" : "text-zinc-500 hover:text-zinc-300"
-                      )} />
+                      <div className="relative">
+                        <item.icon className={cn(
+                          "w-5 h-5 transition-transform duration-300",
+                          isActive ? "text-white scale-110" : "text-zinc-400 hover:text-zinc-200",
+                          isLocked && "grayscale"
+                        )} />
+                        {isLocked && <Lock className="absolute -top-1 -right-1 w-2.5 h-2.5 text-zinc-500" />}
+                      </div>
                     )}
                     <span className={cn(
                       "text-[8px] font-black uppercase tracking-wider mt-1 transition-colors duration-300",
-                      isActive ? "text-white font-black" : "text-zinc-500 font-bold"
+                      isActive ? "text-white font-black" : "text-zinc-400 font-bold"
                     )}>
                       {item.label}
                     </span>
@@ -1324,31 +1615,31 @@ export default function App() {
       <AnimatePresence>
         {showUndoToast && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
             className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] w-[90%] max-w-md"
           >
-            <div className="bg-[var(--bg-primary)] text-[var(--text-primary)] rounded-3xl p-4 shadow-2xl flex items-center justify-between gap-4 border border-indigo-100 dark:border-indigo-900/30">
+            <div className="bg-gray-900/95 dark:bg-black/95 backdrop-blur-2xl text-white rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4 border border-white/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-indigo-600" />
+                <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30">
+                  <Trash2 className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)]">Resume Deleted</p>
-                  <p className="text-[9px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Self-destructing in 5s</p>
+                  <p className="text-[11px] font-black tracking-wide text-white">Resume Archived</p>
+                  <p className="text-[9px] text-gray-400 font-mono font-medium uppercase tracking-wider">Self-destruct in 5s</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowUndoToast(null)}
-                  className="px-4 py-2 border border-[var(--border-color)] text-[var(--text-tertiary)] hover:bg-[var(--bg-secondary)] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                  className="px-3.5 py-1.5 border border-white/15 text-gray-300 hover:bg-white/10 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all active:scale-95"
                 >
                   Dismiss
                 </button>
                 <button
                   onClick={() => handleUndoDelete(showUndoToast)}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-indigo-200 dark:shadow-none"
+                  className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all active:scale-95 shadow-lg shadow-indigo-500/25"
                 >
                   Undo
                 </button>
@@ -1365,41 +1656,88 @@ export default function App() {
         user={user}
       />
 
-      <CreatorWelcomeModal />
+      <CreatorWelcomeModal 
+        isOpen={showWelcomeModal}
+        onClose={handleCloseWelcome}
+        type="welcome"
+      />
+
+      <GreetingModal
+        isOpen={showGreetingModal}
+        onClose={() => {
+          setShowGreetingModal(false);
+          if (!user && !isGuest) {
+            setActiveTab('builder');
+          }
+        }}
+        userName={user?.displayName || userData?.name}
+      />
+
+      <LoginModal 
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLogin={performGoogleLogin}
+        isProgress={isAuthProgress}
+      />
+
       <InteractiveTour />
       <AppChatbot />
 
       {/* Global Footer */}
-      <footer className="py-12 md:py-20 border-t border-[var(--border-color)] bg-[var(--bg-primary)] px-4">
-        <div className="max-w-7xl mx-auto flex flex-col items-center gap-10 md:gap-12">
+      <footer className="py-16 md:py-24 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/30 px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent" />
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-12 md:gap-16">
           {/* Top Section: Logo & Links */}
           <div className="w-full flex flex-col md:flex-row items-center md:items-start justify-between gap-12">
             <div className="flex flex-col items-center md:items-start gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
-                  <RefreshCw className="text-white w-5 h-5" />
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                  <RefreshCw className="text-white w-5 h-5 animate-spin-slow" />
                 </div>
-                <span className="font-display font-black text-2xl tracking-tighter text-[var(--text-primary)]">Resume Morph</span>
+                <span className="font-black text-xl md:text-2xl tracking-tight text-[var(--text-primary)]">Resume<span className="saas-gradient-text">Morph</span></span>
               </div>
-              <p className="text-sm text-[var(--text-secondary)] font-medium text-center md:text-left max-w-xs leading-relaxed">
-                Empowering careers through AI-architected visual storytelling. Built for the modern professional.
+              <p className="text-xs md:text-sm text-[var(--text-secondary)] font-medium text-center md:text-left max-w-xs leading-relaxed">
+                Empowering high-trajectory careers through AI-architected resume synthesis and portfolio generation.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-12 gap-y-8 text-center md:text-left">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10 sm:gap-x-12 md:gap-y-8 text-center sm:text-left w-full md:w-auto">
               {[
-                { title: 'Product', links: ['Builder', 'Analyzer', 'Tracker', 'Assistant'] },
-                { title: 'Company', links: ['About', 'Careers', 'Contact', 'Blog'] },
-                { title: 'Legal', links: ['Privacy', 'Terms', 'Cookies', 'Security'] },
-                { title: 'Support', links: ['Help Center', 'Feedback', 'Status', 'API'] },
+                { title: 'Product', links: [
+                  { label: 'Builder', id: 'builder' },
+                  { label: 'Analyzer', id: 'analyzer' },
+                  { label: 'Tracker', id: 'tracker' },
+                  { label: 'Assistant', id: 'ai-assistant' }
+                ] },
+                { title: 'Company', links: [
+                  { label: 'About', id: 'about' },
+                  { label: 'Careers', id: 'careers' },
+                  { label: 'Contact', id: 'contact' },
+                  { label: 'Blog', id: 'blog' }
+                ] },
+                { title: 'Legal', links: [
+                  { label: 'Privacy', id: 'privacy' },
+                  { label: 'Terms', id: 'terms' },
+                  { label: 'Cookies', id: 'cookies' },
+                  { label: 'Security', id: 'security' }
+                ] },
+                { title: 'Support', links: [
+                  { label: 'Help Center', id: 'help-center' },
+                  { label: 'Feedback', id: 'feedback' },
+                  { label: 'Status', id: 'status' },
+                  { label: 'API', id: 'api' }
+                ] },
               ].map((group) => (
                 <div key={group.title} className="space-y-4">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{group.title}</h4>
+                  <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--text-tertiary)]">{group.title}</h4>
                   <ul className="space-y-3">
                     {group.links.map(link => (
-                      <li key={link}>
-                        <button onClick={() => handleTabChange(link.toLowerCase() as any)} className="text-xs font-bold text-[var(--text-secondary)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors whitespace-nowrap">
-                          {link}
+                      <li key={link.id}>
+                        <button 
+                          onClick={() => handleTabChange(link.id as Tab)} 
+                          className="text-xs font-semibold text-[var(--text-secondary)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left sm:text-left inline-block"
+                        >
+                          {link.label}
                         </button>
                       </li>
                     ))}
@@ -1409,19 +1747,17 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-[var(--border-color)] to-transparent" />
+          <div className="w-full h-px bg-[var(--border-color)]" />
 
           {/* Bottom Section: Legal & Version */}
-          <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 pb-12 md:pb-0">
-            <p className="text-[10px] sm:text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest text-center md:text-left">
-              © 2026 Resume Morph. Crafted by <button onClick={() => window.dispatchEvent(new CustomEvent('open-creator-about'))} className="text-indigo-600 hover:underline">Sankalp Suman</button>. All rights reserved.
+          <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6">
+            <p className="text-[11px] sm:text-xs text-[var(--text-tertiary)] font-medium text-center sm:text-left">
+              © 2026 ResumeMorph Inc. Crafted with <span className="text-red-500">♥</span> by <button onClick={() => window.dispatchEvent(new CustomEvent('open-creator-about'))} className="text-[var(--text-primary)] font-bold hover:text-indigo-600 transition-colors">Sankalp Suman</button>. All rights reserved.
             </p>
-            <div className="flex items-center gap-6">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/10 rounded-full border border-indigo-100 dark:border-indigo-900/20">v1.0.1 PRO</span>
-              <div className="flex items-center gap-4">
-                <button className="w-8 h-8 rounded-full border border-[var(--border-color)] flex items-center justify-center text-[var(--text-tertiary)] hover:text-indigo-600 hover:border-indigo-600 transition-all">
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-mono font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">v2.5 AI Engine</span>
               </div>
             </div>
           </div>

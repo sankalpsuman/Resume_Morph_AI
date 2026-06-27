@@ -9,6 +9,7 @@ import { cn } from '../lib/utils';
 import { PLANS } from '../constants';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestore';
 import { compareResumes } from '../lib/gemini';
 import ReactMarkdown from 'react-markdown';
 
@@ -164,6 +165,10 @@ export default function AccountModal({
             }
           }
         }, (error) => {
+          // Silent handling for expected idle stream disconnects
+          if (error.code === 'cancelled' || error.message?.includes('CANCELLED')) {
+            return;
+          }
           clearTimeout(timeoutId);
           if (unsubscribe) unsubscribe();
           reject(error);
@@ -266,6 +271,12 @@ export default function AccountModal({
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUserFeedback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      // Silent handling for expected idle stream disconnects
+      if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+        return;
+      }
+      handleFirestoreError(error, OperationType.LIST, 'feedbacks');
     });
 
     return () => unsubscribe();
@@ -369,15 +380,15 @@ export default function AccountModal({
       <div className={cn(
         "relative w-full bg-[var(--bg-primary)] flex flex-col",
         isTabMode 
-          ? "w-full pb-32 rounded-[32px] md:rounded-[40px] shadow-sm border border-[var(--border-color)] overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
-          : "w-full sm:max-w-3xl sm:rounded-[48px] shadow-2xl overflow-y-auto overflow-x-hidden border border-[var(--border-color)] max-h-screen sm:max-h-[85vh] my-auto"
+          ? "w-full pb-32 rounded-3xl shadow-sm border border-[var(--border-color)] overflow-y-auto overflow-x-hidden min-h-[60vh] max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-160px)]" 
+          : "w-full sm:max-w-4xl sm:rounded-3xl shadow-xl overflow-y-auto overflow-x-hidden border border-[var(--border-color)] max-h-screen sm:max-h-[85vh] my-auto"
       )}>
         {/* Header - Only show in modal mode */}
         {!isTabMode && (
           <div className="p-4 sm:p-6 md:p-8 border-b border-[var(--border-color)] flex items-center justify-between bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] sticky top-0 z-10">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-indigo-600 rounded-xl sm:rounded-[20px] flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none shrink-0">
-                <User className="text-white w-5 h-5 sm:w-7 sm:h-7" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30 shrink-0">
+                <User className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--text-primary)] tracking-tight leading-none">Account Profile</h2>
@@ -401,14 +412,14 @@ export default function AccountModal({
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8">
             {/* Left: Avatar & Basic Info */}
             <div className="lg:col-span-3 space-y-6">
-              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-6 md:p-8 bg-[var(--bg-primary)] rounded-[32px] md:rounded-[40px] border border-[var(--border-color)] shadow-sm relative overflow-hidden group">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 p-6 md:p-8 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-full -mr-16 -mt-16 blur-3xl opacity-50 transition-all group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30" />
                 
                   <div className="relative shrink-0">
                   <img 
                     src={userData.photo || user.photoURL} 
                     alt={userData.name || user.displayName} 
-                    className="w-24 h-24 md:w-32 md:h-32 rounded-[24px] md:rounded-[32px] border-4 border-[var(--bg-primary)] shadow-2xl object-cover relative z-10"
+                    className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl border-4 border-[var(--bg-primary)] shadow-2xl object-cover relative z-10"
                   />
                   <div className="absolute -bottom-2 -right-2 px-3 py-1 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg z-20">
                     {userLevel.name}
@@ -462,7 +473,7 @@ export default function AccountModal({
 
             {/* Right: Stats Cards */}
             <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 h-fit">
-              <div className="p-6 bg-gradient-to-br from-indigo-50 to-[var(--bg-primary)] dark:from-indigo-900/10 dark:to-[var(--bg-primary)] rounded-[32px] border border-indigo-100/50 dark:border-indigo-900/30 flex items-center gap-4 md:gap-5 shadow-sm">
+              <div className="p-6 bg-gradient-to-br from-indigo-50 to-[var(--bg-primary)] dark:from-indigo-900/10 dark:to-[var(--bg-primary)] rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30 flex items-center gap-4 md:gap-5 shadow-sm">
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/20 dark:shadow-none shrink-0">
                   <Activity className="w-6 h-6 md:w-7 md:h-7 text-white" />
                 </div>
@@ -472,7 +483,7 @@ export default function AccountModal({
                 </div>
               </div>
               
-              <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[32px] shadow-sm space-y-4">
+              <div className="p-6 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-2xl shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Usage Progress</p>
                   <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">{usedMorphs} / {planLimit === Infinity ? '∞' : planLimit}</p>
@@ -536,7 +547,7 @@ export default function AccountModal({
                 {recentResumes.map((resume: any) => (
                   <div 
                     key={resume.id}
-                    className="group flex flex-col md:flex-row items-center justify-between p-6 bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]/50 rounded-[32px] border border-[var(--border-color)] hover:border-indigo-500/30 transition-all duration-500 hover:shadow-xl hover:shadow-indigo-500/5 dark:hover:shadow-none"
+                    className="group flex flex-col md:flex-row items-center justify-between p-5 md:p-6 bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)]/50 rounded-2xl border border-[var(--border-color)] hover:border-indigo-500/30 transition-all duration-300 hover:shadow-md dark:hover:shadow-none"
                   >
                     <div className="flex items-center gap-5 w-full md:w-auto mb-4 md:mb-0">
                       <div className="w-14 h-14 bg-[var(--bg-secondary)] rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-[var(--bg-primary)] group-hover:shadow-md transition-all">
@@ -598,7 +609,7 @@ export default function AccountModal({
                 ))}
               </div>
             ) : (
-              <div className="p-16 text-center bg-[var(--bg-secondary)]/30 rounded-[48px] border-2 border-dashed border-[var(--border-color)]">
+              <div className="p-16 text-center bg-[var(--bg-secondary)]/30 rounded-3xl border-2 border-dashed border-[var(--border-color)]">
                 <div className="w-20 h-20 bg-[var(--bg-primary)] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
                   <FileText className="w-10 h-10 text-[var(--border-color)]" />
                 </div>
@@ -630,7 +641,7 @@ export default function AccountModal({
                 {userFeedback.map((feedback: any) => (
                   <div 
                     key={feedback.id}
-                    className="p-6 bg-[var(--bg-primary)] rounded-[32px] border border-[var(--border-color)] space-y-4 hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all shadow-sm"
+                    className="p-5 md:p-6 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] space-y-4 hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all shadow-sm"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">
@@ -658,7 +669,7 @@ export default function AccountModal({
                 ))}
               </div>
             ) : (
-              <div className="p-12 text-center bg-[var(--bg-secondary)]/30 rounded-[40px] border-2 border-dashed border-[var(--border-color)]">
+              <div className="p-12 text-center bg-[var(--bg-secondary)]/30 rounded-3xl border-2 border-dashed border-[var(--border-color)]">
                 <p className="text-[var(--text-tertiary)] font-bold text-sm">No feedback submitted yet.</p>
               </div>
             )}
@@ -679,7 +690,7 @@ export default function AccountModal({
                 </div>
               </div>
 
-              <div className="p-6 bg-[var(--bg-primary)] rounded-[32px] border border-[var(--border-color)] space-y-6 shadow-sm">
+              <div className="p-6 bg-[var(--bg-primary)] rounded-2xl border border-[var(--border-color)] space-y-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[var(--border-color)]">
                   <div>
                     <span className="text-[9px] text-[var(--text-tertiary)] font-black uppercase tracking-widest">Welcome Email Status</span>
@@ -795,9 +806,8 @@ export default function AccountModal({
                 <div className="p-4 bg-[var(--bg-secondary)] rounded-2xl text-[11px] leading-relaxed text-[var(--text-secondary)] space-y-2 border border-[var(--border-color)]">
                   <p className="font-bold text-[var(--text-primary)]">Why didn't you receive the initial welcome email?</p>
                   <ul className="list-disc list-inside space-y-1">
-                    <li><strong>Resend API restrictions</strong>: If the system uses Resend's default trial parameters, welcome emails can only deliver successfully to your verified Resend login address (or domains you have explicitly added and verified on Resend).</li>
                     <li><strong>Spam Filters</strong>: Sometimes secure emails might be placed in Gmail's <strong>Promotions</strong> or <strong>Spam</strong> tabs. Please verify those folders as well.</li>
-                    <li><strong>Configuration</strong>: Verify that the <code>RESEND_API_KEY</code> environment variable is set in the builder settings so the server can authenticatively route requests through the modern Resend secure tunnel.</li>
+                    <li><strong>Configuration</strong>: Verify that the SMTP credentials are correctly set in the environment variables.</li>
                   </ul>
                 </div>
               </div>
@@ -883,7 +893,7 @@ export default function AccountModal({
                     animate={{ opacity: 1 }}
                     className="space-y-6"
                   >
-                    <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-[32px] border border-indigo-100 dark:border-indigo-900/20 mb-8">
+                    <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20 mb-8">
                        <div className="flex items-center gap-3 mb-2">
                           <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                           <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Target Integrity: 100%</span>
@@ -932,7 +942,7 @@ export default function AccountModal({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-[32px] p-8 shadow-2xl border border-[var(--border-color)] text-center"
+              className="relative w-full max-w-sm bg-[var(--bg-primary)] rounded-3xl p-8 shadow-2xl border border-[var(--border-color)] text-center"
             >
               <div className="w-16 h-16 bg-red-50 dark:bg-red-900/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <AlertCircle className="w-8 h-8 text-red-500" />

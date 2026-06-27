@@ -82,6 +82,25 @@ interface PortfolioGeneratorProps {
 }
 
 export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }: PortfolioGeneratorProps) {
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mb-6 shadow-lg shadow-indigo-100 dark:shadow-none">
+          <Globe className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Portfolio Generator Restricted</h2>
+        <p className="text-[var(--text-secondary)] mb-8 max-w-md font-medium text-lg leading-relaxed">Sign in to convert your experience into a premium digital storefront. Personalize your site and deploy in seconds.</p>
+        <button 
+          onClick={onLogin}
+          className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center gap-3"
+        >
+          <Rocket className="w-5 h-5" />
+          Unlock Generator
+        </button>
+      </div>
+    );
+  }
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioContent | null>(null);
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {

@@ -446,20 +446,20 @@ export async function generateResume(
     
     GOAL: Transform the data from "USER CONTENT" into the visual layout of "MASTER REFERENCE".
     
-    CLONING RULES:
-    1. REPLICATE THE GRID: Match column splits (e.g. 25/75 or 33/66) exactly. Put layout-defining classes (bg, padding variation, layout flex/grid) on the .page element.
-    2. TYPOGRAPHIC DNA: Mirror font weights, letter spacing, and line heights.
-    3. DATA PRESERVATION: Render EVERY single experience entry, skill, and certification. DO NOT summarize or omit anything.
-    
-    TOKEN EFFICIENCY: Be extremely concise with HTML. Use utility classes. Minimize redundant nesting.
+    STRUCTURAL CLONING RULES:
+    1. REPLICATE THE GRID: Match column splits (e.g. 25/75 or 33/66) exactly. 
+    2. MANDATORY COLUMN LABELS (CRITICAL): 
+       - If you use a 2-column layout, the Sidebar container MUST have class="layout-sidebar".
+       - The Main content container MUST have class="layout-main".
+       - These MUST be direct children of a <div class="content"> container.
+    3. TYPOGRAPHIC DNA: Mirror font weights, letter spacing, and line heights using Tailwind.
+    4. DATA PRESERVATION: Render EVERY single experience entry, skill, and certification from the USER CONTENT. DO NOT summarize or omit anything.
+    5. SINGLE FLOW: Output the entire resume as a single <div class="page"><div class="content">...</div></div> block. The front-end render engine will handle automatic pagination and page breaks. Do NOT attempt to split it into multiple pages yourself.
+    6. FLUID HEIGHT: Ensure all containers have h-auto or no fixed height to allow vertical growth.
     
     PIXEL-PERFECT RENDER:
     - Wrapper: <div class="page"><div class="content">[CONTENT]</div></div>.
-    - If a layout requires a sidebar, you can put the grid structure directly on the .page element, but ensure content area still uses class="content".
-    - MULTI-PAGE OUTPUT (REQUIRED): If the content is long, YOU MUST output multiple <div class="page"> blocks.
-    - HEIGHT LIMIT: Each <div class="page"> MUST contain approximately 1000px - 1100px height of content. If content exceeds this, start a new <div class="page">.
-    - CONTINUITY: For 2-column layouts, the sidebar must be replicated on every page if the user expected it to be continuous, OR you can have the sidebar on Page 1 only and Page 2 as full width. MATCH THE MASTER REFERENCE'S STYLE.
-    - Use Tailwind classes ONLY.
+    - Inside .content, use your grid/flex columns if needed.
     
     ${optimizationPrompt}
     ${layoutSystemPrompt}

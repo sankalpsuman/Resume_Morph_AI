@@ -7,9 +7,12 @@ import dotenv from "dotenv";
 import multer from "multer";
 import { sendWelcomeEmail, isValidEmail } from "./src/lib/sendWelcomeEmail.js";
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { initializeFirestore, collection, onSnapshot, doc, updateDoc, setLogLevel } from "firebase/firestore";
 
 dotenv.config();
+
+// Silence internal SDK warning logs (like stream idle timeouts) while keeping real errors
+setLogLevel('error');
 
 // Robust __dirname for both ESM and CJS
 let __dirnameOverride: string;
@@ -103,26 +106,26 @@ function isEmailRateLimited(email: string): boolean {
   return false;
 }
 
-// Resend API Status endpoint for Admin Diagnoser view (non-sensitive check)
+// SMTP API Status endpoint for Admin Diagnoser view (non-sensitive check)
 app.get("/api/email-status", (req: Request, res: Response) => {
   try {
-    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const hasPass = !!process.env.RESEND_API_KEY;
+    const fromEmail = process.env.SMTP_FROM || process.env.EMAIL_FROM || "hello@gmail.com";
+    const hasPass = !!process.env.SMTP_PASS;
     console.log(`[Email Status API] Diagnosing parameters: configured=${hasPass}, from=${fromEmail}`);
     
     return res.json({
       success: true,
-      host: "api.resend.com",
-      port: 443,
-      user: "Resend HTTPS Agent",
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 465,
+      user: process.env.SMTP_USER || "SMTP User",
       hasPass: hasPass,
       fromEmail: fromEmail,
-      fromName: "ResumeMorph Team",
-      configured: hasPass
+      fromName: process.env.SMTP_FROM_NAME || "ResumeMorph Team",
+      configured: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
     });
   } catch (err: any) {
     console.error("[Email Status API] Diagnosis failed:", err);
-    return res.status(500).json({ success: false, error: "Failed to check Resend integration parameters status", details: err.message });
+    return res.status(500).json({ success: false, error: "Failed to check SMTP integration parameters status", details: err.message });
   }
 });
 
@@ -155,7 +158,7 @@ app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
       return res.status(429).json({ success: false, error: "Too many welcome email requests for this address. Please try again in an hour." });
     }
 
-    // 3. Dispatch welcome email via Resend API
+    // 3. Dispatch welcome email via SMTP API
     const result = await sendWelcomeEmail(cleanEmail, cleanName, subscriptionDetails);
 
     if (result.success) {
@@ -167,7 +170,7 @@ app.post("/api/send-welcome-email", async (req: Request, res: Response) => {
         html: result.html
       });
     } else {
-      console.error(`[Welcome Email API] Resend Delivery Failed for "${cleanEmail}":`, result.error);
+      console.error(`[Welcome Email API] SMTP Delivery Failed for "${cleanEmail}":`, result.error);
       return res.status(502).json({ success: false, error: result.error || "Email delivery failed" });
     }
 
@@ -452,7 +455,7 @@ async function startServer() {
       const firebaseConfig = JSON.parse(fs.readFileSync(configPath, { encoding: "utf-8" }));
       const appInst = initializeApp(firebaseConfig);
       const dbInst = initializeFirestore(appInst, {
-        experimentalForceLongPolling: true,
+        experimentalAutoDetectLongPolling: true,
       }, firebaseConfig.firestoreDatabaseId || "(default)");
 
       console.log(`[Mail Queue Listener] Successfully connected. Listening to pending welcome email requests...`);
@@ -511,7 +514,11 @@ async function startServer() {
             }
           }
         });
-      }, (error) => {
+      }, (error: any) => {
+        // Silent handling for expected idle stream disconnects (Code: 1 CANCELLED)
+        if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
+          return;
+        }
         console.error("[Mail Queue Listener] Firestore subscription failed:", error);
       });
     } catch (err: any) {

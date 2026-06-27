@@ -29,6 +29,20 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  const errCode = (error as any)?.code;
+
+  if (
+    errCode === 'cancelled' ||
+    errCode === 1 ||
+    errMsg.includes('CANCELLED') ||
+    errMsg.includes('Disconnecting idle stream') ||
+    errMsg.includes('Timed out waiting for new targets')
+  ) {
+    console.warn(`[Firestore] Transient idle stream disconnect on ${path || 'unknown'}: ${errMsg}`);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {

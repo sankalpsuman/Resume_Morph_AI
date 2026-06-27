@@ -9,7 +9,7 @@ interface SubscriptionInfo {
 
 /**
  * Renders a pristine, modular, responsive, and cross-client compatible HTML string
- * for the welcome email using Resend, based on active administrator configurations.
+ * for the welcome email using SMTP, based on active administrator configurations.
  */
 export function renderWelcomeEmail(userName: string, subInfo?: SubscriptionInfo): string {
   const { 

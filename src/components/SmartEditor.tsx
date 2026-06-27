@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { 
   Upload, FileText, CheckCircle, Loader2, AlertCircle, Sparkles, 
   ArrowLeft, Download, RefreshCw, X, Send, Bot, User, 
-  Undo2, Redo2, MessageSquare, Check, Eye, ChevronRight
+  Undo2, Redo2, MessageSquare, Check, Eye, ChevronRight, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, checkIsPremium } from '../lib/utils';
 import { 
   generateResumeFromData, 
   parseResumeToData, 
@@ -49,14 +49,34 @@ interface CustomMessage {
   timestamp: number;
 }
 
-function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: { 
+function SmartEditor({ userData, user, onUpgrade, onLogin, isLoginProgress, isAdmin }: { 
   userData: any;
   user?: any;
   onUpgrade: () => void;
   onLogin?: () => void;
+  isLoginProgress?: boolean;
   isAdmin?: boolean;
 }) {
-  const isPremium = userData?.plan && userData.plan !== 'free';
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-[28px] flex items-center justify-center mb-6 shadow-lg shadow-indigo-100 dark:shadow-none">
+          <Sparkles className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
+        <h2 className="text-3xl font-black text-[var(--text-primary)] mb-4 tracking-tight">Smart Editor Locked</h2>
+        <p className="text-[var(--text-secondary)] mb-8 max-w-md font-medium text-lg leading-relaxed">Sign in to access the Smart Editor. Manually edit every pixel of your resume with AI assistance.</p>
+        <button 
+          onClick={onLogin}
+          className="px-8 py-4 bg-indigo-600 text-white rounded-[24px] font-black uppercase tracking-widest text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 dark:shadow-none flex items-center gap-3"
+        >
+          <Zap className="w-5 h-5" />
+          Unlock Editor
+        </button>
+      </div>
+    );
+  }
+
+  const isPremium = checkIsPremium(userData);
 
   // Step state
   const [step, setStep] = useState<'import' | 'studio'>('import');
@@ -440,15 +460,24 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 py-12"
+              className="flex flex-col items-center justify-center min-h-[450px] text-center space-y-8 py-12 saas-card bg-[var(--bg-primary)]/80 backdrop-blur-xl relative overflow-hidden"
             >
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full border-4 border-indigo-100 dark:border-indigo-950 animate-pulse" />
-                <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-indigo-600 animate-spin" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none animate-pulse-glow" />
+              <div className="relative flex items-center justify-center">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-tr from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 flex items-center justify-center shadow-2xl animate-float">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Loader2 className="w-7 h-7 text-white animate-spin" />
+                  </div>
+                </div>
+                <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-purple-500 animate-bounce" />
               </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">AI Agent Working</h2>
-                <p className="text-sm text-[var(--text-secondary)] font-medium max-w-xs mx-auto leading-relaxed">{loadingMessage}</p>
+              <div className="space-y-2.5 max-w-md mx-auto px-4 relative z-10">
+                <h2 className="text-2xl font-black text-[var(--text-primary)] tracking-tight saas-gradient-text inline-block">AI Neural Semantic Extraction</h2>
+                <p className="text-sm text-[var(--text-secondary)] font-medium leading-relaxed">{loadingMessage}</p>
+                <div className="pt-4 flex items-center justify-center gap-2 text-[10px] font-mono text-[var(--text-tertiary)] uppercase tracking-widest">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Parsing structural ATS tree</span>
+                </div>
               </div>
             </motion.div>
           ) : (
@@ -456,15 +485,16 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isAdmin }: {
               key="import-screen"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-3xl bg-[var(--bg-primary)] border border-[var(--border-color)] p-6 md:p-12 shadow-sm relative overflow-hidden"
+              className="rounded-3xl bg-[var(--bg-primary)]/90 backdrop-blur-xl border border-[var(--border-color)] p-6 md:p-14 shadow-xl relative overflow-hidden group"
             >
-              <div className="text-center mb-8">
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-extrabold uppercase tracking-widest border border-indigo-100 dark:border-indigo-900/50 mb-3 select-none">
-                  <Sparkles className="w-3.5 h-3.5 fill-indigo-600 dark:fill-indigo-450" />
+              <div className="absolute -top-24 -right-24 w-80 h-80 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+              <div className="text-center mb-10 relative z-10">
+                <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border border-indigo-200/60 dark:border-indigo-800/60 mb-4 shadow-sm select-none">
+                  <Sparkles className="w-3.5 h-3.5 fill-indigo-600 dark:fill-indigo-400 animate-pulse" />
                   Interactive Smart Canvas
                 </span>
-                <h1 className="text-3xl md:text-5xl font-black text-[var(--text-primary)] mb-3 tracking-tighter">
-                  Smart AI <span className="text-indigo-600">Editor</span>
+                <h1 className="text-3xl md:text-6xl font-black text-[var(--text-primary)] mb-4 tracking-tighter">
+                  Smart AI <span className="saas-gradient-text">Editor</span>
                 </h1>
                 <p className="text-[var(--text-secondary)] text-sm md:text-base max-w-xl mx-auto font-medium leading-relaxed">
                   Upload your resume, preview live, and instruct the assistant verbally to rewrite accomplishments, restructure sections, or update layouts.
