@@ -8,8 +8,8 @@
       "destination": "/api/index.ts"
     },
     {
-      "source": "/((?!api/|assets/|.*\\..*).*)",
-      "destination": "/index.html"
+      "source": "/((?!assets/|service-worker.js|favicon.ico|.*\\..*).*)",
+      "destination": "/api/index.ts"
     }
   ]
 }
