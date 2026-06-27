@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React from 'react';
 import { motion } from 'motion/react';
 import { 
@@ -112,15 +113,18 @@ export default function Resources({ onTabChange }: ResourcesProps) {
 
         {/* Main Resources Grid - Enhanced Visuals */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8 mb-20 md:mb-32">
-          {resourceCards.map((card, index) => (
-            <motion.div
-              key={card.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => onTabChange(card.id)}
-              className="group cursor-pointer p-8 md:p-10 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[40px] md:rounded-[56px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 dark:hover:shadow-none dark:hover:border-indigo-500/50 transition-all relative overflow-hidden flex flex-col h-full"
-            >
+          {resourceCards.map((card, index) => {
+            const MotionLink = motion.create(Link);
+            return (
+              <MotionLink
+                to={card.id === 'builder' ? '/' : `/${card.id}`}
+                key={card.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="group cursor-pointer p-8 md:p-10 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-[40px] md:rounded-[56px] shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 dark:hover:shadow-none dark:hover:border-indigo-500/50 transition-all relative overflow-hidden flex flex-col h-full"
+              >
               <div className={cn(
                 "absolute top-0 right-0 w-24 h-24 md:w-32 md:h-32 opacity-10 rounded-full -mr-12 -mt-12 transition-transform duration-700 group-hover:scale-150",
                 card.color
@@ -151,8 +155,9 @@ export default function Resources({ onTabChange }: ResourcesProps) {
                   ))}
                 </div>
               </div>
-            </motion.div>
-          ))}
+            </MotionLink>
+          );
+        })}
         </div>
 
         {/* Secondary Resources / Strategic Links */}
@@ -162,16 +167,20 @@ export default function Resources({ onTabChange }: ResourcesProps) {
             <p className="text-base md:text-lg text-[var(--text-secondary)] font-medium leading-relaxed">Access legal frameworks, interactive FAQs, and real-time system status indicators instantly.</p>
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               {quickLinks.map(link => (
-                <button
+                <Link
                   key={link.id}
-                  onClick={() => ['privacy', 'guide', 'feedback', 'contact'].includes(link.id) ? onTabChange(link.id) : null}
+                  to={['privacy', 'guide', 'feedback', 'contact'].includes(link.id) ? `/${link.id}` : '#'}
+                  onClick={(e) => {
+                    if (!['privacy', 'guide', 'feedback', 'contact'].includes(link.id)) e.preventDefault();
+                    else window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   className="flex flex-col items-center text-center gap-3 md:gap-4 p-6 md:p-8 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-[32px] md:rounded-[40px] hover:bg-[var(--bg-primary)] hover:shadow-2xl hover:shadow-indigo-100 transition-all group"
                 >
                   <div className="w-10 h-10 md:w-12 md:h-12 bg-[var(--bg-primary)] rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                     <link.icon className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-tertiary)] group-hover:text-indigo-600 transition-colors" />
                   </div>
                   <span className="text-[9px] md:text-[10px] font-black text-[var(--text-tertiary)] group-hover:text-[var(--text-primary)] uppercase tracking-widest leading-none">{link.title}</span>
-                </button>
+                </Link>
               ))}
             </div>
           </div>

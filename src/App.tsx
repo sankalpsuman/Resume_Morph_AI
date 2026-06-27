@@ -71,10 +71,10 @@ import LoginModal from './components/LoginModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, AlertTriangle, Lock } from 'lucide-react';
 
-type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'ai-assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help-center' | 'status' | 'api';
+type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api';
 
 import { PLANS } from './constants';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 
 export default function App() {
   const location = useLocation();
@@ -83,7 +83,7 @@ export default function App() {
   const activeTab = (() => {
     const path = location.pathname.replace(/^\//, '');
     const firstPart = path.split('/')[0] as Tab;
-    const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
+    const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help', 'status', 'api'];
     
     if (firstPart && validTabs.includes(firstPart)) {
       return firstPart;
@@ -118,7 +118,7 @@ export default function App() {
   useEffect(() => {
     if (loading) return;
     
-    const protectedTabs: Tab[] = ['portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'account'];
+    const protectedTabs: Tab[] = ['portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'account'];
     if (!user && protectedTabs.includes(activeTab)) {
       if (location.pathname !== '/') {
         navigate('/');
@@ -822,7 +822,7 @@ export default function App() {
 
   const mainTabs = [
     { id: 'builder', label: 'Morph Engine', desc: 'Transform raw data into AI-architected resumes', icon: Layout },
-    { id: 'ai-assistant', label: 'AI Coach', desc: 'Mock interviews, feedback, and career growth', icon: BrainCircuit },
+    { id: 'assistant', label: 'AI Coach', desc: 'Mock interviews, feedback, and career growth', icon: BrainCircuit },
     { id: 'smart-editor', label: 'Smart Editor', desc: 'Live ATS optimization and content refining', icon: Sparkles },
     { id: 'portfolio', label: 'Portfolio Gen', desc: 'Instant personal website from your resume', icon: Globe },
     { id: 'cover-letter', label: 'Cover Letter', desc: 'AI-tailored letters for specific job roles', icon: FileText },
@@ -877,7 +877,7 @@ export default function App() {
 
   const handleTabChange = (tab: Tab) => {
     // Protected Tabs for Guest
-    const protectedTabs: Tab[] = ['ai-assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+    const protectedTabs: Tab[] = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
     
     if (!user && protectedTabs.includes(tab)) {
       triggerLogin();
@@ -1017,7 +1017,7 @@ export default function App() {
       )}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4">
             {/* Logo Section */}
-            <div className="flex items-center gap-3 shrink-0 cursor-pointer group" onClick={() => handleTabChange('builder')}>
+            <Link to="/" className="flex items-center gap-3 shrink-0 cursor-pointer group">
               <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 transition-all duration-300 group-hover:scale-105 group-hover:rotate-6">
                 <RefreshCw className="text-white w-4 h-4 md:w-5 md:h-5 animate-spin-slow" />
               </div>
@@ -1028,7 +1028,7 @@ export default function App() {
                 </div>
                 <p className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mt-0.5">AI Career OS</p>
               </div>
-            </div>
+            </Link>
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-1 p-1 bg-[var(--bg-secondary)]/80 border border-[var(--border-color)] rounded-2xl">
@@ -1037,9 +1037,18 @@ export default function App() {
                 const isLocked = !user && tab.id !== 'builder';
                 return (
                   <div key={tab.id} className="relative group">
-                    <button 
+                    <Link 
                       id={`tab-${tab.id}`}
-                      onClick={() => handleTabChange(tab.id as Tab)}
+                      to={tab.id === 'builder' ? '/' : `/${tab.id}`}
+                      onClick={(e) => {
+                        const protectedTabs = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+                        if (!user && protectedTabs.includes(tab.id)) {
+                          e.preventDefault();
+                          triggerLogin();
+                        } else {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                      }}
                       className={cn(
                         "relative flex items-center gap-2 px-3 xl:px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap z-10",
                         isActive 
@@ -1062,7 +1071,7 @@ export default function App() {
                       )} />
                       <span className={isActive ? "inline" : "hidden lg:inline"}>{tab.label}</span>
                       {isLocked && <Lock className="w-2.5 h-2.5 ml-1 text-gray-400" />}
-                    </button>
+                    </Link>
 
                     {/* Tooltip */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 translate-y-1 group-hover:translate-y-0 z-[150]">
@@ -1119,9 +1128,10 @@ export default function App() {
                       </div>
                       <div className="space-y-1">
                         {resourceTabs.map((item) => (
-                          <button
+                          <Link
                             key={item.id}
-                            onClick={() => handleTabChange(item.id as Tab)}
+                            to={item.id === 'builder' ? '/' : `/${item.id}`}
+                            onClick={() => { setIsResourcesOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[var(--bg-secondary)] transition-all group"
                           >
                             <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110", item.bg)}>
@@ -1131,7 +1141,7 @@ export default function App() {
                               <p className="text-xs font-black text-[var(--text-primary)] leading-tight group-hover:text-indigo-600">{item.label}</p>
                               <p className="text-[9px] font-bold text-[var(--text-tertiary)] truncate uppercase mt-0.5 tracking-tighter">{item.desc}</p>
                             </div>
-                          </button>
+                          </Link>
                         ))}
                         <button
                           onClick={() => { window.dispatchEvent(new CustomEvent('open-creator-about')); setIsResourcesOpen(false); }}
@@ -1143,19 +1153,20 @@ export default function App() {
                           <div className="min-w-0">
                             <p className="text-xs font-black text-[var(--text-primary)] leading-tight group-hover:text-indigo-600">About Creator</p>
                             <p className="text-[9px] font-bold text-[var(--text-tertiary)] truncate uppercase mt-0.5 tracking-tighter">Meet the architect</p>
-                          </div>
-                        </button>
+                            </div>
+                          </button>
                       </div>
                       <div className="mt-2 p-4 bg-indigo-600 rounded-2xl text-white">
                         <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70 italic">Morph Hub</p>
                         <p className="text-[11px] font-medium leading-relaxed">Access 50+ resume modules and AI guides.</p>
                         <div className="grid grid-cols-2 gap-2 mt-3">
-                          <button 
-                            onClick={() => handleTabChange('resources')}
-                            className="w-full py-2 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-gray-50 active:scale-95"
+                          <Link 
+                            to="/resources"
+                            onClick={() => { setIsResourcesOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className="flex justify-center items-center w-full py-2 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-gray-50 active:scale-95"
                           >
                             Open Hub
-                          </button>
+                          </Link>
                           <button 
                             onClick={() => window.dispatchEvent(new CustomEvent('restart-tour'))}
                             className="w-full py-2 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:bg-indigo-400 active:scale-95"
@@ -1174,10 +1185,11 @@ export default function App() {
                 {user ? (
                   <>
                     <div className="relative group">
-                      <button 
+                      <Link 
                         id="tab-account"
-                        onClick={() => handleTabChange('account')}
-                        className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden"
+                        to="/account"
+                        onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden block"
                       >
                         <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <img 
@@ -1186,7 +1198,7 @@ export default function App() {
                           className="w-8 h-8 md:w-9 md:h-9 rounded-lg object-cover relative z-10"
                           referrerPolicy="no-referrer"
                         />
-                      </button>
+                      </Link>
 
                       {/* Tooltip */}
                       <div className="absolute top-full right-0 mt-3 w-40 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[160]">
@@ -1247,11 +1259,20 @@ export default function App() {
                   <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-4">Main Navigation</p>
                   <div className="space-y-1">
                     {mainTabs.map((item) => {
-                      const isLocked = !user && ['ai-assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'].includes(item.id);
+                      const isLocked = !user && ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'].includes(item.id);
                       return (
-                        <button
+                        <Link
                           key={item.id}
-                          onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
+                          to={item.id === 'builder' ? '/' : `/${item.id}`}
+                          onClick={(e) => { 
+                            if (isLocked) {
+                              e.preventDefault();
+                              triggerLogin();
+                            } else {
+                              setIsMenuOpen(false); 
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                          }}
                           className={cn(
                             "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                             activeTab === item.id 
@@ -1265,7 +1286,7 @@ export default function App() {
                             {item.label}
                           </div>
                           {isLocked && <Lock className="w-4 h-4 text-zinc-400" />}
-                        </button>
+                        </Link>
                       );
                     })}
                   </div>
@@ -1277,9 +1298,18 @@ export default function App() {
                   <p className="text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-4">Support & Resources</p>
                   <div className="space-y-1">
                     {resourceTabs.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => { handleTabChange(item.id as Tab); setIsMenuOpen(false); }}
+                      <Link
+                          key={item.id}
+                          to={item.id === 'builder' ? '/' : `/${item.id}`}
+                          onClick={(e) => { 
+                            if (isLocked) {
+                              e.preventDefault();
+                              triggerLogin();
+                            } else {
+                              setIsMenuOpen(false); 
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                          }}
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                           activeTab === item.id 
@@ -1289,11 +1319,12 @@ export default function App() {
                       >
                         <item.icon className="w-5 h-5" />
                         {item.label}
-                      </button>
+                      </Link>
                     ))}
                     {/* Explicitly add Resources Hub if it's not in the main or resource tabs */}
-                    <button
-                      onClick={() => { handleTabChange('resources'); setIsMenuOpen(false); }}
+                    <Link
+                      to="/resources"
+                      onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                         activeTab === 'resources' 
@@ -1303,13 +1334,14 @@ export default function App() {
                     >
                       <LifeBuoy className="w-5 h-6" />
                       Resources Hub
-                    </button>
+                    </Link>
                   </div>
                 </div>
                 
                 {user && (
-                  <button
-                    onClick={() => { handleTabChange('account'); setIsMenuOpen(false); }}
+                  <Link
+                    to="/account"
+                    onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all",
                       activeTab === 'account' 
@@ -1319,7 +1351,7 @@ export default function App() {
                   >
                     <UserIcon className="w-5 h-5" />
                     My Account Details
-                  </button>
+                  </Link>
                 )}
                 
                 <button 
@@ -1379,7 +1411,7 @@ export default function App() {
             )
           )}
 
-          {activeTab === 'ai-assistant' && (
+          {activeTab === 'assistant' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <ResumeAIAssistant user={user} onLogin={triggerLogin} />
             </div>
@@ -1471,7 +1503,7 @@ export default function App() {
             </div>
           )}
           {activeTab === 'blog' && (
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full">
               <Blog />
             </div>
           )}
@@ -1490,7 +1522,7 @@ export default function App() {
               <Security />
             </div>
           )}
-          {activeTab === 'help-center' && (
+          {activeTab === 'help' && (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <HelpCenter />
             </div>
@@ -1552,7 +1584,7 @@ export default function App() {
           <div className="bg-[#0b0f19]/90 dark:bg-black/90 backdrop-blur-2xl border border-white/15 rounded-full p-1.5 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative">
             {[
               { id: 'builder', icon: Layout, label: 'Morph' },
-              { id: 'ai-assistant', icon: BrainCircuit, label: 'Coach' },
+              { id: 'assistant', icon: BrainCircuit, label: 'Coach' },
               { id: 'smart-editor', icon: Sparkles, label: 'Smart' },
               { id: 'tracker', icon: Briefcase, label: 'Jobs' },
               { id: 'account', icon: UserIcon, label: 'Profile' },
@@ -1560,10 +1592,18 @@ export default function App() {
               const isActive = activeTab === item.id;
               const isLocked = !user && item.id !== 'builder';
               return (
-                <button
+                <Link
                   key={item.id}
                   id={`mobile-tab-${item.id}`}
-                  onClick={() => handleTabChange(item.id as Tab)}
+                  to={item.id === 'builder' ? '/' : `/${item.id}`}
+                  onClick={(e) => {
+                    if (isLocked) {
+                      e.preventDefault();
+                      triggerLogin();
+                    } else {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
                   className={cn(
                     "relative py-2 px-3 rounded-full flex flex-col items-center justify-center transition-all focus:outline-none flex-1 select-none cursor-pointer",
                     isLocked && "opacity-50"
@@ -1614,7 +1654,7 @@ export default function App() {
                       {item.label}
                     </span>
                   </div>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -1725,7 +1765,7 @@ export default function App() {
                   { label: 'Builder', id: 'builder' },
                   { label: 'Analyzer', id: 'analyzer' },
                   { label: 'Tracker', id: 'tracker' },
-                  { label: 'Assistant', id: 'ai-assistant' }
+                  { label: 'Assistant', id: 'assistant' }
                 ] },
                 { title: 'Company', links: [
                   { label: 'About', id: 'about' },
@@ -1740,7 +1780,7 @@ export default function App() {
                   { label: 'Security', id: 'security' }
                 ] },
                 { title: 'Support', links: [
-                  { label: 'Help Center', id: 'help-center' },
+                  { label: 'Help Center', id: 'help' },
                   { label: 'Feedback', id: 'feedback' },
                   { label: 'Status', id: 'status' },
                   { label: 'API', id: 'api' }
@@ -1751,12 +1791,24 @@ export default function App() {
                   <ul className="space-y-3">
                     {group.links.map(link => (
                       <li key={link.id}>
-                        <button 
-                          onClick={() => handleTabChange(link.id as Tab)} 
+                        <Link
+                          to={link.id === 'builder' ? '/' : `/${link.id}`}
+                          onClick={(e) => {
+                            const protectedTabs = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+                            if (!user && protectedTabs.includes(link.id)) {
+                              e.preventDefault();
+                              triggerLogin();
+                            } else {
+                              setIsMenuOpen(false);
+                              setIsResourcesOpen(false);
+                              setIsUserDropdownOpen(false);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }
+                          }}
                           className="text-xs font-semibold text-[var(--text-secondary)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left sm:text-left inline-block"
                         >
                           {link.label}
-                        </button>
+                        </Link>
                       </li>
                     ))}
                   </ul>
