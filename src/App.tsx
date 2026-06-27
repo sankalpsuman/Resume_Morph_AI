@@ -149,12 +149,9 @@ export default function App() {
     
     const protectedTabs: Tab[] = ['portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'account'];
     if (!user && protectedTabs.includes(activeTab)) {
-      if (location.pathname !== '/') {
-        navigate('/');
-      }
       triggerLogin();
     }
-  }, [user, loading, activeTab, navigate, location.pathname]);
+  }, [user, loading, activeTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1789,11 +1786,6 @@ export default function App() {
         isOpen={showGreetingModal}
         onClose={() => {
           setShowGreetingModal(false);
-          if (!user && !isGuest) {
-            if (location.pathname !== '/') {
-              navigate('/');
-            }
-          }
         }}
         userName={user?.displayName || userData?.name}
       />
