@@ -223,18 +223,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      const path = window.location.pathname.replace(/^\//, '') as Tab;
-      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
-      const targetTab = validTabs.includes(path) ? path : 'builder';
-      setActiveTab(targetTab);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  useEffect(() => {
     ensureConnection().catch(console.error);
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);

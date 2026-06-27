@@ -52,8 +52,9 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request).then((response) => {
+      // Return from cache if found
       if (response) {
-        // Return from cache, but update cache in background
+        // Update cache in background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const responseToCache = networkResponse.clone();
@@ -61,9 +62,14 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, responseToCache);
             });
           }
-        }).catch(err => console.log('Network update failed', err));
+        }).catch(() => {});
         
         return response;
+      }
+      
+      // Navigation Fallback: If it's a navigation request for a page, return cached index.html
+      if (event.request.mode === 'navigate') {
+        return caches.match('/index.html');
       }
       
       return fetch(event.request).then(

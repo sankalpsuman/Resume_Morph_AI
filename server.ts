@@ -26,6 +26,7 @@ try {
 }
 
 const getRoot = () => process.cwd();
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -411,9 +412,23 @@ async function startServer() {
     });
   } else {
     // In production, server runs from dist/server.cjs
-    // Assets are in the same folder (dist/)
-    const distPath = path.resolve(__dirnameOverride); 
-    console.log(`Serving static assets from: ${distPath}`);
+    // Assets are in the same folder (dist/) or in ../dist if running as a Vercel function in api/
+    let distPath = path.resolve(__dirnameOverride);
+    
+    // Vercel Function specific path resolution
+    if (isVercel && !fs.existsSync(path.join(distPath, 'index.html'))) {
+      const vPath = path.join(process.cwd(), 'dist');
+      if (fs.existsSync(path.join(vPath, 'index.html'))) {
+        distPath = vPath;
+      } else {
+        const rootPath = path.join(process.cwd());
+        if (fs.existsSync(path.join(rootPath, 'index.html'))) {
+          distPath = rootPath;
+        }
+      }
+    }
+
+    console.log(`[Morph Engine] Serving production assets from: ${distPath}`);
     app.use(express.static(distPath, { index: false }));
 
     app.get('*', async (req, res, next) => {
@@ -421,21 +436,32 @@ async function startServer() {
       // Skip API and assets that weren't caught by express.static
       if (url.startsWith('/api') || url.includes('.')) return next();
 
-      const distIndex = path.join(distPath, 'index.html');
-      
       try {
-        let indexPath = distIndex;
-        if (!fs.existsSync(distIndex)) {
-            indexPath = path.join(process.cwd(), 'dist', 'index.html');
+        // Try multiple potential index.html locations for maximum deployment resilience
+        const searchPaths = [
+          path.join(distPath, 'index.html'),
+          path.join(process.cwd(), 'dist', 'index.html'),
+          path.join(process.cwd(), 'index.html'),
+          path.join(__dirnameOverride, 'index.html'),
+          path.join(__dirnameOverride, '..', 'dist', 'index.html')
+        ];
+
+        let indexPath = "";
+        for (const p of searchPaths) {
+          if (fs.existsSync(p)) {
+            indexPath = p;
+            break;
+          }
         }
 
-        if (fs.existsSync(indexPath)) {
+        if (indexPath) {
           const template = await getTemplate(indexPath);
           const metadata = getMetadata(req);
           const html = injectMetadata(template, metadata);
           res.set('Cache-Control', 'public, max-age=3600').send(html);
         } else {
-          res.status(404).send('Application build not found. Please refresh.');
+          console.error("[Morph Engine] Critical Error: index.html build artifact not found in any expected location.", { searched: searchPaths });
+          res.status(404).send('Application build not found. Please refresh or contact support.');
         }
       } catch (err) {
         console.error("Template read error:", err);
