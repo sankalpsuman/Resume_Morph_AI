@@ -1,93 +1,90 @@
-const CACHE_NAME = 'resume-builder-cache-v1';
+// Service Worker for ResumeMorph
+// Version: 2.0.1 (Production Audit Build)
+
+const CACHE_NAME = 'resumemorph-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/favicon.ico',
+  '/manifest.json'
 ];
 
-// Install Event
+// Install: Cache essential assets immediately
 self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installing v2...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
       return cache.addAll(STATIC_ASSETS);
     })
   );
+  // Force this new SW to become active immediately
   self.skipWaiting();
 });
 
-// Activate Event
+// Activate: Clean up old caches and claim clients
 self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
+  console.log('[Service Worker] Activating and claiming clients...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[Service Worker] Purging old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => {
+      // Notify all tabs that a new version is active
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Fetch Event
+// Fetch: Smart caching strategy
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // 1. Skip non-GET requests and cross-origin requests (except CDNs if needed)
+  if (request.method !== 'GET' || !url.origin.includes(self.location.origin)) {
     return;
   }
 
-  // Network First, Cache Fallback for API and dynamic requests
-  // Cache First, Network Fallback for static assets
-  
-  const isApiRequest = event.request.url.includes('/api/');
-  const isFirestore = event.request.url.includes('firestore.googleapis.com');
-  
-  if (isFirestore) {
-     // Let Firebase SDK handle Firestore caching
-     return;
+  // 2. Bypass cache for API calls and Firebase Auth/Firestore
+  if (url.pathname.startsWith('/api/') || 
+      url.hostname.includes('firestore.googleapis.com') || 
+      url.hostname.includes('identitytoolkit.googleapis.com')) {
+    return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return from cache if found
-      if (response) {
-        // Update cache in background
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-        }).catch(() => {});
-        
-        return response;
-      }
-      
-      // Navigation Fallback: If it's a navigation request for a page, return cached index.html
-      if (event.request.mode === 'navigate') {
+  // 3. Navigation requests: Return index.html (SPA Fallback)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => {
         return caches.match('/index.html');
-      }
-      
-      return fetch(event.request).then(
-        (networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
-          }
+      })
+    );
+    return;
+  }
 
+  // 4. Stale-while-revalidate for everything else
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      const fetchPromise = fetch(request).then((networkResponse) => {
+        // Only cache successful standard responses
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(request, responseToCache);
           });
-
-          return networkResponse;
         }
-      ).catch(() => {
-         // Offline fallback if needed
+        return networkResponse;
+      }).catch(() => {
+        // Silent fail for background updates
       });
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

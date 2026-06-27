@@ -77,9 +77,19 @@ import { PLANS } from './constants';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const path = window.location.pathname.replace(/^\//, '') as Tab;
+    const path = window.location.pathname.replace(/^\//, '');
+    const firstPart = path.split('/')[0] as Tab;
     const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
-    return validTabs.includes(path) ? path : 'builder';
+    
+    if (firstPart && validTabs.includes(firstPart)) {
+      return firstPart;
+    }
+    
+    if (path && !validTabs.includes(firstPart)) {
+      console.warn(`[Routing] Invalid path detected: /${path}. Falling back to builder.`);
+    }
+    
+    return 'builder';
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -220,6 +230,28 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const path = window.location.pathname.replace(/^\//, '');
+      const firstPart = path.split('/')[0] as Tab;
+      const validTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'ai-assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help-center', 'status', 'api'];
+      
+      const targetTab = validTabs.includes(firstPart) ? firstPart : 'builder';
+      
+      // Log for production diagnostics
+      console.log(`[Routing] PopState triggered. Path: ${path || 'root'} -> Tab: ${targetTab}`);
+      
+      setActiveTab(targetTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initial routing log with environment check
+    console.log(`[Routing] App initialized. Tab: ${activeTab}, Origin: ${window.location.origin}, UA: ${navigator.userAgent}`);
+    
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
@@ -880,6 +912,7 @@ export default function App() {
     // Update URL without full page reload
     const newPath = tab === 'builder' ? '/' : `/${tab}`;
     if (window.location.pathname !== newPath) {
+      console.log(`[Routing] Navigating: ${window.location.pathname} -> ${newPath}`);
       window.history.pushState({ tab }, '', newPath);
     }
   };
