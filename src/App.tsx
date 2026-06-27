@@ -1043,7 +1043,7 @@ export default function App() {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 p-1 bg-[var(--bg-secondary)]/80 border border-[var(--border-color)] rounded-2xl">
+            <nav className="hidden lg:flex items-center gap-1 p-1 bg-[var(--bg-secondary)]/80 border border-[var(--border-color)] rounded-2xl">
               {mainTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 const isLocked = !user && tab.id !== 'builder';
@@ -1212,7 +1212,7 @@ export default function App() {
                     
                     <button 
                       onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      className="md:hidden p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                      className="lg:hidden p-2 text-gray-400 hover:text-indigo-600 transition-colors"
                     >
                       <Menu className="w-6 h-6" />
                     </button>
@@ -1245,14 +1245,14 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[140] md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[140] lg:hidden"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-80 bg-[var(--bg-primary)] border-l border-[var(--border-color)] z-[150] md:hidden overflow-y-auto"
+              className="fixed top-0 right-0 bottom-0 w-80 bg-[var(--bg-primary)] border-l border-[var(--border-color)] z-[150] lg:hidden overflow-y-auto"
             >
               <div className="p-6 space-y-6">
                 <div>
@@ -1560,7 +1560,7 @@ export default function App() {
 
       {/* Premium Floating Bottom Navigation (Mobile-first Redesign) */}
       {!isPortfolioFullscreen && (
-        <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-sm">
+        <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[94%] max-w-sm">
           <div className="bg-[#0b0f19]/90 dark:bg-black/90 backdrop-blur-2xl border border-white/15 rounded-full p-1.5 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative">
             {[
               { id: 'builder', icon: Layout, label: 'Morph' },
