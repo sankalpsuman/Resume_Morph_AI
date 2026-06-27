@@ -227,6 +227,22 @@ export default function App() {
     };
   }, [showSplash]);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
+  const resourcesRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (resourcesRef.current && !resourcesRef.current.contains(event.target as Node)) {
+        setIsResourcesOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -1122,7 +1138,7 @@ export default function App() {
               </button>
 
               {/* Resources Dropdown (Desktop) */}
-              <div className="hidden sm:block relative">
+              <div ref={resourcesRef} className="hidden sm:block relative">
                 <button 
                   id="resources-btn"
                   onMouseEnter={() => setIsResourcesOpen(true)}

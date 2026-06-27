@@ -327,7 +327,7 @@ async function startServer() {
       };
     }
 
-    if (urlPath.includes('/ai-assistant')) {
+    if (urlPath.includes('/assistant') || urlPath.includes('/ai-assistant')) {
       return {
         ...defaultMeta,
         title: "AI Career Coach | Mock Interviews & Growth",
@@ -336,7 +336,7 @@ async function startServer() {
       };
     }
 
-    if (urlPath.includes('/guide') || urlPath.includes('/resources')) {
+    if (urlPath.includes('/guide') || urlPath.includes('/user-guide') || urlPath.includes('/resources')) {
       return {
         ...defaultMeta,
         title: "Resources & Guide | Master the Morph Platform",
@@ -351,6 +351,51 @@ async function startServer() {
         title: "About Resume Morph AI | The Future of Career Tech",
         description: "Learn about the mission and technology behind the platform that's helping thousands transform their careers.",
         image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=0.8&w=1200&h=630"
+      };
+    }
+
+    if (urlPath.includes('/privacy') || urlPath.includes('/privacy-policy')) {
+      return {
+        ...defaultMeta,
+        title: "Privacy Policy | Resume Morph AI",
+        description: "Review our commitment to securing your career data and maintaining personal information integrity.",
+        image: LOGO_IMAGE
+      };
+    }
+
+    if (urlPath.includes('/terms') || urlPath.includes('/terms-of-service') || urlPath.includes('/terms-and-conditions')) {
+      return {
+        ...defaultMeta,
+        title: "Terms of Service | Resume Morph AI",
+        description: "Read the user agreements and operational terms of the Resume Morph career optimization system.",
+        image: LOGO_IMAGE
+      };
+    }
+
+    if (urlPath.includes('/account')) {
+      return {
+        ...defaultMeta,
+        title: "My Account & Career Plan | Resume Morph AI",
+        description: "Manage your premium membership settings, history logs, and account details securely.",
+        image: LOGO_IMAGE
+      };
+    }
+
+    if (urlPath.includes('/contact')) {
+      return {
+        ...defaultMeta,
+        title: "Contact & Help Desk | Resume Morph AI",
+        description: "Get in touch with our customer success and technical developer architects.",
+        image: LOGO_IMAGE
+      };
+    }
+
+    if (urlPath.includes('/feedback')) {
+      return {
+        ...defaultMeta,
+        title: "Submit Community Feedback | Resume Morph AI",
+        description: "Shape the future of Resume Morph by suggesting features and modules directly to developers.",
+        image: LOGO_IMAGE
       };
     }
 
