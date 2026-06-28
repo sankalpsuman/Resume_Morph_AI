@@ -549,69 +549,8 @@ export default function App() {
         const emailToSubmit = (userData.email || "").toLowerCase();
         const userRef = doc(db, 'users', userData.userId || user?.uid);
 
-        // Firestore-first trigger - perfect for cookieless sandboxed iframe environments
-        const triggerData = {
-          email: emailToSubmit,
-          name: userData.name || "Morph User",
-          subscriptionDetails: subDetails,
-          simulate: false, // Send real automated dispatch
-          isAdmin: isUserAdmin,
-          timestamp: Date.now(),
-          status: "pending"
-        };
+        console.log(`[Auto Welcome Email] Dispatching onboarding email to ${emailToSubmit} via API...`);
 
-        console.log(`[Auto Welcome Email] Queueing automated dispatch for ${emailToSubmit} via Firestore...`);
-
-        await updateDoc(userRef, {
-          welcomeEmailTrigger: triggerData
-        });
-
-        // Real-time listener to wait for completion
-        let unsubscribe: (() => void) | null = null;
-        const waitForResult = new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            if (unsubscribe) unsubscribe();
-            reject(new Error("Onboarding trigger response timed out."));
-          }, 15000);
-
-          unsubscribe = onSnapshot(userRef, (docSnap) => {
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              const trigger = data?.welcomeEmailTrigger;
-              if (trigger && trigger.status !== "pending" && trigger.status !== "processing") {
-                clearTimeout(timeoutId);
-                if (unsubscribe) unsubscribe();
-                if (trigger.status === "success") {
-                  resolve({ success: true });
-                } else {
-                  resolve({ success: false, error: trigger.error });
-                }
-              }
-            }
-          }, (error) => {
-            // Silent handling for expected idle stream disconnects (Code: 1 CANCELLED)
-            if (error.code === 'cancelled' || error.message?.includes('CANCELLED') || String(error.code) === '1') {
-              return;
-            }
-            clearTimeout(timeoutId);
-            if (unsubscribe) unsubscribe();
-            reject(error);
-          });
-        });
-
-        const result = await waitForResult;
-
-        if (result.success) {
-          console.log(`[Auto Welcome Email] Onboarding welcome email delivered to ${emailToSubmit} via Firestore.`);
-        } else {
-          console.warn(`[Auto Welcome Email] Firestore dispatch returned failure: ${result.error || "Unknown"}`);
-          throw new Error(result.error);
-        }
-
-      } catch (err: any) {
-        console.warn("[Auto Welcome Email] Firestore trigger failed or timed out. Falling back to HTTP endpoint...", err);
-
-        // Fallback to HTTP POST
         try {
           const response = await fetch("/api/send-welcome-email", {
             method: "POST",
@@ -628,6 +567,7 @@ export default function App() {
 
           const responseText = await response.text();
           const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
+
 
           if (isHtmlResponse) {
             console.warn("[Auto Welcome Email Fallback] Fetch blocked by browser security/cookie parameters (returned HTML instead of JSON).");
@@ -670,6 +610,13 @@ export default function App() {
             }
           }, 35000);
         }
+      } catch (err: any) {
+        console.error("[Auto Welcome Email Trigger] Unexpected error:", err);
+        setTimeout(() => {
+          if (sendingWelcomeEmailRef.current === userData?.email) {
+            sendingWelcomeEmailRef.current = "";
+          }
+        }, 35000);
       }
     };
 

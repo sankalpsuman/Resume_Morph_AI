@@ -147,6 +147,25 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
     if (!selectedElement || !portfolio) return;
     
     setIsImproving(true);
+    // Find and temporarily disable cross-origin stylesheets to prevent html-to-image from crashing on security restrictions
+    const disabledLinks: { link: HTMLLinkElement; originalDisabled: boolean }[] = [];
+    const disableCrossOriginLinks = (doc: Document) => {
+      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+      for (const link of links) {
+        try {
+          if (link.sheet) {
+            // Access sheet.cssRules to trigger a SecurityError if restricted
+            const _rules = link.sheet.cssRules;
+          }
+        } catch (e) {
+          disabledLinks.push({ link, originalDisabled: link.disabled });
+          link.disabled = true;
+        }
+      }
+    };
+
+    disableCrossOriginLinks(document);
+
     try {
       const currentValue = selectedElement.path.split('.').reduce((obj: any, key) => obj?.[key], portfolio);
       
@@ -658,6 +677,25 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
       { id: 3, label: 'Generating document structure...', status: 'pending' }
     ]);
 
+    // Find and temporarily disable cross-origin stylesheets to prevent html-to-image from crashing on security restrictions
+    const disabledLinks: { link: HTMLLinkElement; originalDisabled: boolean }[] = [];
+    const disableCrossOriginLinks = (doc: Document) => {
+      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+      for (const link of links) {
+        try {
+          if (link.sheet) {
+            // Access sheet.cssRules to trigger a SecurityError if restricted
+            const _rules = link.sheet.cssRules;
+          }
+        } catch (e) {
+          disabledLinks.push({ link, originalDisabled: link.disabled });
+          link.disabled = true;
+        }
+      }
+    };
+
+    disableCrossOriginLinks(document);
+
     try {
       // Small delay to ensure any layout shifts are settled and styles are applied
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -697,6 +735,10 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
       window.print();
       setLoadingSteps([]);
     } finally {
+      // Restore disabled cross-origin stylesheets
+      for (const item of disabledLinks) {
+        item.link.disabled = item.originalDisabled;
+      }
       setIsPrinting(false);
     }
   };

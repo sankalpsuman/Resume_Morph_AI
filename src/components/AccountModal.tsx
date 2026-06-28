@@ -121,86 +121,10 @@ export default function AccountModal({
       };
 
       const isUserAdmin = user?.email === 'sankalpsmn@gmail.com' || userData?.role === 'admin';
-      const userId = userData.userId || user.uid;
-      const userRef = doc(db, 'users', userId);
 
-      // Deploy via Firestore queue trigger - 100% iframe-safe, bypasses all browser cookieless checks
-      const triggerData = {
-        email: (customTargetEmail.trim() || userData.email || "").toLowerCase(),
-        name: customTargetName.trim() || userData.name || "Morph User",
-        subscriptionDetails: subDetails,
-        simulate: false, // Dispatches real mail, bypasses simulation on-demand
-        isAdmin: isUserAdmin,
-        timestamp: Date.now(),
-        status: "pending"
-      };
+      console.log("[Welcome Email Service] Initiated API dispatch queue...");
 
-      console.log("[Welcome Email Service] Initiated document-based dispatch queue...");
-
-      // Update document to kickstart background listener
-      await updateDoc(userRef, {
-        welcomeEmailTrigger: triggerData
-      });
-
-      // Real-time listener to wait for completion
-      let unsubscribe: (() => void) | null = null;
-      const waitForResult = new Promise<{ success: boolean; error?: string; messageId?: string }>((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          if (unsubscribe) unsubscribe();
-          reject(new Error("Onboarding engine response timed out after 15 seconds. Please ensure backend server is up."));
-        }, 15000);
-
-        unsubscribe = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            const trigger = data?.welcomeEmailTrigger;
-            if (trigger && trigger.status !== "pending" && trigger.status !== "processing") {
-              clearTimeout(timeoutId);
-              if (unsubscribe) unsubscribe();
-              if (trigger.status === "success") {
-                resolve({ success: true, messageId: trigger.messageId });
-              } else {
-                resolve({ success: false, error: trigger.error || "Unknown delivery error" });
-              }
-            }
-          }
-        }, (error) => {
-          // Silent handling for expected idle stream disconnects
-          if (error.code === 'cancelled' || error.message?.includes('CANCELLED')) {
-            return;
-          }
-          clearTimeout(timeoutId);
-          if (unsubscribe) unsubscribe();
-          reject(error);
-        });
-      });
-
-      const result = await waitForResult;
-
-      if (result.success) {
-        setResendStatus({
-          success: true,
-          message: "Onboarding welcome message has been triggered!",
-          simulated: result.messageId?.startsWith("sim_")
-        });
-      } else {
-        setResendStatus({
-          success: false,
-          error: result.error || "Mailing service failed to accept dispatch."
-        });
-      }
-    } catch (err: any) {
-      console.warn("Firestore trigger failed, falling back to direct API route:", err);
-      const firestoreErrMsg = err?.message || String(err);
-      const isFirestoreQuotaError = firestoreErrMsg.includes("resource-exhausted") || 
-                                    firestoreErrMsg.includes("quota") || 
-                                    firestoreErrMsg.includes("exhausted") ||
-                                    firestoreErrMsg.includes("unavailable");
-      
-      // Secondary fallback to API endpoint in case firestore update fails
       try {
-        const isUserAdmin = user?.email === 'sankalpsmn@gmail.com' || userData?.role === 'admin';
-
         const response = await fetch("/api/send-welcome-email", {
           method: "POST",
           headers: {
@@ -218,13 +142,9 @@ export default function AccountModal({
         const isHtmlResponse = responseText.trim().startsWith("<") || (response.headers.get("content-type") || "").includes("text/html");
 
         if (isHtmlResponse) {
-          let errorMsg = "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again.";
-          if (isFirestoreQuotaError) {
-            errorMsg = "Your Firestore database write quota or bandwidth limit has been exceeded for today (which causes direct database sync to standby). Additionally, our secure API fallback request was blocked by the browser's security/cookie settings in this preview frame.\n\nTo resolve this and send the email instantly: Please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner of your screen, then try again! Running in a separate tab bypasses third-party cookie filters entirely, allowing the mail API to securely process and deliver your on-demand welcome email successfully.";
-          }
           setResendStatus({
             success: false,
-            message: errorMsg
+            message: "API request was blocked by the browser's security/cookie settings in the preview frame. To fix this instantly, please open the application in a new tab by clicking the 'Open in New Tab' icon in the top-right corner, then try again."
           });
           return;
         }

@@ -1206,6 +1206,26 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     styleHide.innerHTML = '.page-break-indicator { display: none !important; }';
     iframeDoc.head.appendChild(styleHide);
 
+    // Find and temporarily disable cross-origin stylesheets to prevent html-to-image from crashing on security restrictions
+    const disabledLinks: { link: HTMLLinkElement; originalDisabled: boolean }[] = [];
+    const disableCrossOriginLinks = (doc: Document) => {
+      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+      for (const link of links) {
+        try {
+          if (link.sheet) {
+            // Access sheet.cssRules to trigger a SecurityError if restricted
+            const _rules = link.sheet.cssRules;
+          }
+        } catch (e) {
+          disabledLinks.push({ link, originalDisabled: link.disabled });
+          link.disabled = true;
+        }
+      }
+    };
+
+    disableCrossOriginLinks(document);
+    disableCrossOriginLinks(iframeDoc);
+
     // Wait a moment for layout to settle after removing transform
     await new Promise(r => setTimeout(r, 300));
 
@@ -1291,6 +1311,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       }
       return pdf;
     } finally {
+      // Restore disabled cross-origin stylesheets
+      for (const item of disabledLinks) {
+        item.link.disabled = item.originalDisabled;
+      }
       // Restore transform
       if (root) root.style.transform = originalTransform;
       const hideEl = iframeDoc.getElementById('temp-hide-indicators');
