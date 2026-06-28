@@ -2273,17 +2273,17 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
             isPreviewFull 
               ? "fixed inset-0 z-[500] bg-[#020617] p-0 sm:p-6 overflow-hidden" 
               : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32",
-            !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:block"
+            !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:flex"
           )}>
             {!isPreviewFull && userData?.resumeHistory && userData.resumeHistory.length > 0 && (
-              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm group">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] shadow-sm shrink-0">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <History className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">Saved Versions</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Load from History</p>
+                    <h3 className="text-sm font-black text-[var(--text-primary)] tracking-tight">Saved Versions</h3>
+                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Load from History</p>
                   </div>
                 </div>
                 <div className="relative w-full sm:w-[320px] max-w-full">
@@ -2302,7 +2302,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                         });
                       }
                     }}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner"
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner"
                   >
                     <option value="">Select a saved resume ({userData.resumeHistory.length})</option>
                     {userData.resumeHistory.map((resume: any) => (
@@ -2311,7 +2311,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400">
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-[var(--text-tertiary)]">
                     <ChevronDown className="w-4 h-4" />
                   </div>
                 </div>
