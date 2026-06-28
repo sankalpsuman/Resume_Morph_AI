@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Image as CustomImage } from './Image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, Send, User, Trash2, Reply, CheckCircle, 
@@ -227,7 +226,7 @@ export default function Feedback({ user: propUser, isAdmin: propIsAdmin }: { use
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <CustomImage src={userData?.photo || user.photoURL} alt={userData?.name || user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100 dark:border-indigo-900/40" />
+                    <img src={userData?.photo || user.photoURL} alt={userData?.name || user.displayName} className="w-10 h-10 rounded-full border-2 border-indigo-100 dark:border-indigo-900/40" />
                     <div>
                       <p className="text-sm font-black text-[var(--text-primary)]">{userData?.name || user.displayName}</p>
                       <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Logged in</p>

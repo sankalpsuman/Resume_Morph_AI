@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Image as CustomImage } from './Image';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Shield, User, Zap, Check, Trash2, Loader2, Save, RotateCcw, ArrowRight, MessageCircle, Clock, Ban, RefreshCw, Crown, Users, Star, Mail, Send, AlertTriangle, CheckSquare, Sparkles, Eye } from 'lucide-react';
 import { collection, query, getDocs, doc, updateDoc, where, orderBy, limit, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
@@ -611,7 +610,7 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                           {/* User Info */}
                           <div className="flex items-center gap-4 md:gap-5 min-w-0 md:min-w-[280px]">
                             <div className="relative flex-shrink-0">
-                              <CustomImage 
+                              <img 
                                 src={user.photo} 
                                 alt={user.name} 
                                 className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-4 border-[var(--bg-secondary)] shadow-sm object-cover"

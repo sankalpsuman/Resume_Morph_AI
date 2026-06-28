@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Image as CustomImage } from './Image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, 
@@ -337,7 +336,7 @@ export default function AccountModal({
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-full -mr-16 -mt-16 blur-3xl opacity-50 transition-all group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30" />
                 
                   <div className="relative shrink-0">
-                  <CustomImage 
+                  <img 
                     src={userData.photo || user.photoURL} 
                     alt={userData.name || user.displayName} 
                     className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl border-4 border-[var(--bg-primary)] shadow-2xl object-cover relative z-10"

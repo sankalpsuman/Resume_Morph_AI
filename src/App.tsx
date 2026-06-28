@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Image as CustomImage } from './components/Image';
 
 // Resilient wrapper for lazy loaded components to recover from stale/rebuilding chunks gracefully
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -1204,7 +1203,7 @@ export default function App() {
                         className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden block"
                       >
                         <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <CustomImage 
+                        <img 
                           src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || '')}&background=6366f1&color=fff`} 
                           alt="Profile" 
                           className="w-8 h-8 md:w-9 md:h-9 rounded-lg object-cover relative z-10"
@@ -1656,7 +1655,7 @@ export default function App() {
                   <div className="relative z-10 flex flex-col items-center">
                     {item.id === 'account' && user ? (
                       <div className="relative">
-                        <CustomImage 
+                        <img 
                           src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || '')}&background=6366f1&color=fff`} 
                           alt="Profile" 
                           className={cn(
