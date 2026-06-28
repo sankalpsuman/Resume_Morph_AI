@@ -364,17 +364,92 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       }
 
       function getElementHeight(el, relativeTo) {
+        if (!el) return 0;
+        let top = 0;
+        let current = el;
+        let found = false;
+        while (current) {
+          if (current === relativeTo) {
+            found = true;
+            break;
+          }
+          top += current.offsetTop || 0;
+          current = current.offsetParent;
+        }
+        if (found) {
+          return top + el.offsetHeight;
+        }
         const rect = el.getBoundingClientRect();
         const baseRect = relativeTo.getBoundingClientRect();
         return rect.bottom - baseRect.top;
       }
 
-      function shouldAvoidSplit(el) {
-        if (el.nodeType !== 1) return false;
+      function isHeader(el) {
+        if (!el || el.nodeType !== 1) return false;
         const classes = el.className || '';
         const tag = el.tagName.toUpperCase();
-        return /section-title|experience-item|job-item|education-item|project-item|skill-item|card|block|section|item/i.test(classes) || 
+        return /section-title|section-header|heading|title|header/i.test(classes) || 
                ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tag);
+      }
+
+      function splitElement(el, currentPage, maxHeight) {
+        if (!el || el.nodeType !== 1) return null;
+        
+        const classes = el.className || '';
+        
+        // Leaf-level content blocks that we should avoid splitting internally unless they are extremely large
+        const isLeafBlock = /experience-item|job-item|education-item|project-item|skill-item|cert-item|bullet-item/i.test(classes) ||
+                            /experience-card|job-card|education-card|project-card|skill-card|cert-card/i.test(classes) ||
+                            /item-row|grid-cols|flex-row/i.test(classes);
+        
+        if (isLeafBlock && el.offsetHeight < maxHeight) {
+          return null;
+        }
+
+        const children = Array.from(el.children);
+        if (children.length === 0) return null;
+
+        // Find the first child that overflows
+        let firstOverflowIdx = -1;
+        for (let i = 0; i < children.length; i++) {
+          if (getElementHeight(children[i], currentPage) > maxHeight) {
+            firstOverflowIdx = i;
+            break;
+          }
+        }
+
+        if (firstOverflowIdx === -1) {
+          return null;
+        }
+
+        // Try to recursively split the overflowing child first
+        const overflowChild = children[firstOverflowIdx];
+        const clonedChild = splitElement(overflowChild, currentPage, maxHeight);
+        if (clonedChild) {
+          overflowChild.parentNode.insertBefore(clonedChild, overflowChild.nextSibling);
+          firstOverflowIdx = firstOverflowIdx + 1;
+        }
+
+        // Now split the current element el at firstOverflowIdx
+        if (firstOverflowIdx <= 0) {
+          return null;
+        }
+
+        // Avoid orphan headers: if firstOverflowIdx is 1 and the first child is a header, don't split!
+        if (firstOverflowIdx === 1 && isHeader(children[0])) {
+          return null;
+        }
+
+        // Move overflowing children to a cloned container
+        const clonedEl = el.cloneNode(false);
+        if (clonedEl.id) clonedEl.removeAttribute('id');
+        
+        const currentChildren = Array.from(el.children);
+        for (let i = firstOverflowIdx; i < currentChildren.length; i++) {
+          clonedEl.appendChild(currentChildren[i]);
+        }
+
+        return clonedEl;
       }
 
       async function processPagination() {
@@ -393,20 +468,26 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
 
           for (let colIdx = 0; colIdx < cols.length; colIdx++) {
             const col = cols[colIdx];
-            const children = Array.from(col.children);
+            let children = Array.from(col.children);
             if (children.length === 0) continue;
 
             let splitIdx = -1;
             for (let i = 0; i < children.length; i++) {
               if (getElementHeight(children[i], currentPage) > SAFE_HEIGHT) {
-                splitIdx = i;
-                for (let j = i; j > 0; j--) {
-                  if (!shouldAvoidSplit(children[j])) {
-                    splitIdx = j;
-                    break;
+                // Try to split this element recursively
+                const clonedEl = splitElement(children[i], currentPage, SAFE_HEIGHT);
+                if (clonedEl) {
+                  children[i].parentNode.insertBefore(clonedEl, children[i].nextSibling);
+                  children = Array.from(col.children);
+                  splitIdx = i + 1;
+                } else {
+                  // Standard element level split determination
+                  if (i > 0 && isHeader(children[i-1])) {
+                    splitIdx = i - 1;
+                  } else {
+                    splitIdx = i;
                   }
                 }
-                if (splitIdx <= 0 && i > 0) splitIdx = i;
                 break;
               }
             }
