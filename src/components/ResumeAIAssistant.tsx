@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { useDropzone } from 'react-dropzone';
 import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
-import { extractTextFromAny } from '../lib/gemini';
+import { extractTextFromAny, withRetry } from '../lib/gemini';
 
 interface Message {
   role: 'user' | 'model';
@@ -98,8 +98,6 @@ export default function ResumeAIAssistant({ user, onLogin }: { user?: any; onLog
                        (window as any).GEMINI_API_KEY;
 
         if (apiKey) {
-          const ai = new GoogleGenAI({ apiKey });
-          
           // Read file as base64
           const reader = new FileReader();
           const base64Data = await new Promise<string>((resolve) => {
@@ -110,20 +108,22 @@ export default function ResumeAIAssistant({ user, onLogin }: { user?: any; onLog
             reader.readAsDataURL(file);
           });
 
-          const extractionResponse = await ai.models.generateContent({
-            model: "gemini-3.1-pro-preview",
-            contents: {
-              parts: [
-                {
-                  inlineData: {
-                    data: base64Data,
-                    mimeType: file.type
-                  }
-                },
-                { text: "Extract all text from this resume perfectly. Preserve logical flow. No chat, just the text." }
-              ]
-            }
-          });
+          const extractionResponse = await withRetry(async (ai, attempt, model) => {
+            return await ai.models.generateContent({
+              model,
+              contents: {
+                parts: [
+                  {
+                    inlineData: {
+                      data: base64Data,
+                      mimeType: file.type
+                    }
+                  },
+                  { text: "Extract all text from this resume perfectly. Preserve logical flow. No chat, just the text." }
+                ]
+              }
+            });
+          }, 4, "gemini-3.1-pro-preview");
           
           if (extractionResponse && extractionResponse.text) {
             extractedText = extractionResponse.text;
@@ -193,32 +193,33 @@ export default function ResumeAIAssistant({ user, onLogin }: { user?: any; onLog
 
       if (!apiKey) throw new Error("AI Key not found. Please check your configuration.");
 
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: [
-          ...newMessages.slice(0, -1).map(m => ({ 
-            role: m.role === 'user' ? 'user' : 'model', 
-            parts: [{ text: m.text }] 
-          })),
-          {
-            role: 'user',
-            parts: [{ text: `
-              USER RESUME CONTENT:
-              """
-              ${resumeText}
-              """
-
-              USER QUERY: ${userMessage}
-            `}]
+      const response = await withRetry(async (ai, attempt, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents: [
+            ...newMessages.slice(0, -1).map(m => ({ 
+              role: m.role === 'user' ? 'user' : 'model', 
+              parts: [{ text: m.text }] 
+            })),
+            {
+              role: 'user',
+              parts: [{ text: `
+                USER RESUME CONTENT:
+                """
+                ${resumeText}
+                """
+  
+                USER QUERY: ${userMessage}
+              `}]
+            }
+          ],
+          config: {
+            systemInstruction: `You are a morph expert Resume Strategist and Career Coach. 
+  Answer questions about the provided resume content. Be professional, specific, and provide actionable advice.
+  Respond using Markdown for better formatting. Use bold for emphasis, and use comparison blocks (e.g., Before/After) for suggestions.`
           }
-        ],
-        config: {
-          systemInstruction: `You are a morph expert Resume Strategist and Career Coach. 
-Answer questions about the provided resume content. Be professional, specific, and provide actionable advice.
-Respond using Markdown for better formatting. Use bold for emphasis, and use comparison blocks (e.g., Before/After) for suggestions.`
-        }
-      });
+        });
+      }, 4, "gemini-3.5-flash");
 
       if (response.text) {
         setMessages(prev => [...prev, { role: 'model', text: response.text }]);

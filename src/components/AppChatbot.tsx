@@ -4,6 +4,7 @@ import { MessageCircle, X, Send, Sparkles, Zap, Trophy, ShieldCheck, RefreshCw, 
 import { cn } from '../lib/utils';
 import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
+import { withRetry } from '../lib/gemini';
 
 const SYSTEM_PROMPT = `
 You are Morph AI, a high-performance career engineering protocol. 
@@ -67,8 +68,6 @@ export default function AppChatbot() {
 
       if (!apiKey) throw new Error("API Key not found. Please ensure GEMINI_API_KEY is set.");
 
-      const ai = new GoogleGenAI({ apiKey });
-      
       // Filter out messages to ensure the sequence is valid and starts with user if possible
       // or at least doesn't violate SDK expectations.
       // We skip the initial greeting if it's just the model greeting.
@@ -76,17 +75,19 @@ export default function AppChatbot() {
         ? newMessages.slice(1) 
         : newMessages;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: conversationHistory.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }]
-        })),
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          temperature: 0.4,
-        }
-      });
+      const response = await withRetry(async (ai, attempt, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents: conversationHistory.map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.text }]
+          })),
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            temperature: 0.4,
+          }
+        });
+      }, 4, "gemini-3.5-flash");
 
       if (response && response.text) {
         setMessages(prev => [...prev, { role: 'model', text: response.text! }]);

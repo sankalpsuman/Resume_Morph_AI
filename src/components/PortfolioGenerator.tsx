@@ -66,7 +66,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
 import * as htmlToImage from 'html-to-image';
 import { cn } from '../lib/utils';
-import { extractTextFromAny, generatePortfolioContent } from '../lib/gemini';
+import { extractTextFromAny, generatePortfolioContent, withRetry } from '../lib/gemini';
 import { PortfolioContent, PortfolioTemplate } from '../types';
 
 interface GenerationStep {
@@ -132,8 +132,6 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
     onFullscreenChange?.(!!portfolio && !isGenerating);
   }, [portfolio, isGenerating, onFullscreenChange]);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
   React.useEffect(() => {
     if (autoFit) {
       if (previewScale < 0.6) setBaseFontSize(24);
@@ -169,10 +167,12 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
     try {
       const currentValue = selectedElement.path.split('.').reduce((obj: any, key) => obj?.[key], portfolio);
       
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: `Improve and professionalize the following ${selectedElement.label} for a portfolio website. Keep it concise but impactful. Return ONLY the improved text, nothing else.\n\nCurrent Text: ${currentValue}`,
-      });
+      const response = await withRetry(async (ai, attempt, model) => {
+        return await ai.models.generateContent({
+          model,
+          contents: `Improve and professionalize the following ${selectedElement.label} for a portfolio website. Keep it concise but impactful. Return ONLY the improved text, nothing else.\n\nCurrent Text: ${currentValue}`,
+        });
+      }, 4, "gemini-3.5-flash");
 
       const improvedText = response.text?.trim();
       if (improvedText) {

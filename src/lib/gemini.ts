@@ -191,7 +191,14 @@ const getApiKeys = () => {
 
 let currentKeyIndex = 0;
 
-async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number) => Promise<T>, retries = 2): Promise<T> {
+const AVAILABLE_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.1-pro-preview",
+  "gemini-flash-latest",
+  "gemini-3.1-flash-lite"
+];
+
+export async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number, currentModel: string) => Promise<T>, retries = 4, preferredModel?: string): Promise<T> {
   const keys = getApiKeys();
   
   if (keys.length === 0) {
@@ -206,9 +213,15 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number) => Promise<T>
     throw new Error("API_KEY_MISSING");
   }
 
+  let models = [...AVAILABLE_MODELS];
+  if (preferredModel) {
+    models = [preferredModel, ...models.filter(m => m !== preferredModel)];
+  }
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     const apiKey = keys[currentKeyIndex];
     const ai = new GoogleGenAI({ apiKey });
+    const modelToUse = models[attempt % models.length];
 
     try {
       
@@ -217,27 +230,41 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number) => Promise<T>
         setTimeout(() => reject(new Error("AI_CALL_TIMEOUT")), 300000)
       );
       
-      const result = await Promise.race([fn(ai, attempt), timeoutPromise]) as T;
+      const result = await Promise.race([fn(ai, attempt, modelToUse), timeoutPromise]) as T;
+      
+      if (attempt > 0) {
+        console.log(`[Gemini AI] Call succeeded on attempt ${attempt + 1} using fallback model: ${modelToUse}`);
+      } else {
+        console.log(`[Gemini AI] Call succeeded with model: ${modelToUse}`);
+      }
+      
       return result;
     } catch (error: any) {
       const errorMsg = error?.message?.toLowerCase() || "";
-      console.warn(`[Gemini AI] Error on attempt ${attempt + 1}:`, errorMsg);
+      const errorStatus = error?.status || 0;
+      console.warn(`[Gemini AI] Error on attempt ${attempt + 1} with model ${modelToUse}:`, errorMsg, error);
       
       const isTimeout = errorMsg.includes("timeout") || errorMsg === "ai_call_timeout";
-      const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota");
-      const isRpcError = errorMsg.includes("rpc failed") || errorMsg.includes("xhr error") || errorMsg.includes("failed to fetch") || errorMsg.includes("500") || errorMsg.includes("503");
+      const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("exhausted") || errorStatus === 429;
+      const isRpcError = errorMsg.includes("rpc failed") || errorMsg.includes("xhr error") || errorMsg.includes("failed to fetch") || errorMsg.includes("500") || errorMsg.includes("503") || errorStatus >= 500;
+      const isModelError = errorMsg.includes("not found") || errorMsg.includes("model") || errorStatus === 404;
       
-      if (isTimeout || isQuotaError || isRpcError) {
+      if (isTimeout || isQuotaError || isRpcError || isModelError) {
         // Rotate key on any retryable error
         currentKeyIndex = (currentKeyIndex + 1) % keys.length;
         
-        // If we've tried all keys or max retries, throw
+        // If we've tried max retries, throw
         if (attempt === retries) {
           if (isTimeout) {
-            console.error("[Gemini AI] Call exhausted all retries and still timed out.");
+            console.error(`[Gemini AI] Call exhausted all ${retries + 1} retries and still timed out.`);
+          } else {
+            console.error(`[Gemini AI] Call exhausted all ${retries + 1} retries. Last error:`, errorMsg);
           }
           throw error;
         }
+        
+        const nextModel = models[(attempt + 1) % models.length];
+        console.log(`[Gemini AI] Switching to fallback model ${nextModel} for attempt ${attempt + 2}`);
         
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
@@ -251,8 +278,7 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number) => Promise<T>
 }
 
 export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawText?: string) {
-  return withRetry(async (ai, attempt) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     // If it's a docx, we extract text and treat as raw text because Gemini doesn't support it as inlineData
     let finalRawText = rawText || "";
@@ -321,8 +347,7 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
     throw new Error("UNSUPPORTED_MIME_FOR_AI_EXTRACTION");
   }
 
-  return withRetry(async (ai, attempt) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     const prompt = "Extract all text content from this document exactly. Preserve logical order. No annotations.";
     const cleanBase64 = base64.split(',')[1] || base64;
     const part = { inlineData: { data: cleanBase64, mimeType } };
@@ -335,8 +360,7 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
 }
 
 export async function getOptimizationPlan(userContent: string, jobDescription?: string) {
-  return withRetry(async (ai, attempt) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     // Auto-detect JSON and convert to TOON to save tokens
     let content = userContent;
@@ -396,9 +420,8 @@ export async function generateResume(
   strict: boolean = true,
   options: { lengthMode?: '1-page' | '2-page' | 'executive' | 'no-limit' } = {}
 ) {
-  return withRetry(async (ai, attempt) => {
-    // Upgraded for structural fidelity as requested
-    const model = attempt > 0 ? "gemini-3.5-flash" : "gemini-3.1-pro-preview"; 
+  return withRetry(async (ai, attempt, model) => {
+    // Upgraded for structural fidelity as requested 
     
     // 1. Content Optimization Prompt
     const optimizationPrompt = jobDescription 
@@ -583,12 +606,11 @@ export async function generateResume(
       }
       throw new Error(`Resume generation failed: ${e instanceof Error ? e.message : 'Parsing Error'}. The content might be too long.`);
     }
-  });
+  }, 4, "gemini-3.1-pro-preview");
 }
 
 export async function checkMatch(resumeText: string, jobDescription: string) {
-  return withRetry(async (ai, attempt) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     // Auto-detect JSON and convert to TOON
     let content = resumeText;
@@ -648,8 +670,7 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
 }
 
 export async function generatePortfolioContent(resumeText: string, githubData?: any) {
-  return withRetry(async (ai, attempt) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     const resumeToon = resumeText.startsWith('{') ? TOON.stringify(JSON.parse(resumeText), 'RESUME') : resumeText;
     const githubToon = githubData ? TOON.stringify(githubData, 'GITHUB') : "";
@@ -781,9 +802,8 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
 }
 
 export async function conversationalEdit(currentData: any, command: string, history: any[] = []) {
-  return withRetry(async (ai, attempt) => {
-    // Upgraded for better instruction following
-    const model = "gemini-3.5-flash"; 
+  return withRetry(async (ai, attempt, model) => {
+    // Upgraded for better instruction following 
     
     // Convert to TOON to optimize token usage
     const dataToon = TOON.stringify(currentData, 'RESUME');
@@ -875,8 +895,7 @@ Return ONLY valid JSON.`;
 }
 
 export async function parseResumeToData(file: { base64: string; mimeType: string; text?: string }) {
-  return withRetry(async (ai) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     const parts: any[] = [];
     
     if (file.base64 && isNativeAiSupport(file.mimeType)) {
@@ -981,8 +1000,7 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
 }
 
 export async function generateCoverLetter(resumeText: string, jobTitle: string, company?: string, jobDescription?: string) {
-  return withRetry(async (ai) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     let content = resumeText;
     if (resumeText.trim().startsWith('{')) {
@@ -1020,8 +1038,7 @@ export async function generateCoverLetter(resumeText: string, jobTitle: string, 
 }
 
 export async function improveBulletPoint(bullet: string, context: string) {
-  return withRetry(async (ai) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
     
     const prompt = `Expert Resume Writer.
     
@@ -1055,8 +1072,7 @@ export async function generateResumeFromData(
   referenceMime: string | null = null,
   jobDescription: string = ""
 ) {
-  return withRetry(async (ai, attempt) => {
-    const model = attempt > 0 ? "gemini-3.5-flash" : "gemini-3.1-pro-preview";
+  return withRetry(async (ai, attempt, model) => {
     const parts: any[] = [];
     
     const dataToon = TOON.stringify(data, 'USER_DATA');
@@ -1155,12 +1171,11 @@ export async function generateResumeFromData(
     });
 
     return JSON.parse(extractJson(response.text || "{\"html\": \"\"}"));
-  });
+  }, 4, "gemini-3.1-pro-preview");
 }
 
 export async function compareResumes(oldResume: string, newResume: string): Promise<string> {
-  return withRetry(async (ai) => {
-    const model = "gemini-3.5-flash";
+  return withRetry(async (ai, attempt, model) => {
 
     let oldC = oldResume;
     if (oldResume.trim().startsWith('{')) {
