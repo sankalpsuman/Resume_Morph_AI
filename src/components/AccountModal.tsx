@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, User, Mail, Calendar, Star, Zap, FileText, Download, Eye, LogOut, 
   Shield, Trophy, Activity, Clock, Trash2, AlertCircle, MessageSquare, 
-  Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Sparkles 
+  Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Sparkles,
+  Files, Search, Settings, ExternalLink, Edit3, CreditCard, Layout,
+  Globe, Github, Linkedin
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS, APP_VERSION } from '../constants';
@@ -11,6 +13,7 @@ import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTi
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 import { compareResumes } from '../lib/gemini';
+import { exportElementToPDF, optimizeImagesForExport } from '../lib/pdfExport';
 import ReactMarkdown from 'react-markdown';
 
 interface AccountModalProps {
@@ -246,6 +249,60 @@ export default function AccountModal({
   const recentResumes = userData.resumeHistory ? [...userData.resumeHistory].sort((a: any, b: any) => 
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   ).slice(0, 3) : [];
+
+  const handleDownloadPDF = async (resume: any) => {
+    const fullResume = await ensureFullResume(resume);
+    if (!fullResume || !fullResume.html) return;
+    
+    setIsLoadingItem(resume.id);
+    try {
+      // Create a temporary hidden iframe to render the HTML for capture
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-10000px';
+      iframe.style.left = '-10000px';
+      iframe.style.width = '794px'; // A4 width at 96dpi
+      document.body.appendChild(iframe);
+      
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error("Could not create iframe document");
+      
+      iframeDoc.open();
+      iframeDoc.write(fullResume.html);
+      iframeDoc.close();
+      
+      // Wait for resources
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const iframeWin = iframe.contentWindow;
+      if (iframeWin?.document.fonts) {
+        await iframeWin.document.fonts.ready;
+      }
+      
+      await optimizeImagesForExport(iframeDoc.body);
+      
+      const pages = Array.from(iframeDoc.querySelectorAll('.page')) as HTMLElement[];
+      if (pages.length === 0) {
+        // Fallback if no .page classes found (should not happen with our templates)
+        const root = iframeDoc.getElementById('resume-preview') || iframeDoc.body;
+        const pdf = await exportElementToPDF([root as HTMLElement], { 
+          filename: `${fullResume.name.replace(/\s+/g, '_')}.pdf` 
+        });
+        pdf.save(`${fullResume.name.replace(/\s+/g, '_')}.pdf`);
+      } else {
+        const pdf = await exportElementToPDF(pages, { 
+          filename: `${fullResume.name.replace(/\s+/g, '_')}.pdf` 
+        });
+        pdf.save(`${fullResume.name.replace(/\s+/g, '_')}.pdf`);
+      }
+      
+      document.body.removeChild(iframe);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      setErrorMessage("Failed to generate PDF. Please try the HTML download instead.");
+    } finally {
+      setIsLoadingItem(null);
+    }
+  };
 
   const handleDownload = async (resume: any) => {
     const fullResume = await ensureFullResume(resume);
@@ -541,6 +598,13 @@ export default function AccountModal({
                             <Eye className="w-5 h-5" />
                           </button>
                           <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
+                          <button 
+                            onClick={() => handleDownloadPDF(resume)}
+                            className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all"
+                            title="Download PDF"
+                          >
+                            <FileText className="w-5 h-5" />
+                          </button>
                           <button 
                             onClick={() => handleDownload(resume)}
                             className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-full transition-all"

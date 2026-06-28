@@ -1245,7 +1245,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
         orientation: 'p',
         unit: 'mm',
         format: 'a4',
-        compress: false // Disable compression for maximum quality
+        compress: true // Enable compression for production-grade optimization
       });
       
       const pageWidth = 210;
@@ -1256,9 +1256,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
         const page = pages[i] as HTMLElement;
         const realHeight = page.offsetHeight;
         
-        const imgData = await htmlToImage.toPng(page, {
-          quality: 1.0,
-          pixelRatio: 3, 
+        // Use optimized JPEG for massive size reduction (1-3MB target)
+        const imgData = await htmlToImage.toJpeg(page, {
+          quality: 0.85, // Production-grade compression balance
+          pixelRatio: 2, // 2x is perfect for crisp text without bloated size
           backgroundColor: '#ffffff',
           width: 794,
           height: realHeight,
@@ -1279,7 +1280,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
            if (i > 0 || j > 0) pdf.addPage();
            const position = -(j * pageHeight);
            const totalPdfHeight = (realHeight * pageWidth) / 794;
-           pdf.addImage(imgData, 'PNG', 0, position, pageWidth, totalPdfHeight, undefined, 'NONE');
+           // Use FAST compression for JPEG stream optimization
+           pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, totalPdfHeight, undefined, 'FAST');
         }
       }
       
@@ -1303,16 +1305,17 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i] as HTMLElement;
         const canvas = await html2canvas(page, {
-          scale: 4,
+          scale: 2, // Optimized from 4
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
           windowWidth: 794
         });
 
-        const imgData = canvas.toDataURL('image/png', 1.0);
+        // Use JPEG for fallback as well
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
         if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, 297, undefined, 'NONE');
+        pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, 297, undefined, 'FAST');
         
         canvas.width = 0;
         canvas.height = 0;
@@ -1447,7 +1450,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       try {
         const html2canvas = await loadHtml2Canvas();
         return await html2canvas(target as HTMLElement, {
-          scale: 3,
+          scale: 2, // Optimized from 3
           useCORS: true,
           allowTaint: false,
           backgroundColor: '#ffffff',
