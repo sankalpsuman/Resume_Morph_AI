@@ -16,7 +16,7 @@ const loadHtmlToImage = () => import('html-to-image');
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, checkIsPremium } from '../lib/utils';
 import { auth, db, storage } from '../firebase';
-import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc, increment, setDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadString } from 'firebase/storage';
 import { uploadWithRetry, deleteWithRetry } from '../lib/storage';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
@@ -311,6 +311,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
   const [lengthMode, setLengthMode] = useState<'1-page' | '2-page' | 'executive' | 'no-limit'>('no-limit');
   const [linkedinText, setLinkedinText] = useState('');
   const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
+  const [isLoadingHistoryItem, setIsLoadingHistoryItem] = useState(false);
 
   // Measure Left Panel Height
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -635,14 +636,23 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       const storagePath = `resumes/${auth.currentUser.uid}/${resumeId}.html`;
       const resumeRef = ref(storage, storagePath);
       const cleanHtml = extractRawHtml(html);
+      const wrappedHtml = wrapResumeHtml(cleanHtml, { name: name || 'Untitled Resume', isGuest: false, isPremium });
 
-      const newResume = {
+      // Save full content to subcollection
+      const resumeDocRef = doc(db, 'users', auth.currentUser.uid, 'resumes', resumeId);
+      const saveContentPromise = setDoc(resumeDocRef, {
+        html: wrappedHtml,
+        originalText: contentFile?.text || '',
+        updatedAt: serverTimestamp()
+      });
+
+      // Create metadata entry for history (WITHOUT HTML to avoid 1MB limit)
+      const newResumeMetadata = {
         id: resumeId,
         name: name || 'Untitled Resume',
         timestamp: new Date().toISOString(),
-        html: wrapResumeHtml(cleanHtml, { name: name || 'Untitled Resume', isGuest: false, isPremium }), // Save exact snapshot
-        originalText: contentFile?.text || '', // Save original text for diffing
-        storagePath: storagePath
+        storagePath: storagePath,
+        isMetadataOnly: true // Mark that HTML is in subcollection
       };
 
       const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
@@ -651,32 +661,27 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       let updatedHistory;
       if (replaceId) {
         // Replace existing
-        updatedHistory = currentHistory.map((r: any) => r.id === replaceId ? newResume : r);
+        updatedHistory = currentHistory.map((r: any) => r.id === replaceId ? newResumeMetadata : r);
       } else {
-        // Add new, slice by history limit
-        updatedHistory = [newResume, ...currentHistory].slice(0, historyLimit);
+        // Add new
+        updatedHistory = [newResumeMetadata, ...currentHistory].slice(0, historyLimit);
       }
 
-      // Parallelize Storage and Firestore updates
-      // Note: Storage upload often fails in restricted preview environments, 
-      // but we still have the full HTML saved in Firestore history as primary backup.
-      uploadWithRetry(resumeRef, cleanHtml, 'raw', { contentType: 'text/html' })
-        .catch(err => {
-          // Silent catch for background task if it's a timeout, as we have Firestore backup
-          if (!err.message?.includes('timed out')) {
-            console.error("Background storage upload failed:", err);
-          }
-        });
-      
-      await updateDoc(userRef, {
-        resumeHistory: updatedHistory,
-        lastActivityAt: serverTimestamp()
-      });
+      // Parallelize everything for speed and reliability
+      await Promise.all([
+        saveContentPromise,
+        updateDoc(userRef, {
+          resumeHistory: updatedHistory,
+          lastActivityAt: serverTimestamp()
+        }),
+        uploadWithRetry(resumeRef, cleanHtml, 'raw', { contentType: 'text/html' })
+          .catch(err => console.warn("Background storage backup failed:", err))
+      ]);
       
       setPendingResume(null);
     } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
-      setError("Background save failed. Please try again.");
+      console.error("Save failure:", err);
+      setError("Background save failed. Please check your connection and try again.");
     } finally {
       setIsSaving(false);
     }
@@ -2293,12 +2298,38 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                   <div className="relative w-full sm:w-[260px] max-w-full">
                     <select
                       value={selectedResumeId}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const val = e.target.value;
+                        if (!val) {
+                          setSelectedResumeId('');
+                          return;
+                        }
+                        
                         setSelectedResumeId(val);
                         const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
                         if (selected) {
-                          setGeneratedHtml(extractRawHtml(selected.html));
+                          // Handle On-Demand Fetching for Metadata-Only entries
+                          if (selected.isMetadataOnly || !selected.html) {
+                            setIsLoadingHistoryItem(true);
+                            try {
+                              const resumeDoc = await getDoc(doc(db, 'users', auth.currentUser!.uid, 'resumes', selected.id));
+                              if (resumeDoc.exists()) {
+                                const fullData = resumeDoc.data();
+                                setGeneratedHtml(extractRawHtml(fullData.html));
+                              } else {
+                                setError("Could not load resume content. It may have been removed.");
+                              }
+                            } catch (err) {
+                              console.error("History fetch failed:", err);
+                              setError("Failed to load resume version. Check your network.");
+                            } finally {
+                              setIsLoadingHistoryItem(false);
+                            }
+                          } else {
+                            // Backward compatibility: load directly from history if present
+                            setGeneratedHtml(extractRawHtml(selected.html));
+                          }
+                          
                           setResumeMetadata({
                             name: selected.name || 'Untitled Resume',
                             yoe: '',
@@ -2307,9 +2338,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                         }
                       }}
                       className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner disabled:opacity-50"
-                      disabled={!userData?.resumeHistory?.length}
+                      disabled={!userData?.resumeHistory?.length || isLoadingHistoryItem}
                     >
-                      <option value="">{userData?.resumeHistory?.length ? `Select a saved resume (${userData.resumeHistory.length})` : 'No saved resumes'}</option>
+                      <option value="">{isLoadingHistoryItem ? 'Fetching content...' : (userData?.resumeHistory?.length ? `Select a saved resume (${userData.resumeHistory.length})` : 'No saved resumes')}</option>
                       {(userData?.resumeHistory || []).map((resume: any) => (
                         <option key={resume.id} value={resume.id}>
                           {resume.name} ({new Date(resume.timestamp || resume.savedAt?.toDate?.() || Date.now()).toLocaleDateString()})

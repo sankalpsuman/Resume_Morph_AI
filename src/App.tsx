@@ -59,7 +59,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { loginWithGoogle } from './lib/auth';
 
 // Pre-initialized GoogleAuthProvider moved to lib/auth.ts
-import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc, getDocFromServer } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, serverTimestamp, getDoc, setDoc, getDocFromServer, deleteDoc } from 'firebase/firestore';
 import { ref } from 'firebase/storage';
 import { deleteWithRetry } from './lib/storage';
 import AdminPanel from './components/AdminPanel';
@@ -808,7 +808,8 @@ export default function App() {
         const deletePromises: Promise<any>[] = [
           updateDoc(userRef, {
             resumeHistory: updatedHistory
-          })
+          }),
+          deleteDoc(doc(db, 'users', user.uid, 'resumes', resumeId)).catch(err => console.error("Subcollection delete failed:", err))
         ];
 
         if (resumeToDelete?.storagePath) {

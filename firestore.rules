@@ -111,6 +111,11 @@ service cloud.firestore {
          isValidUser(request.resource.data)) ||
         isAdmin()
       );
+
+      // Resumes subcollection for large content storage
+      match /resumes/{resumeId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
     match /premium_requests/{requestId} {

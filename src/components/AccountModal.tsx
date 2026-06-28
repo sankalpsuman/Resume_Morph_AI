@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { PLANS, APP_VERSION } from '../constants';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
 import { compareResumes } from '../lib/gemini';
@@ -47,6 +47,28 @@ export default function AccountModal({
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [customTargetEmail, setCustomTargetEmail] = useState<string>('');
   const [customTargetName, setCustomTargetName] = useState<string>('');
+  const [isLoadingItem, setIsLoadingItem] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const ensureFullResume = async (resume: any) => {
+    if (!resume.isMetadataOnly && resume.html) return resume;
+    
+    setIsLoadingItem(resume.id);
+    try {
+      const resumeDoc = await getDoc(doc(db, 'users', user.uid, 'resumes', resume.id));
+      if (resumeDoc.exists()) {
+        const fullData = resumeDoc.data();
+        return { ...resume, html: fullData.html, originalText: fullData.originalText };
+      }
+      throw new Error("Resume content not found.");
+    } catch (err) {
+      console.error("Failed to fetch full resume:", err);
+      setErrorMessage("Could not load resume content. Please try again.");
+      return null;
+    } finally {
+      setIsLoadingItem(null);
+    }
+  };
 
   useEffect(() => {
     if (userData?.email) {
@@ -225,23 +247,25 @@ export default function AccountModal({
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   ).slice(0, 3) : [];
 
-  const handleDownload = (resume: any) => {
-    if (!resume.html) return;
-    const blob = new Blob([resume.html], { type: 'text/html' });
+  const handleDownload = async (resume: any) => {
+    const fullResume = await ensureFullResume(resume);
+    if (!fullResume || !fullResume.html) return;
+    const blob = new Blob([fullResume.html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${resume.name.replace(/\s+/g, '_')}.html`;
+    a.download = `${fullResume.name.replace(/\s+/g, '_')}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadWord = (resume: any) => {
-    if (!resume.html) return;
+  const handleDownloadWord = async (resume: any) => {
+    const fullResume = await ensureFullResume(resume);
+    if (!fullResume || !fullResume.html) return;
     // Apply Word-specific fixes
-    const fullHtml = resume.html.replace('</style>', `
+    const fullHtml = fullResume.html.replace('</style>', `
       /* Word-specific overrides for layout */
       .grid { display: table !important; width: 100% !important; }
       .col-span-1, .col-span-2, .col-span-3, .col-span-4, .col-span-5, .col-span-6, .col-span-7, .col-span-8, .col-span-9, .col-span-10, .col-span-11, .col-span-12 { display: table-cell !important; }
@@ -251,39 +275,41 @@ export default function AccountModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${resume.name.replace(/\s+/g, '_')}.doc`;
+    a.download = `${fullResume.name.replace(/\s+/g, '_')}.doc`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handlePreview = (resume: any) => {
-    if (!resume.html) return;
+  const handlePreview = async (resume: any) => {
+    const fullResume = await ensureFullResume(resume);
+    if (!fullResume || !fullResume.html) return;
     try {
-      const blob = new Blob([resume.html], { type: 'text/html' });
+      const blob = new Blob([fullResume.html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
     } catch (e) {
       // Fallback for some browsers
       const win = window.open('', '_blank');
       if (win) {
-        win.document.write(resume.html);
+        win.document.write(fullResume.html);
         win.document.close();
       }
     }
   };
 
   const handleCompare = async (resume: any) => {
-    if (!resume.html) return;
+    const fullResume = await ensureFullResume(resume);
+    if (!fullResume || !fullResume.html) return;
     setIsComparing(true);
-    setComparingResume(resume);
+    setComparingResume(fullResume);
     try {
       // Create a plain text version for AI comparison
       const parser = new DOMParser();
-      const doc = parser.parseFromString(resume.html, 'text/html');
+      const doc = parser.parseFromString(fullResume.html, 'text/html');
       const cleanText = doc.body.innerText || doc.body.textContent || "";
       
       // Use original text if available, otherwise fallback to generic label
-      const originalText = resume.originalText || "Original Content (Not Available)";
+      const originalText = fullResume.originalText || "Original Content (Not Available)";
       
       const comparison = await compareResumes(originalText, cleanText);
       setDiffData(comparison);
@@ -477,53 +503,68 @@ export default function AccountModal({
                         <p className="font-black text-[var(--text-primary)] text-base">{resume.name}</p>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
-                            {new Date(resume.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {(() => {
+                              const d = resume.timestamp?.toDate ? resume.timestamp.toDate() : new Date(resume.timestamp || Date.now());
+                              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            })()}
                           </span>
                           <div className="w-1 h-1 bg-[var(--border-color)] rounded-full" />
                           <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
-                            {new Date(resume.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {(() => {
+                              const d = resume.timestamp?.toDate ? resume.timestamp.toDate() : new Date(resume.timestamp || Date.now());
+                              return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            })()}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto no-scrollbar py-1">
-                      <button 
-                        onClick={() => handleCompare(resume)}
-                        className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 dark:border-indigo-900/20 shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/20 transition-all active:scale-95"
-                      >
-                        <Diff className="w-4 h-4" />
-                        Differences
-                      </button>
-                      <button 
-                        onClick={() => handlePreview(resume)}
-                        className="p-3 text-[var(--text-tertiary)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all"
-                        title="Preview"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
-                      <button 
-                        onClick={() => handleDownload(resume)}
-                        className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-full transition-all"
-                        title="Download HTML"
-                      >
-                        <FileCode className="w-5 h-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDownloadWord(resume)}
-                        className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"
-                        title="Download Word"
-                      >
-                        <FileType className="w-5 h-5" />
-                      </button>
-                      <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
-                      <button 
-                        onClick={() => setDeleteConfirm(resume.id)}
-                        className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
-                        title="Delete Resume"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      {isLoadingItem === resume.id ? (
+                        <div className="flex items-center gap-2 px-6 py-3 bg-indigo-50/50 dark:bg-indigo-900/5 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/10">
+                          <Loader2 className="w-4 h-4 text-indigo-600 animate-spin" />
+                          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Loading...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => handleCompare(resume)}
+                            className="flex-grow md:flex-none flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest rounded-2xl border border-indigo-100 dark:border-indigo-900/20 shadow-sm hover:bg-indigo-100 dark:hover:bg-indigo-900/20 transition-all active:scale-95"
+                          >
+                            <Diff className="w-4 h-4" />
+                            Differences
+                          </button>
+                          <button 
+                            onClick={() => handlePreview(resume)}
+                            className="p-3 text-[var(--text-tertiary)] hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all"
+                            title="Preview"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
+                          <button 
+                            onClick={() => handleDownload(resume)}
+                            className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-full transition-all"
+                            title="Download HTML"
+                          >
+                            <FileCode className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadWord(resume)}
+                            className="w-10 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-all"
+                            title="Download Word"
+                          >
+                            <FileType className="w-5 h-5" />
+                          </button>
+                          <div className="h-4 w-px bg-[var(--border-color)] mx-1" />
+                          <button 
+                            onClick={() => setDeleteConfirm(resume.id)}
+                            className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
+                            title="Delete Resume"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
