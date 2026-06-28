@@ -170,7 +170,7 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
       const currentValue = selectedElement.path.split('.').reduce((obj: any, key) => obj?.[key], portfolio);
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.5-flash',
         contents: `Improve and professionalize the following ${selectedElement.label} for a portfolio website. Keep it concise but impactful. Return ONLY the improved text, nothing else.\n\nCurrent Text: ${currentValue}`,
       });
 

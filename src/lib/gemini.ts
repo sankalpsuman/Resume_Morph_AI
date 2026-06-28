@@ -252,7 +252,7 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number) => Promise<T>
 
 export async function analyzeLayout(fileBase64?: string, mimeType?: string, rawText?: string) {
   return withRetry(async (ai, attempt) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     // If it's a docx, we extract text and treat as raw text because Gemini doesn't support it as inlineData
     let finalRawText = rawText || "";
@@ -322,7 +322,7 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
   }
 
   return withRetry(async (ai, attempt) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     const prompt = "Extract all text content from this document exactly. Preserve logical order. No annotations.";
     const cleanBase64 = base64.split(',')[1] || base64;
     const part = { inlineData: { data: cleanBase64, mimeType } };
@@ -336,7 +336,7 @@ export async function extractTextFromAny(base64: string, mimeType: string) {
 
 export async function getOptimizationPlan(userContent: string, jobDescription?: string) {
   return withRetry(async (ai, attempt) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     // Auto-detect JSON and convert to TOON to save tokens
     let content = userContent;
@@ -398,7 +398,7 @@ export async function generateResume(
 ) {
   return withRetry(async (ai, attempt) => {
     // Upgraded for structural fidelity as requested
-    const model = attempt > 0 ? "gemini-3-flash-preview" : "gemini-3.1-pro-preview"; 
+    const model = attempt > 0 ? "gemini-3.5-flash" : "gemini-3.1-pro-preview"; 
     
     // 1. Content Optimization Prompt
     const optimizationPrompt = jobDescription 
@@ -588,7 +588,7 @@ export async function generateResume(
 
 export async function checkMatch(resumeText: string, jobDescription: string) {
   return withRetry(async (ai, attempt) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     // Auto-detect JSON and convert to TOON
     let content = resumeText;
@@ -649,7 +649,7 @@ export async function checkMatch(resumeText: string, jobDescription: string) {
 
 export async function generatePortfolioContent(resumeText: string, githubData?: any) {
   return withRetry(async (ai, attempt) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     const resumeToon = resumeText.startsWith('{') ? TOON.stringify(JSON.parse(resumeText), 'RESUME') : resumeText;
     const githubToon = githubData ? TOON.stringify(githubData, 'GITHUB') : "";
@@ -783,7 +783,7 @@ export async function generatePortfolioContent(resumeText: string, githubData?: 
 export async function conversationalEdit(currentData: any, command: string, history: any[] = []) {
   return withRetry(async (ai, attempt) => {
     // Upgraded for better instruction following
-    const model = "gemini-3-flash-preview"; 
+    const model = "gemini-3.5-flash"; 
     
     // Convert to TOON to optimize token usage
     const dataToon = TOON.stringify(currentData, 'RESUME');
@@ -876,7 +876,7 @@ Return ONLY valid JSON.`;
 
 export async function parseResumeToData(file: { base64: string; mimeType: string; text?: string }) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     const parts: any[] = [];
     
     if (file.base64 && isNativeAiSupport(file.mimeType)) {
@@ -982,7 +982,7 @@ export async function parseResumeToData(file: { base64: string; mimeType: string
 
 export async function generateCoverLetter(resumeText: string, jobTitle: string, company?: string, jobDescription?: string) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     let content = resumeText;
     if (resumeText.trim().startsWith('{')) {
@@ -1021,7 +1021,7 @@ export async function generateCoverLetter(resumeText: string, jobTitle: string, 
 
 export async function improveBulletPoint(bullet: string, context: string) {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
     
     const prompt = `Expert Resume Writer.
     
@@ -1160,7 +1160,7 @@ export async function generateResumeFromData(
 
 export async function compareResumes(oldResume: string, newResume: string): Promise<string> {
   return withRetry(async (ai) => {
-    const model = "gemini-3-flash-preview";
+    const model = "gemini-3.5-flash";
 
     let oldC = oldResume;
     if (oldResume.trim().startsWith('{')) {

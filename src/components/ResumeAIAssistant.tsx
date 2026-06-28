@@ -195,7 +195,7 @@ export default function ResumeAIAssistant({ user, onLogin }: { user?: any; onLog
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: [
           ...newMessages.slice(0, -1).map(m => ({ 
             role: m.role === 'user' ? 'user' : 'model', 
