@@ -645,13 +645,16 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
         storagePath: storagePath
       };
 
+      const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
+      const historyLimit = currentPlan.historyLimit || 2;
+
       let updatedHistory;
       if (replaceId) {
         // Replace existing
         updatedHistory = currentHistory.map((r: any) => r.id === replaceId ? newResume : r);
       } else {
-        // Add new, but user should only call this if < 2
-        updatedHistory = [newResume, ...currentHistory].slice(0, 2);
+        // Add new, slice by history limit
+        updatedHistory = [newResume, ...currentHistory].slice(0, historyLimit);
       }
 
       // Parallelize Storage and Firestore updates
@@ -2275,7 +2278,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
               : "lg:col-span-8 xl:col-span-9 lg:sticky lg:top-24 xl:top-32",
             !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:flex"
           )}>
-            {!isPreviewFull && userData?.resumeHistory && userData.resumeHistory.length > 0 && (
+            {!isPreviewFull && user && (
               <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-secondary)] p-4 rounded-3xl border border-[var(--border-color)] shadow-sm shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -2286,34 +2289,51 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                     <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Load from History</p>
                   </div>
                 </div>
-                <div className="relative w-full sm:w-[320px] max-w-full">
-                  <select
-                    value={selectedResumeId}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedResumeId(val);
-                      const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
-                      if (selected) {
-                        setGeneratedHtml(extractRawHtml(selected.html));
-                        setResumeMetadata({
-                          name: selected.name || 'Untitled Resume',
-                          yoe: '',
-                          profile: ''
-                        });
+                <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-[260px] max-w-full">
+                    <select
+                      value={selectedResumeId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedResumeId(val);
+                        const selected = (userData?.resumeHistory || []).find((r: any) => r.id === val);
+                        if (selected) {
+                          setGeneratedHtml(extractRawHtml(selected.html));
+                          setResumeMetadata({
+                            name: selected.name || 'Untitled Resume',
+                            yoe: '',
+                            profile: ''
+                          });
+                        }
+                      }}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner disabled:opacity-50"
+                      disabled={!userData?.resumeHistory?.length}
+                    >
+                      <option value="">{userData?.resumeHistory?.length ? `Select a saved resume (${userData.resumeHistory.length})` : 'No saved resumes'}</option>
+                      {(userData?.resumeHistory || []).map((resume: any) => (
+                        <option key={resume.id} value={resume.id}>
+                          {resume.name} ({new Date(resume.timestamp || resume.savedAt?.toDate?.() || Date.now()).toLocaleDateString()})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-[var(--text-tertiary)]">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (generatedHtml) {
+                        setPendingResume({ html: generatedHtml, name: resumeMetadata?.name || 'Untitled Resume' });
+                        setShowSaveModal(true);
                       }
                     }}
-                    className="w-full bg-[var(--bg-primary)] border border-[var(--border-color)] text-[var(--text-primary)] font-bold text-xs py-3 pl-5 pr-10 rounded-2xl cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none font-sans shadow-inner"
+                    disabled={!generatedHtml || isSaving}
+                    className="flex-shrink-0 h-[42px] px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs flex items-center gap-2 transition-colors disabled:opacity-50"
+                    title="Save Current Version"
                   >
-                    <option value="">Select a saved resume ({userData.resumeHistory.length})</option>
-                    {userData.resumeHistory.map((resume: any) => (
-                      <option key={resume.id} value={resume.id}>
-                        {resume.name} ({new Date(resume.timestamp).toLocaleDateString()})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-[var(--text-tertiary)]">
-                    <ChevronDown className="w-4 h-4" />
-                  </div>
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">Save</span>
+                  </button>
                 </div>
               </div>
             )}

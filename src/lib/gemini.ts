@@ -192,8 +192,8 @@ const getApiKeys = () => {
 let currentKeyIndex = 0;
 
 const AVAILABLE_MODELS = [
-  "gemini-3.5-flash",
   "gemini-3.1-pro-preview",
+  "gemini-3.5-flash",
   "gemini-flash-latest",
   "gemini-3.1-flash-lite"
 ];
@@ -218,13 +218,15 @@ export async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number, curren
     models = [preferredModel, ...models.filter(m => m !== preferredModel)];
   }
 
+  let currentModelIndex = 0;
+  let modelKeyAttempts = 0; // Tracks how many keys we've tried for the current model
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     const apiKey = keys[currentKeyIndex];
     const ai = new GoogleGenAI({ apiKey });
-    const modelToUse = models[attempt % models.length];
+    const modelToUse = models[currentModelIndex % models.length];
 
     try {
-      
       // Add a 300-second timeout to the function execution (5 minutes)
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error("AI_CALL_TIMEOUT")), 300000)
@@ -232,17 +234,11 @@ export async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number, curren
       
       const result = await Promise.race([fn(ai, attempt, modelToUse), timeoutPromise]) as T;
       
-      if (attempt > 0) {
-        console.log(`[Gemini AI] Call succeeded on attempt ${attempt + 1} using fallback model: ${modelToUse}`);
-      } else {
-        console.log(`[Gemini AI] Call succeeded with model: ${modelToUse}`);
-      }
-      
       return result;
     } catch (error: any) {
       const errorMsg = error?.message?.toLowerCase() || "";
       const errorStatus = error?.status || 0;
-      console.warn(`[Gemini AI] Error on attempt ${attempt + 1} with model ${modelToUse}:`, errorMsg, error);
+      console.warn(`[Gemini AI] Error on attempt ${attempt + 1} with model ${modelToUse} and key ${currentKeyIndex}:`, errorMsg);
       
       const isTimeout = errorMsg.includes("timeout") || errorMsg === "ai_call_timeout";
       const isQuotaError = errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("exhausted") || errorStatus === 429;
@@ -250,21 +246,31 @@ export async function withRetry<T>(fn: (ai: GoogleGenAI, attempt: number, curren
       const isModelError = errorMsg.includes("not found") || errorMsg.includes("model") || errorStatus === 404;
       
       if (isTimeout || isQuotaError || isRpcError || isModelError) {
-        // Rotate key on any retryable error
+        // Increment key for next try
         currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+        modelKeyAttempts++;
+
+        // FALLBACK LOGIC:
+        // 1. Model Error (404/Not Found): Switch model immediately
+        if (isModelError) {
+          console.log(`[Gemini AI] Model ${modelToUse} not available. Switching model.`);
+          currentModelIndex++;
+          modelKeyAttempts = 0;
+        } 
+        // 2. Quota/Timeout/RPC: Switch only after trying ALL keys for current model
+        else if (modelKeyAttempts >= keys.length) {
+          console.log(`[Gemini AI] Exhausted all ${keys.length} keys for model ${modelToUse}. Switching model.`);
+          currentModelIndex++;
+          modelKeyAttempts = 0;
+        }
         
-        // If we've tried max retries, throw
         if (attempt === retries) {
-          if (isTimeout) {
-            console.error(`[Gemini AI] Call exhausted all ${retries + 1} retries and still timed out.`);
-          } else {
-            console.error(`[Gemini AI] Call exhausted all ${retries + 1} retries. Last error:`, errorMsg);
-          }
           throw error;
         }
         
-        const nextModel = models[(attempt + 1) % models.length];
-        console.log(`[Gemini AI] Switching to fallback model ${nextModel} for attempt ${attempt + 2}`);
+        const nextModel = models[currentModelIndex % models.length];
+        const nextKey = currentKeyIndex;
+        console.log(`[Gemini AI] Retrying with model ${nextModel} (Key ${nextKey}) on attempt ${attempt + 2}`);
         
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
@@ -423,42 +429,44 @@ export async function generateResume(
   return withRetry(async (ai, attempt, model) => {
     // Upgraded for structural fidelity as requested 
     
-    // 1. Content Optimization Prompt
-    const optimizationPrompt = jobDescription 
-      ? `\n\nCONTENT MAPPING & SUPREME AI TAILORING:
-      1. Map USER DATA into the design structure with 100% factual fidelity.
-      2. REWRITE & OPTIMIZE: Deeply analyze the JOB DESCRIPTION and smartly modify bullet points, summaries, and skills to align with the role.
-      3. ADD VALUE: If the original content is weak, use professional judgment to expand on achievements that would be relevant to this specific JD (while staying truthful to the user's role).
-      4. STRATEGIC POSITIONING: Reorder bullet points or skills so the most relevant ones appear first.
-      5. TONE: Match the tone of the JD (e.g., technical, creative, leadership-focused).`
-      : "\n\nCONTENT MAPPING: Map USER DATA into the structural containers defined by the reference visual.";
+    // 1. Content Optimization vs Preservation Protocol
+    const contentProtocol = jobDescription 
+      ? `### PROTOCOL: RESUME OPTIMIZATION (JD PROVIDED)
+      1. ANALYZE & ALIGN: Map USER DATA into the design structure while smartly optimizing for the JOB DESCRIPTION.
+      2. STRATEGIC REWRITING: Improve bullet points, summaries, and skills to align with the role requirements.
+      3. ATS ENHANCEMENT: Add relevant keywords and improve professional language.
+      4. TRUTH ONLY: Do NOT fabricate experience, companies, or dates.
+      `
+      : `### PROTOCOL: STRICT RESUME MORPH (NO JD PROVIDED)
+      1. ABSOLUTE CONTENT PRESERVATION: You are a layout engine, NOT a writer. 
+      2. ZERO REWRITING: Every word, comma, and character from USER DATA must be preserved exactly.
+      3. NO IMPROVEMENTS: Do not fix grammar, do not improve bullet points, do not shorten or expand.
+      4. CONTENT FIDELITY: The output must contain 100% of the information from the source. Omission is a critical failure.
+      5. LAYOUT ONLY: Only change the visual structure, columns, typography, and styling to match the MASTER REFERENCE.
+      `;
 
     // 2. Structural Cloning Protocol
     const layoutSystemPrompt = `
-    LAYOUT CLONING PROTOCOL (STRICT ADHERENCE REQUIRED):
-    - You are a front-end engineer tasked with cloning a design.
-    - The DESIGN TOKENS MANIFEST provided in the context is your SOURCE OF TRUTH for layout, colors, and typography.
-    - COLUMN_STRATEGY: If "2-Column", you MUST use a flex or grid layout side-by-side.
-    - SIDEBAR: If SIDEBAR_POSITION is "Left" or "Right", you MUST implement a sidebar with the exact SIDEBAR_WIDTH_PERCENT.
-    - MANDATORY 2-COLUMN LABELS: The sidebar element MUST be given the class name "sidebar" (or "layout-sidebar"). The main body text column MUST be given the class name "main" (or "layout-main" or "main-column"). This is absolutely mandatory for the paginator tool.
-    - FLUID HEIGH SYSTEM: Do NOT use absolute positioning (like absolute, top-0, left-0) to position the sidebar or main panels. Do NOT use fixed tall height classes (such as h-[1123px], h-[100%], h-full, or h-screen) on style layouts of the columns. They must flow naturally so that they can be dynamically sliced and paginated item-by-item by our render engine!
-    - TYPOGRAPHY: Use the fonts and sizes specified in the manifest.
-    - COLORS: Use the HEX codes for backgrounds and text.
-    - INTEGRITY: Ensure the final HTML strictly follows the structure: <div class="page"><div class="content">...</div></div>.
+    ### LAYOUT CLONING PROTOCOL (STRICT ADHERENCE):
+    - DESIGN SOURCE: Use the DESIGN TOKENS MANIFEST as your absolute blueprint.
+    - COLUMN_STRATEGY: Replicate the grid exactly (e.g., flex/grid for 2-columns).
+    - MANDATORY LABELS: Sidebar MUST have class="layout-sidebar". Main body MUST have class="layout-main".
+    - FLUID HEIGHT: Do NOT use fixed height (h-full, h-screen, absolute positioning). Use h-auto.
+    - TYPOGRAPHY & COLORS: Mirror the reference's font sizes, weights, and HEX codes using Tailwind.
     `;
 
     const atsMaxPrompt = maximizeAts 
-      ? `\n\nATS ENHANCEMENT: While keeping the REFERENCE structure, ensure headings are standard (e.g., "Experience" instead of "History") and font sizes are legible.`
+      ? `\nATS ENHANCEMENT: While keeping the layout, ensure headings are standard (e.g., "Experience" instead of "History").`
       : "";
 
     const lengthPrompt = options?.lengthMode === '1-page' 
-      ? "\n\nSTRICT LENGTH CONSTRAINT: The output MUST fit on a single A4 page. Be extremely concise. Use compact spacing."
+      ? "\nSTRICT LENGTH: Must fit on one A4 page. Use compact spacing."
       : options?.lengthMode === '2-page'
-        ? "\n\nLENGTH: Expand content to fill approximately 2 pages. More detail per role is expected."
+        ? "\nLENGTH: Expand content to fill approximately 2 pages. More detail per role is expected."
         : options?.lengthMode === 'executive'
-          ? "\n\nTHEME: High-level executive summary style. Focus on leadership and strategic impact."
+          ? "\nTHEME: High-level executive summary style. Focus on leadership and strategic impact."
           : options?.lengthMode === 'no-limit'
-            ? "\n\nFULL CONTENT MODE: Do NOT truncate ANY USER DATA. Output every single experience, bullet point, skill, and certification provided in the user content. The document will be paginated by the front-end, so allow it to grow vertically to fit everything."
+            ? "\nFULL CONTENT: Do NOT truncate ANYTHING. The front-end will paginate."
             : "";
 
     // Use full JSON for layout morphing to preserve maximum structural fidelity as requested
@@ -467,29 +475,20 @@ export async function generateResume(
 
     const prompt = `SUPREME FORENSIC MAPPING ENGINE & LAYOUT DNA CLONER.
     
-    GOAL: Transform the data from "USER CONTENT" into the visual layout of "MASTER REFERENCE".
+    GOAL: Transform "USER CONTENT" into the visual layout of "MASTER REFERENCE".
     
-    STRUCTURAL CLONING RULES:
-    1. REPLICATE THE GRID: Match column splits (e.g. 25/75 or 33/66) exactly. 
-    2. MANDATORY COLUMN LABELS (CRITICAL): 
-       - If you use a 2-column layout, the Sidebar container MUST have class="layout-sidebar".
-       - The Main content container MUST have class="layout-main".
-       - These MUST be direct children of a <div class="content"> container.
-    3. TYPOGRAPHIC DNA: Mirror font weights, letter spacing, and line heights using Tailwind.
-    4. DATA PRESERVATION: Render EVERY single experience entry, skill, and certification from the USER CONTENT. DO NOT summarize or omit anything.
-    5. SINGLE FLOW: Output the entire resume as a single <div class="page"><div class="content">...</div></div> block. The front-end render engine will handle automatic pagination and page breaks. Do NOT attempt to split it into multiple pages yourself.
-    6. FLUID HEIGHT: Ensure all containers have h-auto or no fixed height to allow vertical growth.
-    
-    PIXEL-PERFECT RENDER:
-    - Wrapper: <div class="page"><div class="content">[CONTENT]</div></div>.
-    - Inside .content, use your grid/flex columns if needed.
-    
-    ${optimizationPrompt}
+    ${contentProtocol}
     ${layoutSystemPrompt}
     ${atsMaxPrompt}
     ${lengthPrompt}
     
-    Return JSON with "html" key.`;
+    VALIDATION (MANDATORY):
+    Return an "integrityMetrics" object to verify:
+    - sourceFieldCount: Total sections/items in user data.
+    - renderedFieldCount: Total sections/items rendered in HTML.
+    - omittedFields: List any data point you didn't include.
+    
+    Output JSON with "html", "name", and "integrityMetrics".`;
 
     const contents: any[] = [];
     const parts: any[] = [];
@@ -585,6 +584,15 @@ export async function generateResume(
       const text = extractJson(respText);
       const result = JSON.parse(text);
       if (!result.html) throw new Error("EMPTY_HTML");
+
+      // Validation Step: If Morph Only, check if all content is preserved
+      if (!jobDescription && result.integrityMetrics && result.integrityMetrics.omittedFields.length > 0) {
+        console.warn("[Gemini AI] Morph failed integrity check. Omitted fields:", result.integrityMetrics.omittedFields);
+        if (attempt < 2) {
+          throw new Error("RETRY_CONTENT_PRESERVATION_FAILURE");
+        }
+      }
+
       return result;
     } catch (e) {
       console.error("AI Response Parsing Failed:", e);
