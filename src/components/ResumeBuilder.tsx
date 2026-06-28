@@ -1924,10 +1924,6 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
           </button>
           <button 
             onClick={() => {
-              if (!user) {
-                if (onLogin) onLogin();
-                return;
-              }
               setActiveMobileTab('preview');
             }}
             className={cn(
@@ -2256,7 +2252,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
             !isPreviewFull && activeMobileTab !== 'preview' && "hidden lg:block"
           )}>
             {!isPreviewFull && userData?.resumeHistory && userData.resumeHistory.length > 0 && (
-              <div className="mb-6 flex items-center justify-between bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm group">
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm group">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
                     <History className="w-6 h-6" />
@@ -2266,7 +2262,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Load from History</p>
                   </div>
                 </div>
-                <div className="relative max-w-xs w-full sm:w-[320px]">
+                <div className="relative w-full sm:w-[320px] max-w-full">
                   <select
                     value={selectedResumeId}
                     onChange={(e) => {

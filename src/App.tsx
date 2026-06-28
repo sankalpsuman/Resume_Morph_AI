@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // Resilient wrapper for lazy loaded components to recover from stale/rebuilding chunks gracefully
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -248,6 +248,8 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+  const [comingSoonFeatureName, setComingSoonFeatureName] = useState('');
   const [pendingDeletions, setPendingDeletions] = useState<Record<string, NodeJS.Timeout>>({});
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
@@ -708,6 +710,51 @@ export default function App() {
     }
   };
 
+  const triggerLogin = useCallback(() => {
+    if (user || isAuthProgress) return;
+    setIsLoginModalOpen(true);
+  }, [user, isAuthProgress]);
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    const implementedTabs: Tab[] = ['builder', 'portfolio', 'smart-editor', 'cover-letter', 'tracker', 'assistant', 'about', 'privacy', 'contact', 'feedback', 'guide', 'account', 'resources', 'analyzer', 'careers', 'blog', 'terms', 'cookies', 'security', 'help', 'status', 'api'];
+    
+    if (!implementedTabs.includes(tab)) {
+      const displayNames: Record<string, string> = {
+        'portfolio': 'Portfolio Generator',
+        'smart-editor': 'Smart AI Editor',
+        'cover-letter': 'Cover Letter Generator',
+        'tracker': 'Application Tracker',
+        'assistant': 'AI Career Assistant',
+        'guide': 'Interactive User Guide',
+        'feedback': 'Share App Feedback',
+        'help': 'FAQ Support Center'
+      };
+      setComingSoonFeatureName(displayNames[tab] || (tab.charAt(0).toUpperCase() + tab.slice(1)));
+      setShowComingSoonModal(true);
+      return;
+    }
+
+    // Protected Tabs for Guest
+    const protectedTabs: Tab[] = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+    
+    if (!user && protectedTabs.includes(tab)) {
+      triggerLogin();
+      return;
+    }
+
+    setIsMenuOpen(false);
+    setIsResourcesOpen(false);
+    setIsUserDropdownOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Update URL without full page reload
+    const newPath = tab === 'builder' ? '/' : `/${tab}`;
+    if (location.pathname !== newPath) {
+      console.log(`[Routing] Navigating: ${location.pathname} -> ${newPath}`);
+      navigate(newPath);
+    }
+  }, [user, triggerLogin, location.pathname, navigate]);
+
   useEffect(() => {
     const handleSetTab = (e: any) => {
       if (e.detail) {
@@ -719,7 +766,7 @@ export default function App() {
     return () => {
       window.removeEventListener('set-tab', handleSetTab);
     };
-  }, []); 
+  }, [handleTabChange]); 
 
   useEffect(() => {
     if (!userData || !user) return;
@@ -912,32 +959,7 @@ export default function App() {
     }
   };
 
-  const triggerLogin = () => {
-    if (user || isAuthProgress) return;
-    setIsLoginModalOpen(true);
-  };
 
-  const handleTabChange = (tab: Tab) => {
-    // Protected Tabs for Guest
-    const protectedTabs: Tab[] = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
-    
-    if (!user && protectedTabs.includes(tab)) {
-      triggerLogin();
-      return;
-    }
-
-    setIsMenuOpen(false);
-    setIsResourcesOpen(false);
-    setIsUserDropdownOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    // Update URL without full page reload
-    const newPath = tab === 'builder' ? '/' : `/${tab}`;
-    if (location.pathname !== newPath) {
-      console.log(`[Routing] Navigating: ${location.pathname} -> ${newPath}`);
-      navigate(newPath);
-    }
-  };
 
   // Branded Morph Splash Screen immediately visible on App launch
   if (showSplash) {
@@ -1796,6 +1818,43 @@ export default function App() {
         onLogin={performGoogleLogin}
         isProgress={isAuthProgress}
       />
+
+      {/* Coming Soon / Not Available Yet Modal */}
+      <AnimatePresence>
+        {showComingSoonModal && (
+          <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowComingSoonModal(false)}
+              className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm"
+            />
+            {/* Modal Body */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative z-10 text-center text-white"
+            >
+              <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-indigo-500/20 text-indigo-400">
+                <Sparkles className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black mb-2 tracking-tight">Coming Soon</h3>
+              <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+                The <span className="text-indigo-400 font-bold">{comingSoonFeatureName || 'Requested Feature'}</span> is under development and is not available yet in this preview. Stay tuned!
+              </p>
+              <button
+                onClick={() => setShowComingSoonModal(false)}
+                className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all"
+              >
+                Got it
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <InteractiveTour />
       <AppChatbot />
