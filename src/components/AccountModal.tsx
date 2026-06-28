@@ -6,7 +6,7 @@ import {
   Reply, CheckCircle, Loader2, Diff, FileCode, FileType, Sparkles 
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PLANS } from '../constants';
+import { PLANS, APP_VERSION } from '../constants';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
@@ -749,7 +749,7 @@ export default function AccountModal({
           </button>
           <div className="text-center sm:text-right">
             <p className="text-[10px] text-[var(--text-tertiary)] font-black uppercase tracking-[0.2em]">
-              Resume Morph v1.0.4
+              Resume Morph {APP_VERSION}
             </p>
             <p className="text-[9px] text-[var(--border-color)] font-bold uppercase tracking-widest mt-1">
               Secure Cloud Infrastructure

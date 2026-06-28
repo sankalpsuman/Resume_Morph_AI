@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { APP_VERSION } from '../constants';
 import { 
   X, LogIn, Sparkles, Rocket, Zap, 
   ArrowRight, ShieldCheck, Star, 
@@ -102,7 +103,7 @@ export default function GreetingModal({ isOpen, onClose, userName }: GreetingMod
                 </div>
                 <div className="w-px h-8 bg-[var(--border-color)]" />
                 <div className="flex flex-col items-center">
-                  <span className="text-xl font-black text-[var(--text-primary)] tracking-tighter">v2.5</span>
+                  <span className="text-xl font-black text-[var(--text-primary)] tracking-tighter">{APP_VERSION}</span>
                   <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-tertiary)]">AI Core</span>
                 </div>
               </div>

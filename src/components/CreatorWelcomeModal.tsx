@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { APP_VERSION } from '../constants';
 import { 
   X, Linkedin, Github, Instagram, Mail, 
   Sparkles, Rocket, Globe, Zap, Heart,
@@ -141,7 +142,7 @@ export default function CreatorWelcomeModal({ isOpen, onClose, type = 'welcome' 
               
               <div className="space-y-1">
                 <h3 className="text-2xl font-black tracking-tight leading-none">Sankalp Suman</h3>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300/80">Architect & Founder</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-300/80">Architect — {APP_VERSION}</p>
               </div>
 
               <div className="w-full mt-12 grid grid-cols-2 gap-3">

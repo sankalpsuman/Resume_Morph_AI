@@ -29,7 +29,7 @@ import {
 } from '../lib/gemini';
 import { wrapResumeHtml } from '../lib/resumeTemplates';
 
-import { PLANS } from '../constants';
+import { PLANS, APP_VERSION } from '../constants';
 
 interface FileData {
   file: File;
@@ -780,7 +780,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     if (user || hasUsedFreeMorph) return;
     
     setIsGuestBooting(true);
-    const messages = ["Initializing Morph Core...", "Injecting Neural Processing...", "Calibrating Style Engine v2.0...", "Establishing Guest Workspace...", "Ready to Morph."];
+    const messages = ["Initializing Morph Core...", "Injecting Neural Processing...", `Calibrating ${APP_VERSION} AI...`, "Establishing Guest Workspace...", "Ready to Morph."];
     for (let i = 0; i < messages.length; i++) {
       setGuestLoadingStep(i);
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -2485,7 +2485,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                               {[
                                 "Initializing Morph Core...",
                                 "Injecting Neural Processing...",
-                                "Calibrating Style Engine v2.0...",
+                                `Calibrating ${APP_VERSION} AI...`,
                                 "Establishing Guest Workspace...",
                                 "Ready to Morph."
                               ][guestLoadingStep]}
@@ -3239,7 +3239,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                   <span>ESC Close</span>
                 </div>
                 <div>
-                  <span>Morph OS Command Console</span>
+                  <span>{APP_VERSION} AI Engine</span>
                 </div>
               </div>
             </motion.div>

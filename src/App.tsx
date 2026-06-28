@@ -73,7 +73,7 @@ import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, Ale
 
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api' | '404';
 
-import { PLANS } from './constants';
+import { PLANS, APP_VERSION } from './constants';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 
 export default function App() {
@@ -1035,7 +1035,7 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-sm md:text-base font-black tracking-tight text-[var(--text-primary)] leading-none">Resume<span className="saas-gradient-text">Morph</span></h1>
-                  <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[9px] uppercase rounded tracking-wider hidden sm:inline-block">v2.5</span>
+                  <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[9px] uppercase rounded tracking-wider hidden sm:inline-block">{APP_VERSION}</span>
                 </div>
                 <p className="text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] font-bold mt-0.5">AI Career OS</p>
               </div>
@@ -1892,7 +1892,7 @@ export default function App() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 rounded-full">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-mono font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">v2.5 AI Engine</span>
+                <span className="text-[10px] font-mono font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">{APP_VERSION} AI Engine</span>
               </div>
             </div>
           </div>

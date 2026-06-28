@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { APP_VERSION } from '../constants';
 import { 
   BookOpen, 
   Info, 
@@ -191,7 +192,7 @@ export default function ResourcesHub({ onTabChange }: ResourcesHubProps) {
           <button className="px-6 py-3 text-[var(--text-tertiary)] rounded-xl text-xs font-black uppercase tracking-widest hover:text-[var(--text-primary)]">API Documentation</button>
         </div>
         <p className="text-sm text-[var(--text-tertiary)] font-medium">
-          Resume Morph v2.4.0 — Unified Resource Network
+          Resume Morph {APP_VERSION} — Unified Resource Network
         </p>
       </div>
     </div>

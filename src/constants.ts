@@ -78,3 +78,4 @@ export const PLANS = [
 ];
 
 export const ADMIN_WHATSAPP = "919540446448";
+export const APP_VERSION = "ResMo 3";

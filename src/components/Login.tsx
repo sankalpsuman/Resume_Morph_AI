@@ -9,6 +9,7 @@ import {
   Github, Loader2, LogIn
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { APP_VERSION } from '../constants';
 import { auth, db, ensureConnection } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import ProjectDeepDive from './ProjectDeepDive';
@@ -271,7 +272,7 @@ export default function Login({ onTryGuest, onLogin, theme, toggleTheme, isLogin
           <div className="space-y-8 text-center lg:text-left order-last lg:order-last">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/5 border border-indigo-500/10 rounded-full">
               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Live: Version 2.5 Active</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Live: {APP_VERSION} Active</span>
             </div>
 
             <div className="space-y-6">

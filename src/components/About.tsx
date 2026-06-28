@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { APP_VERSION } from '../constants';
 import { 
   Github, Linkedin, Mail, ExternalLink, Award, Zap, Shield, 
   Globe, Cpu, Sparkles, RefreshCw, Rocket, Layers 
@@ -21,7 +22,7 @@ export default function About() {
             className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100/50 dark:border-indigo-800 rounded-full text-indigo-600 dark:text-indigo-400 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-12 shadow-sm"
           >
             <Sparkles className="w-4 h-4" />
-            Strategic Career Engineering
+            Strategic Career Engineering — {APP_VERSION}
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}
