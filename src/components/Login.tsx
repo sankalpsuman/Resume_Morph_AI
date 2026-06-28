@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Image as CustomImage } from './Image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   RefreshCw, ShieldCheck, Zap, Target, Star, 
@@ -305,7 +306,7 @@ export default function Login({ onTryGuest, onLogin, theme, toggleTheme, isLogin
               <div className="flex -space-x-3">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="w-10 h-10 rounded-full border-2 border-[var(--bg-primary)] bg-[var(--bg-secondary)] overflow-hidden shadow-sm">
-                    <img src={`https://i.pravatar.cc/100?u=${i}`} alt="User" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" />
+                    <CustomImage src={`https://i.pravatar.cc/100?u=${i}`} alt="User" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all" />
                   </div>
                 ))}
                 <div className="w-10 h-10 rounded-full border-2 border-[var(--bg-primary)] bg-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">

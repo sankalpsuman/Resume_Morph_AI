@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Image as CustomImage } from './Image';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Linkedin, Github, Instagram, Mail, 
@@ -128,7 +129,7 @@ export default function CreatorWelcomeModal({ isOpen, onClose, type = 'welcome' 
               
               <div className="relative mb-8 group">
                 <div className="w-28 h-28 rounded-[36px] border-4 border-white/20 p-1 overflow-hidden rotate-3 group-hover:rotate-0 transition-all duration-500 shadow-2xl">
-                  <img 
+                  <CustomImage 
                     src="https://media.licdn.com/dms/image/v2/D5603AQF4O0y_H_L1_w/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1718227652758?e=1751328000&v=beta&t=7l3uAn6v3S7X-T-Z_jX_k7P1_-n5S_9G7l_8X-C_i6U" 
                     alt="Sankalp Suman" 
                     className="w-full h-full rounded-[30px] object-cover scale-110"

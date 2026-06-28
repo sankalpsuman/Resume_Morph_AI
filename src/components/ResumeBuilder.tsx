@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, memo, useMemo } from 'react';
+import { Image as CustomImage } from './Image';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, FileText, CheckCircle, Loader2, Download, Eye, Layout, 
@@ -2551,7 +2552,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                             <div className="w-1/2 bg-slate-100 relative overflow-hidden flex flex-col">
                               {styleMatcherReference ? (
                                 <div className="flex-1 relative p-4 md:p-8">
-                                  <img 
+                                  <CustomImage 
                                     src={styleMatcherReference} 
                                     alt="Reference Layout" 
                                     className="w-full h-full object-contain shadow-2xl rounded-lg"
