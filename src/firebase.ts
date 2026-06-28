@@ -23,9 +23,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore with settings to handle potential connection issues
-// experimentalAutoDetectLongPolling is highly recommended in sandboxed/proxy environments.
+// experimentalForceLongPolling forces standard HTTP long-polling immediately to bypass stream/proxy blocks.
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Silence internal SDK warning logs (like stream idle timeouts) while keeping real errors

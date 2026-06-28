@@ -5,7 +5,7 @@ import {
   RefreshCw, FileCode, FileType, Files, ShieldCheck, Target, Layers,
   Maximize2, Minimize2, Zap, AlertCircle, MousePointerClick, Hand, Star, X, Lock, Globe, Linkedin,
   Sparkles, Rocket, Code, Settings, LogIn, MessageSquare, Image as ImageIcon, ChevronDown, ChevronUp, Fingerprint, Check,
-  Camera, Columns, Minus, Plus, Expand, History
+  Camera, Columns, Minus, Plus, Expand, History, Printer, Briefcase, BookOpen, HelpCircle, Search, Command, Save
 } from 'lucide-react';
 // Dynamic imports for heavy libraries
 // These will be loaded on demand to reduce initial bundle size
@@ -300,6 +300,9 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandSearch, setCommandSearch] = useState('');
+  const [commandSelectedIndex, setCommandSelectedIndex] = useState(0);
   const [activeMobileTab, setActiveMobileTab] = useState<'edit' | 'preview'>('edit');
   const [pendingResume, setPendingResume] = useState<{ html: string; name: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -1563,6 +1566,198 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     setError(null);
   };
 
+  // Keyboard Shortcuts and Command Palette Configuration
+  const commandItems = useMemo(() => {
+    const items: {
+      id: string;
+      title: string;
+      subtitle?: string;
+      category: 'Actions' | 'Saved Resumes' | 'Sections';
+      icon: any;
+      shortcut?: string;
+      action: () => void;
+    }[] = [];
+
+    // Category: Actions
+    if (generatedHtml) {
+      items.push({
+        id: 'save-resume',
+        title: 'Save Resume Version',
+        subtitle: 'Save current layout to database history',
+        category: 'Actions',
+        icon: Save,
+        shortcut: 'Ctrl+S',
+        action: () => {
+          setPendingResume({ html: generatedHtml, name: resumeMetadata?.name || 'Untitled Resume' });
+          setShowSaveModal(true);
+          setShowCommandPalette(false);
+        }
+      });
+
+      items.push({
+        id: 'export-pdf',
+        title: 'Export High-Quality PDF',
+        subtitle: 'Capture current layout pages as standard PDF file',
+        category: 'Actions',
+        icon: Download,
+        shortcut: 'Ctrl+P',
+        action: () => {
+          handleDownloadPDF();
+          setShowCommandPalette(false);
+        }
+      });
+
+      items.push({
+        id: 'print-resume',
+        title: 'Standard Browser Print',
+        subtitle: 'Open native printing and PDF system options',
+        category: 'Actions',
+        icon: Printer,
+        action: () => {
+          handleDirectPrint();
+          setShowCommandPalette(false);
+        }
+      });
+    }
+
+    if (generatedHtml && jobDescription) {
+      items.push({
+        id: 're-morph',
+        title: 'Re-Morph with AI',
+        subtitle: 'Optimize layout against your pasted job description',
+        category: 'Actions',
+        icon: Sparkles,
+        action: () => {
+          handleOptimize();
+          setShowCommandPalette(false);
+        }
+      });
+    }
+
+    // Category: Saved Resumes
+    const history = userData?.resumeHistory || [];
+    history.forEach((resume: any) => {
+      items.push({
+        id: `resume-${resume.id}`,
+        title: resume.name || 'Untitled Resume',
+        subtitle: `Saved on ${resume.savedAt ? new Date(resume.savedAt.toDate?.() || resume.savedAt).toLocaleDateString() : 'N/A'}`,
+        category: 'Saved Resumes',
+        icon: FileText,
+        action: () => {
+          setSelectedResumeId(resume.id);
+          const historyItem = history.find((r: any) => r.id === resume.id);
+          if (historyItem) {
+            setGeneratedHtml(historyItem.html);
+            if (historyItem.metadata) {
+              setResumeMetadata(historyItem.metadata);
+            } else {
+              setResumeMetadata({ name: historyItem.name, yoe: 'N/A', profile: 'N/A' });
+            }
+          }
+          setShowCommandPalette(false);
+        }
+      });
+    });
+
+    // Category: Sections
+    const sections = [
+      { id: 'smart-editor', label: 'Smart AI Editor', desc: 'Direct X-Y-Z resume achievement optimizer', icon: Code },
+      { id: 'assistant', label: 'AI Career Assistant', desc: 'Smarter coaching and feedback companion', icon: RefreshCw },
+      { id: 'tracker', label: 'Application Tracker', desc: 'Track and organize job pipeline in real-time', icon: Briefcase },
+      { id: 'portfolio', label: 'Portfolio Gen', desc: 'Turn your resume into a stunning custom web portfolio', icon: Globe },
+      { id: 'guide', label: 'Interactive User Guide', desc: 'Learn to master the entire Morph ecosystem', icon: BookOpen },
+      { id: 'feedback', label: 'Share App Feedback', desc: 'Help us improve the product experience', icon: MessageSquare },
+      { id: 'help', label: 'FAQ Support Center', desc: 'Browse resources or contact administrators', icon: HelpCircle }
+    ];
+
+    sections.forEach(sec => {
+      items.push({
+        id: `section-${sec.id}`,
+        title: sec.label,
+        subtitle: sec.desc,
+        category: 'Sections',
+        icon: sec.icon,
+        action: () => {
+          window.dispatchEvent(new CustomEvent('set-tab', { detail: sec.id }));
+          setShowCommandPalette(false);
+        }
+      });
+    });
+
+    return items;
+  }, [generatedHtml, resumeMetadata, jobDescription, userData?.resumeHistory, handleDownloadPDF, handleOptimize, handleDirectPrint]);
+
+  const filteredCommandItems = useMemo(() => {
+    if (!commandSearch.trim()) return commandItems;
+    const query = commandSearch.toLowerCase();
+    return commandItems.filter(item => 
+      item.title.toLowerCase().includes(query) || 
+      item.subtitle?.toLowerCase().includes(query) ||
+      item.category.toLowerCase().includes(query)
+    );
+  }, [commandItems, commandSearch]);
+
+  // Global Keydown Listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      
+      const isMeta = e.ctrlKey || e.metaKey;
+
+      if (isMeta && e.key?.toLowerCase() === 's') {
+        e.preventDefault();
+        if (generatedHtml) {
+          setPendingResume({ html: generatedHtml, name: resumeMetadata?.name || 'Untitled Resume' });
+          setShowSaveModal(true);
+        }
+      } else if (isMeta && e.key?.toLowerCase() === 'p') {
+        e.preventDefault();
+        if (generatedHtml) {
+          handleDownloadPDF();
+        }
+      } else if (isMeta && e.key?.toLowerCase() === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+        setCommandSearch('');
+        setCommandSelectedIndex(0);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [generatedHtml, resumeMetadata, handleDownloadPDF]);
+
+  // Command Palette Keyboard Navigation
+  useEffect(() => {
+    if (!showCommandPalette) return;
+
+    const handlePaletteKeys = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCommandSelectedIndex(prev => (prev + 1) % Math.max(1, filteredCommandItems.length));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCommandSelectedIndex(prev => (prev - 1 + filteredCommandItems.length) % Math.max(1, filteredCommandItems.length));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredCommandItems[commandSelectedIndex]) {
+          filteredCommandItems[commandSelectedIndex].action();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowCommandPalette(false);
+      }
+    };
+
+    window.addEventListener('keydown', handlePaletteKeys);
+    return () => {
+      window.removeEventListener('keydown', handlePaletteKeys);
+    };
+  }, [showCommandPalette, filteredCommandItems, commandSelectedIndex]);
+
   return (
     <div className="text-[#1A1A1A] font-sans selection:bg-indigo-100">
       {/* Notification Banners */}
@@ -1674,6 +1869,16 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
         </div>
         
         <div className="flex items-center gap-2 md:gap-4 w-full sm:w-auto justify-end">
+          <button
+            onClick={() => { setShowCommandPalette(true); setCommandSearch(''); setCommandSelectedIndex(0); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-secondary)] border border-[var(--border-color)] hover:border-indigo-400 rounded-xl text-[10px] font-bold text-[var(--text-tertiary)] hover:text-indigo-600 transition-all shadow-sm shrink-0"
+            title="Open Command & Actions Palette (Ctrl+K)"
+          >
+            <Command className="w-3.5 h-3.5 text-[var(--text-tertiary)]" />
+            <span>Command Center</span>
+            <kbd className="hidden sm:inline-block px-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[8px] font-mono font-bold leading-none text-[var(--text-tertiary)]">Ctrl+K</kbd>
+          </button>
+          
           {/* Action buttons unified into sticky bottom bar at viewport bottom */}
           
           {referenceFile && (
@@ -2633,27 +2838,32 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                     <div className="grid grid-cols-1 gap-1">
                       <button 
                         onClick={() => { handleDirectPrint(); setShowDownloadMenu(false); }}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl flex items-center gap-3 transition-colors border border-dashed border-indigo-200 dark:border-indigo-800"
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl flex items-center justify-between gap-3 transition-colors border border-dashed border-indigo-200 dark:border-indigo-800"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-                          <Zap className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-indigo-600 dark:text-indigo-400 text-xs text-glow">Fast Print / PDF</span>
-                          <span className="text-[8px] text-indigo-400 uppercase tracking-widest truncate">Instant High-Quality</span>
+                        <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                            <Zap className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400 text-xs text-glow">Fast Print / PDF</span>
+                            <span className="text-[8px] text-indigo-400 uppercase tracking-widest truncate">Instant High-Quality</span>
+                          </div>
                         </div>
                       </button>
                       <button 
                         onClick={() => { handleDownloadPDF(); setShowDownloadMenu(false); }}
-                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center gap-3 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-[var(--bg-secondary)] rounded-2xl flex items-center justify-between gap-3 transition-colors"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4 text-red-600" />
+                        <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                          <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-red-600" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-[var(--text-primary)] text-xs">PDF Document</span>
+                            <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">A4 Blueprint</span>
+                          </div>
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-[var(--text-primary)] text-xs">PDF Document</span>
-                          <span className="text-[8px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">A4 Blueprint</span>
-                        </div>
+                        <kbd className="hidden sm:inline-block px-1 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded text-[8px] font-mono font-bold leading-none text-[var(--text-tertiary)] uppercase shrink-0">Ctrl+P</kbd>
                       </button>
                       <button 
                         onClick={() => { handleDownloadImage('png'); setShowDownloadMenu(false); }}
@@ -2859,6 +3069,139 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
               >
                 No, Don't Save
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Universal Command Palette (Spotlight Search) */}
+      <AnimatePresence>
+        {showCommandPalette && (
+          <div className="fixed inset-0 z-[1000] flex items-start justify-center pt-24 px-4 bg-slate-950/60 backdrop-blur-md">
+            {/* Backdrop click closer */}
+            <div className="absolute inset-0" onClick={() => setShowCommandPalette(false)} />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: -10 }}
+              className="relative w-full max-w-xl bg-[var(--bg-primary)] rounded-3xl shadow-2xl border border-[var(--border-color)] flex flex-col overflow-hidden max-h-[480px] z-10"
+            >
+              <div className="relative border-b border-[var(--border-color)]">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-tertiary)]" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={commandSearch}
+                  onChange={(e) => {
+                    setCommandSearch(e.target.value);
+                    setCommandSelectedIndex(0);
+                  }}
+                  placeholder="Search actions, sections, or saved resumes..."
+                  className="w-full py-5 pl-14 pr-12 bg-transparent text-sm font-bold text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none"
+                />
+                <button 
+                  onClick={() => setShowCommandPalette(false)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 hover:bg-[var(--bg-secondary)] rounded-lg text-[var(--text-tertiary)] transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar py-2 divide-y divide-[var(--border-color)]/30">
+                {filteredCommandItems.length > 0 ? (
+                  (() => {
+                    // Group elements by category
+                    const categories: { [key: string]: typeof filteredCommandItems } = {};
+                    filteredCommandItems.forEach(item => {
+                      if (!categories[item.category]) categories[item.category] = [];
+                      categories[item.category].push(item);
+                    });
+
+                    let globalIndex = 0;
+
+                    return Object.entries(categories).map(([categoryName, items]) => (
+                      <div key={categoryName} className="py-2">
+                        <div className="px-5 py-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--text-tertiary)] opacity-60">
+                          {categoryName}
+                        </div>
+                        <div className="space-y-0.5 mt-1 px-2">
+                          {items.map((item) => {
+                            const currentIndex = globalIndex++;
+                            const isSelected = currentIndex === commandSelectedIndex;
+                            const IconComponent = item.icon;
+
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={item.action}
+                                onMouseEnter={() => setCommandSelectedIndex(currentIndex)}
+                                className={cn(
+                                  "w-full px-3 py-2.5 rounded-xl flex items-center justify-between transition-all text-left group",
+                                  isSelected 
+                                    ? "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold" 
+                                    : "text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]/50"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                  <div className={cn(
+                                    "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all",
+                                    isSelected 
+                                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none" 
+                                      : "bg-[var(--bg-secondary)] text-[var(--text-tertiary)]"
+                                  )}>
+                                    <IconComponent className="w-4 h-4" />
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold truncate leading-snug">{item.title}</span>
+                                    {item.subtitle && (
+                                      <span className="text-[9px] text-[var(--text-tertiary)] opacity-80 truncate leading-none mt-0.5 font-medium">
+                                        {item.subtitle}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {item.shortcut ? (
+                                  <kbd className={cn(
+                                    "hidden sm:inline-block px-2 py-0.5 rounded text-[8px] font-mono font-black border transition-colors",
+                                    isSelected
+                                      ? "bg-indigo-100 dark:bg-indigo-900/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400"
+                                      : "bg-[var(--bg-primary)] border-[var(--border-color)] text-[var(--text-tertiary)]"
+                                  )}>
+                                    {item.shortcut}
+                                  </kbd>
+                                ) : (
+                                  isSelected && (
+                                    <span className="text-[10px] text-indigo-500 font-black tracking-widest uppercase shrink-0">Select</span>
+                                  )
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()
+                ) : (
+                  <div className="p-10 text-center">
+                    <AlertCircle className="w-10 h-10 text-[var(--text-tertiary)] opacity-30 mx-auto mb-3" />
+                    <p className="text-xs font-bold text-[var(--text-secondary)]">No results match "{commandSearch}"</p>
+                    <p className="text-[10px] text-[var(--text-tertiary)] mt-1">Try searching for alternative keywords or actions.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Status bar help */}
+              <div className="flex items-center justify-between px-5 py-3 bg-[var(--bg-secondary)]/80 border-t border-[var(--border-color)] text-[8px] font-black text-[var(--text-tertiary)] uppercase tracking-widest">
+                <div className="flex items-center gap-3">
+                  <span>↑↓ Navigate</span>
+                  <span>↵ Select</span>
+                  <span>ESC Close</span>
+                </div>
+                <div>
+                  <span>Morph OS Command Console</span>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

@@ -536,7 +536,7 @@ async function startServer() {
       const firebaseConfig = JSON.parse(fs.readFileSync(configPath, { encoding: "utf-8" }));
       const appInst = initializeApp(firebaseConfig);
       const dbInst = initializeFirestore(appInst, {
-        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
       }, firebaseConfig.firestoreDatabaseId || "(default)");
 
       console.log(`[Mail Queue Listener] Successfully connected. Listening to pending welcome email requests...`);
