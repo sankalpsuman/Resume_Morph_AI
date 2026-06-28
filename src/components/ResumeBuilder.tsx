@@ -622,6 +622,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     
     // Optimistically close modal to make it feel instant
     setShowSaveModal(false);
+    setActiveMobileTab('preview');
     
     try {
       const userRef = doc(db, 'users', auth.currentUser.uid);
@@ -2851,6 +2852,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                 onClick={() => {
                   setShowSaveModal(false);
                   setPendingResume(null);
+                  setActiveMobileTab('preview');
                 }}
                 disabled={isSaving}
                 className="w-full py-2 sm:py-4 text-[var(--text-tertiary)] font-bold text-xs uppercase tracking-widest hover:text-[var(--text-secondary)] transition-colors"
