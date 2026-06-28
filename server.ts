@@ -274,7 +274,11 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 // Start listening and register asset/Vite middlewares
 async function startServer() {
   const getMetadata = (req: Request) => {
-    const urlPath = req.originalUrl || '/';
+    let urlPath = req.originalUrl || req.url || '/';
+    const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
+    if (matchedPath && !matchedPath.startsWith('/api')) {
+      urlPath = matchedPath;
+    }
     // Better host detection for Cloud Run / Proxies
     const forwardedHost = req.headers['x-forwarded-host'] as string;
     const host = forwardedHost || req.get('host') || 'resumemorph.ai';
@@ -477,7 +481,13 @@ async function startServer() {
     app.use(express.static(distPath, { index: false }));
 
     app.get('*', async (req, res, next) => {
-      const url = req.originalUrl;
+      // Extract original URL on Vercel or fallback to req.originalUrl/req.url
+      let url = req.originalUrl || req.url || '/';
+      const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
+      if (matchedPath && !matchedPath.startsWith('/api')) {
+        url = matchedPath;
+      }
+
       // Skip API and assets that weren't caught by express.static
       if (url.startsWith('/api') || url.includes('.')) return next();
 
