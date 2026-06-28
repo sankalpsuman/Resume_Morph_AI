@@ -152,46 +152,55 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      if (activeTab === 'users') fetchUsers();
-      else if (activeTab === 'requests') fetchRequests();
-      else if (activeTab === 'email') fetchEmailStatus();
+  const fetchAdminData = async (forceRefetch = false) => {
+    if (forceRefetch || users.length === 0 || requests.length === 0) {
+      setLoading(true);
     }
-  }, [isOpen, activeTab]);
-
-  const fetchUsers = async () => {
-    if (users.length === 0) setLoading(true);
     try {
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
-      const snapshot = await getDocs(q);
-      const userData = snapshot.docs.map(doc => ({
+      const usersQ = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
+      const requestsQ = query(collection(db, 'premium_requests'), orderBy('timestamp', 'desc'));
+
+      const [usersSnapshot, requestsSnapshot] = await Promise.all([
+        getDocs(usersQ),
+        getDocs(requestsQ)
+      ]);
+
+      const userData = usersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as UserData[];
+
+      const requestData = requestsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as PremiumRequest[];
+
       setUsers(userData);
+      setRequests(requestData);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'users');
+      console.error("Error fetching admin data:", error);
+      handleFirestoreError(error, OperationType.LIST, 'admin_data');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRequests = async () => {
-    if (requests.length === 0) setLoading(true);
-    try {
-      const q = query(collection(db, 'premium_requests'), orderBy('timestamp', 'desc'));
-      const snapshot = await getDocs(q);
-      const requestData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as PremiumRequest[];
-      setRequests(requestData);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'premium_requests');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (isOpen) {
+      if (activeTab === 'email') {
+        fetchEmailStatus();
+      } else {
+        fetchAdminData();
+      }
     }
+  }, [isOpen, activeTab]);
+
+  const fetchUsers = async () => {
+    await fetchAdminData(true);
+  };
+
+  const fetchRequests = async () => {
+    await fetchAdminData(true);
   };
 
   const handleApproveRequest = async (request: PremiumRequest) => {
@@ -394,14 +403,12 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   };
 
   useEffect(() => {
-    if (users.length > 0 || requests.length > 0) {
-      setStats({
-        totalUsers: users.length,
-        totalMorphs: users.reduce((acc, user) => acc + (user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)), 0),
-        pendingRequests: requests.filter(r => r.status === 'Pending').length,
-        activePremium: users.filter(u => u.plan && u.plan !== 'free').length
-      });
-    }
+    setStats({
+      totalUsers: users.length,
+      totalMorphs: users.reduce((acc, user) => acc + (user.usedMorphs !== undefined ? user.usedMorphs : (user.morphCount || 0)), 0),
+      pendingRequests: requests.filter(r => r.status === 'Pending').length,
+      activePremium: users.filter(u => u.plan && u.plan !== 'free').length
+    });
   }, [users, requests]);
 
   const filteredUsers = users.filter(u => 
@@ -436,12 +443,24 @@ export default function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
                     <p className="hidden sm:block text-[8px] md:text-xs text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-1">Manage user plans & permissions</p>
                   </div>
                 </div>
-                <button 
-                  onClick={onClose}
-                  className="p-2 md:p-3 hover:bg-[var(--bg-primary)] rounded-xl transition-colors shadow-sm text-[var(--text-primary)]"
-                >
-                  <X className="w-5 h-5 md:w-6 md:h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      if (activeTab === 'email') fetchEmailStatus();
+                      else fetchAdminData(true);
+                    }}
+                    title="Refresh Data"
+                    className="p-2 md:p-3 hover:bg-[var(--bg-primary)] rounded-xl transition-colors shadow-sm text-[var(--text-primary)] flex items-center justify-center"
+                  >
+                    <RefreshCw className={cn("w-5 h-5", (loading || emailLoading) ? "animate-spin text-indigo-600" : "")} />
+                  </button>
+                  <button 
+                    onClick={onClose}
+                    className="p-2 md:p-3 hover:bg-[var(--bg-primary)] rounded-xl transition-colors shadow-sm text-[var(--text-primary)]"
+                  >
+                    <X className="w-5 h-5 md:w-6 md:h-6" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] p-1.5 rounded-2xl border border-[var(--border-color)] overflow-x-auto no-scrollbar">
