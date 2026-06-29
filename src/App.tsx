@@ -73,8 +73,6 @@ import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, Ale
 
 import Tooltip from './components/Tooltip';
 
-import { safeStorage } from './lib/safeStorage';
-
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api' | '404';
 
 import { PLANS, APP_VERSION } from './constants';
@@ -132,7 +130,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => {
     if (typeof window !== 'undefined') {
-      return safeStorage.getItem('morph_is_guest') === 'true';
+      return localStorage.getItem('morph_is_guest') === 'true';
     }
     return false;
   });
@@ -258,7 +256,7 @@ export default function App() {
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (safeStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
   });
   const [isOffline, setIsOffline] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
@@ -270,7 +268,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    safeStorage.setItem('theme', theme);
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -297,7 +295,7 @@ export default function App() {
       setUser(user);
       if (user) {
         setIsGuest(false);
-        safeStorage.removeItem('morph_is_guest');
+        sessionStorage.removeItem('morph_is_guest');
       } else {
         setUserData(null);
         setLoading(false);
@@ -634,11 +632,11 @@ export default function App() {
     const checkPopups = () => {
       // Intro Popup (GreetingModal) for everyone on first visit
       const introKey = `morph_intro_seen_v1`;
-      const hasSeenIntro = safeStorage.getItem(introKey);
+      const hasSeenIntro = localStorage.getItem(introKey);
       
       if (!hasSeenIntro) {
         setShowGreetingModal(true);
-        safeStorage.setItem(introKey, 'true');
+        localStorage.setItem(introKey, 'true');
         return;
       }
 
@@ -783,7 +781,7 @@ export default function App() {
   const handleLogout = () => {
     signOut(auth);
     setIsGuest(false);
-    safeStorage.removeItem('morph_is_guest');
+    localStorage.removeItem('morph_is_guest');
   };
 
   const handleDeleteResume = async (resumeId: string) => {
@@ -1401,7 +1399,7 @@ export default function App() {
               <Login 
                 onTryGuest={() => {
                   setIsGuest(true);
-                  safeStorage.setItem('morph_is_guest', 'true');
+                  localStorage.setItem('morph_is_guest', 'true');
                 }} 
                 onLogin={performGoogleLogin}
                 theme={theme} 

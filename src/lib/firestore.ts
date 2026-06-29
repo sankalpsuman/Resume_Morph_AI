@@ -43,20 +43,24 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     return;
   }
 
-  const errInfo = {
-    message: error instanceof Error ? error.message : String(error),
-    code: errCode,
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
     operationType,
-    path,
-    timestamp: new Date().toISOString(),
-    // Include minimal auth context for debugging without exposing full profile
-    userId: auth.currentUser?.uid || 'anonymous'
-  };
-
-  console.error('[Firestore Error]', errInfo);
-  
-  // Throw a standard error with the message to avoid breaking standard catch blocks
-  const finalError = new Error(errInfo.message);
-  (finalError as any).details = errInfo;
-  throw finalError;
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
 }

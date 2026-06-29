@@ -31,8 +31,6 @@ import { wrapResumeHtml } from '../lib/resumeTemplates';
 
 import Tooltip from './Tooltip';
 
-import { safeStorage } from '../lib/safeStorage';
-
 import { PLANS, APP_VERSION } from '../constants';
 
 interface FileData {
@@ -260,7 +258,7 @@ const ResumeIframe = React.memo(React.forwardRef<HTMLIFrameElement, { html: stri
 
 function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, isGuest }: ResumeBuilderProps) {
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
-    return safeStorage.getItem('hasUsedFreeMorph') === 'true';
+    return localStorage.getItem('hasUsedFreeMorph') === 'true';
   });
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isGuestBooting, setIsGuestBooting] = useState(false);
@@ -648,7 +646,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       const userRef = doc(db, 'users', auth.currentUser.uid);
       let currentHistory = userData?.resumeHistory || [];
       
-      const resumeId = replaceId || crypto.randomUUID();
+      const resumesCollection = collection(db, 'users', auth.currentUser.uid, 'resumes');
+      const resumeId = replaceId || doc(resumesCollection).id;
       const storagePath = `resumes/${auth.currentUser.uid}/${resumeId}.html`;
       const resumeRef = ref(storage, storagePath);
       const cleanHtml = extractRawHtml(html);
@@ -708,7 +707,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
   const checkUsageLimits = (actionType: 'morph' | 'check') => {
     if (!userData) return true;
 
-    const hasSubmittedFeedback = userData.hasReviewed || safeStorage.getItem('morph_user_submitted_feedback') === 'true';
+    const hasSubmittedFeedback = userData.hasReviewed || localStorage.getItem('morph_user_submitted_feedback') === 'true';
 
     if (actionType === 'morph' && userData.morphCount === 1 && !hasSubmittedFeedback && !isPremium) {
       setShowFeedbackModal(true);
@@ -832,7 +831,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       });
 
       // 3. Mark in local storage to prevent redundancy
-      safeStorage.setItem('morph_user_submitted_feedback', 'true');
+      localStorage.setItem('morph_user_submitted_feedback', 'true');
 
       setShowFeedbackModal(false);
       // Now user can try morphing again
@@ -849,7 +848,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     if (!user) {
       if (isGuest) {
         // Guest mode one-time check
-        const hasUsedFreeMorph = safeStorage.getItem('morph_guest_free_used') === 'true';
+        const hasUsedFreeMorph = localStorage.getItem('morph_guest_free_used') === 'true';
         if (hasUsedFreeMorph) {
           setIsPendingGeneration(true);
           if (onLogin) onLogin();
@@ -906,7 +905,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       if (!user) {
         // Guest just used their one free morph
         if (isGuest) {
-          safeStorage.setItem('morph_guest_free_used', 'true');
+          localStorage.setItem('morph_guest_free_used', 'true');
         }
         
         // Post-morph login trigger as per requirement
@@ -1694,11 +1693,25 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
         subtitle: `Saved on ${resume.savedAt ? new Date(resume.savedAt.toDate?.() || resume.savedAt).toLocaleDateString() : 'N/A'}`,
         category: 'Saved Resumes',
         icon: FileText,
-        action: () => {
+        action: async () => {
           setSelectedResumeId(resume.id);
           const historyItem = history.find((r: any) => r.id === resume.id);
           if (historyItem) {
-            setGeneratedHtml(historyItem.html);
+            if (historyItem.isMetadataOnly || !historyItem.html) {
+              try {
+                const resumeDoc = await getDoc(doc(db, 'users', auth!.currentUser!.uid, 'resumes', resume.id));
+                if (resumeDoc.exists()) {
+                  setGeneratedHtml(extractRawHtml(resumeDoc.data().html));
+                } else {
+                  setError("Could not load resume content. It may have been removed.");
+                }
+              } catch (err) {
+                console.error("History fetch failed:", err);
+                setError("Failed to load resume version.");
+              }
+            } else {
+              setGeneratedHtml(extractRawHtml(historyItem.html));
+            }
             if (historyItem.metadata) {
               setResumeMetadata(historyItem.metadata);
             } else {

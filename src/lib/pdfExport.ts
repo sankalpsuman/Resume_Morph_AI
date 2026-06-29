@@ -34,53 +34,46 @@ export async function exportElementToPDF(
   const standardA4HeightPx = 1123; // at 96dpi
 
   for (let i = 0; i < pages.length; i++) {
-    try {
-      const page = pages[i];
-      const realHeight = page.offsetHeight;
-      
-      // Generate optimized JPEG instead of PNG for massive size reduction
-      const imgData = await htmlToImage.toJpeg(page, {
-        quality,
-        pixelRatio,
-        backgroundColor: '#ffffff',
-        style: {
-          margin: '0',
-          boxShadow: 'none',
-          border: 'none',
-          transform: 'none',
-          textRendering: 'optimizeLegibility'
-        }
-      });
-
-      const pagesNeeded = Math.max(1, Math.ceil(realHeight / (standardA4HeightPx + 2)));
-
-      for (let j = 0; j < pagesNeeded; j++) {
-        if (i > 0 || j > 0) pdf.addPage();
-        
-        const position = -(j * pageHeight);
-        const totalPdfHeight = (realHeight * pageWidth) / page.offsetWidth;
-        
-        // Use 'FAST' compression which is better for production-grade JPEGs in PDFs
-        pdf.addImage(
-          imgData, 
-          'JPEG', 
-          0, 
-          position, 
-          pageWidth, 
-          totalPdfHeight, 
-          undefined, 
-          'FAST' 
-        );
+    const page = pages[i];
+    const realHeight = page.offsetHeight;
+    
+    // Generate optimized JPEG instead of PNG for massive size reduction
+    const imgData = await htmlToImage.toJpeg(page, {
+      quality,
+      pixelRatio,
+      backgroundColor: '#ffffff',
+      style: {
+        margin: '0',
+        boxShadow: 'none',
+        border: 'none',
+        transform: 'none',
+        textRendering: 'optimizeLegibility'
       }
+    });
+
+    const pagesNeeded = Math.max(1, Math.ceil(realHeight / (standardA4HeightPx + 2)));
+
+    for (let j = 0; j < pagesNeeded; j++) {
+      if (i > 0 || j > 0) pdf.addPage();
       
-      if (onProgress) {
-        onProgress(((i + 1) / pages.length) * 100);
-      }
-    } catch (error) {
-      console.error(`[PDF Export] Error processing page ${i}:`, error);
-      // We continue to other pages if one fails, or we could throw. 
-      // Given it's a resume, usually it's one page or linked pages.
-      throw new Error(`Failed to process page ${i + 1} for PDF export.`);
+      const position = -(j * pageHeight);
+      const totalPdfHeight = (realHeight * pageWidth) / page.offsetWidth;
+      
+      // Use 'FAST' compression which is better for production-grade JPEGs in PDFs
+      pdf.addImage(
+        imgData, 
+        'JPEG', 
+        0, 
+        position, 
+        pageWidth, 
+        totalPdfHeight, 
+        undefined, 
+        'FAST' 
+      );
+    }
+    
+    if (onProgress) {
+      onProgress(((i + 1) / pages.length) * 100);
     }
   }
 

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye, Clock } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { safeStorage } from '../lib/safeStorage';
 
 interface Step {
   targetId: string;
@@ -131,8 +130,8 @@ export default function InteractiveTour() {
   }, [isVisible, updateCoords]);
 
   useEffect(() => {
-    const hasSeenTour = safeStorage.getItem('has_seen_tour_v1');
-    const pausedStep = safeStorage.getItem('tour_paused_step');
+    const hasSeenTour = localStorage.getItem('has_seen_tour_v1');
+    const pausedStep = localStorage.getItem('tour_paused_step');
     
     if (!hasSeenTour) {
       const timer = setTimeout(() => {
@@ -147,7 +146,7 @@ export default function InteractiveTour() {
     const handleRestart = () => {
       setIsVisible(true);
       setCurrentStep(0);
-      safeStorage.removeItem('tour_paused_step');
+      localStorage.removeItem('tour_paused_step');
     };
     window.addEventListener('restart-tour', handleRestart);
     return () => window.removeEventListener('restart-tour', handleRestart);
@@ -193,19 +192,19 @@ export default function InteractiveTour() {
 
   const handleComplete = () => {
     setIsVisible(false);
-    safeStorage.setItem('has_seen_tour_v1', 'true');
-    safeStorage.removeItem('tour_paused_step');
+    localStorage.setItem('has_seen_tour_v1', 'true');
+    localStorage.removeItem('tour_paused_step');
   };
 
   const handleSkip = () => {
     setIsVisible(false);
-    safeStorage.setItem('has_seen_tour_v1', 'true');
-    safeStorage.removeItem('tour_paused_step');
+    localStorage.setItem('has_seen_tour_v1', 'true');
+    localStorage.removeItem('tour_paused_step');
   };
 
   const handlePause = () => {
     setIsVisible(false);
-    safeStorage.setItem('tour_paused_step', currentStep.toString());
+    localStorage.setItem('tour_paused_step', currentStep.toString());
   };
 
   const tooltipRef = React.useRef<HTMLDivElement>(null);
