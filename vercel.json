@@ -2,14 +2,19 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "dist/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api"
     },
     {
       "source": "/((?!api|assets|service-worker.js|favicon.ico|.*\\..*).*)",
-      "destination": "/api/index.ts"
+      "destination": "/api"
     }
   ]
 }
