@@ -10,11 +10,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api/index"
     },
     {
       "source": "/((?!api|assets|service-worker.js|favicon.ico|.*\\..*).*)",
-      "destination": "/api/index.ts"
+      "destination": "/api/index"
     }
   ]
 }
