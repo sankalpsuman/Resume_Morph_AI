@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, checkIsPremium } from '../lib/utils';
+import { safeStorage } from '../lib/safeStorage';
 import { 
   generateResumeFromData, 
   parseResumeToData, 
@@ -133,7 +134,7 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isLoginProgress, isAd
 
     // Persist draft backup in local storage
     try {
-      localStorage.setItem('morph_smart_draft_simple', JSON.stringify({
+      safeStorage.setItem('morph_smart_draft_simple', JSON.stringify({
         data: newData,
         styles,
         timestamp: Date.now()

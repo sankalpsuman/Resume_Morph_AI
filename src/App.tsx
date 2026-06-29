@@ -71,6 +71,10 @@ import LoginModal from './components/LoginModal';
 import { handleFirestoreError, OperationType } from './lib/firestore';
 import { Zap, CheckCircle, Star, Loader2, BookOpen, BrainCircuit, Sun, Moon, AlertTriangle, Lock } from 'lucide-react';
 
+import Tooltip from './components/Tooltip';
+
+import { safeStorage } from './lib/safeStorage';
+
 type Tab = 'builder' | 'portfolio' | 'smart-editor' | 'cover-letter' | 'tracker' | 'assistant' | 'about' | 'privacy' | 'contact' | 'feedback' | 'guide' | 'account' | 'resources' | 'analyzer' | 'careers' | 'blog' | 'terms' | 'cookies' | 'security' | 'help' | 'status' | 'api' | '404';
 
 import { PLANS, APP_VERSION } from './constants';
@@ -128,7 +132,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('morph_is_guest') === 'true';
+      return safeStorage.getItem('morph_is_guest') === 'true';
     }
     return false;
   });
@@ -254,7 +258,7 @@ export default function App() {
   const [showUndoToast, setShowUndoToast] = useState<string | null>(null);
   const [isPortfolioFullscreen, setIsPortfolioFullscreen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    return (safeStorage.getItem('theme') as 'light' | 'dark') || 'light';
   });
   const [isOffline, setIsOffline] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
@@ -266,7 +270,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('theme', theme);
+    safeStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -293,7 +297,7 @@ export default function App() {
       setUser(user);
       if (user) {
         setIsGuest(false);
-        sessionStorage.removeItem('morph_is_guest');
+        safeStorage.removeItem('morph_is_guest');
       } else {
         setUserData(null);
         setLoading(false);
@@ -630,11 +634,11 @@ export default function App() {
     const checkPopups = () => {
       // Intro Popup (GreetingModal) for everyone on first visit
       const introKey = `morph_intro_seen_v1`;
-      const hasSeenIntro = localStorage.getItem(introKey);
+      const hasSeenIntro = safeStorage.getItem(introKey);
       
       if (!hasSeenIntro) {
         setShowGreetingModal(true);
-        localStorage.setItem(introKey, 'true');
+        safeStorage.setItem(introKey, 'true');
         return;
       }
 
@@ -779,7 +783,7 @@ export default function App() {
   const handleLogout = () => {
     signOut(auth);
     setIsGuest(false);
-    localStorage.removeItem('morph_is_guest');
+    safeStorage.removeItem('morph_is_guest');
   };
 
   const handleDeleteResume = async (resumeId: string) => {
@@ -1049,50 +1053,47 @@ export default function App() {
                 const isLocked = !user && tab.id !== 'builder';
                 return (
                   <div key={tab.id} className="relative group">
-                    <Link 
-                      id={`tab-${tab.id}`}
-                      to={tab.id === 'builder' ? '/' : `/${tab.id}`}
-                      onClick={(e) => {
-                        const protectedTabs = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
-                        if (!user && protectedTabs.includes(tab.id)) {
-                          e.preventDefault();
-                          triggerLogin();
-                        } else {
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }
-                      }}
-                      className={cn(
-                        "relative flex items-center gap-2 px-3 xl:px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap z-10",
-                        isActive 
-                          ? "text-white dark:text-white" 
-                          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                        isLocked && "opacity-60 cursor-not-allowed group-hover:opacity-100"
-                      )}
+                    <Tooltip 
+                      title={tab.label} 
+                      content={tab.desc} 
+                      position="bottom"
                     >
-                      {isActive && (
-                        <motion.div
-                          layoutId="desktopNavIndicator"
-                          className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-md shadow-indigo-500/25 -z-10"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                        />
-                      )}
-                      <tab.icon className={cn(
-                        "w-3.5 h-3.5 transition-transform group-hover:scale-110", 
-                        isActive ? "text-white" : "text-[var(--text-tertiary)] group-hover:text-indigo-500 dark:group-hover:text-indigo-400",
-                        isLocked && "grayscale"
-                      )} />
-                      <span className={isActive ? "inline" : "hidden lg:inline"}>{tab.label}</span>
-                      {isLocked && <Lock className="w-2.5 h-2.5 ml-1 text-gray-400" />}
-                    </Link>
-
-                    {/* Tooltip */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2.5 w-48 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 translate-y-1 group-hover:translate-y-0 z-[150]">
-                      <div className="bg-gray-900/95 backdrop-blur-md text-white p-3 rounded-2xl shadow-2xl border border-white/10 relative">
-                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 border-t border-l border-white/10" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-0.5">{tab.label}</p>
-                        <p className="text-[10px] font-medium text-gray-300 leading-snug">{tab.desc}</p>
-                      </div>
-                    </div>
+                      <Link 
+                        id={`tab-${tab.id}`}
+                        to={tab.id === 'builder' ? '/' : `/${tab.id}`}
+                        onClick={(e) => {
+                          const protectedTabs = ['assistant', 'smart-editor', 'portfolio', 'cover-letter', 'tracker', 'account'];
+                          if (!user && protectedTabs.includes(tab.id)) {
+                            e.preventDefault();
+                            triggerLogin();
+                          } else {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        className={cn(
+                          "relative flex items-center gap-2 px-3 xl:px-4 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap z-10",
+                          isActive 
+                            ? "text-white dark:text-white" 
+                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                          isLocked && "opacity-60 cursor-not-allowed group-hover:opacity-100"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="desktopNavIndicator"
+                            className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-md shadow-indigo-500/25 -z-10"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                          />
+                        )}
+                        <tab.icon className={cn(
+                          "w-3.5 h-3.5 transition-transform group-hover:scale-110", 
+                          isActive ? "text-white" : "text-[var(--text-tertiary)] group-hover:text-indigo-500 dark:group-hover:text-indigo-400",
+                          isLocked && "grayscale"
+                        )} />
+                        <span className={isActive ? "inline" : "hidden lg:inline"}>{tab.label}</span>
+                        {isLocked && <Lock className="w-2.5 h-2.5 ml-1 text-gray-400" />}
+                      </Link>
+                    </Tooltip>
                   </div>
                 );
               })}
@@ -1111,21 +1112,27 @@ export default function App() {
 
               {/* Resources Dropdown (Desktop) */}
               <div ref={resourcesRef} className="hidden sm:block relative">
-                <button 
-                  id="resources-btn"
-                  onMouseEnter={() => setIsResourcesOpen(true)}
-                  onClick={() => setIsResourcesOpen(!isResourcesOpen)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest",
-                    ['resources', 'about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
-                      ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
-                  )}
+                <Tooltip 
+                  title="Resources & Help" 
+                  content="Access documentation, tutorials, community feedback, and technical support."
+                  position="bottom"
                 >
-                  <LifeBuoy className="w-4 h-4" />
-                  <span>Resources</span>
-                  <ChevronDown className={cn("w-3 h-3 transition-transform duration-300", isResourcesOpen ? "rotate-180" : "")} />
-                </button>
+                  <button 
+                    id="resources-btn"
+                    onMouseEnter={() => setIsResourcesOpen(true)}
+                    onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-black text-xs uppercase tracking-widest",
+                      ['resources', 'about', 'privacy', 'contact', 'feedback', 'guide'].includes(activeTab)
+                        ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-indigo-600"
+                    )}
+                  >
+                    <LifeBuoy className="w-4 h-4" />
+                    <span>Resources</span>
+                    <ChevronDown className={cn("w-3 h-3 transition-transform duration-300", isResourcesOpen ? "rotate-180" : "")} />
+                  </button>
+                </Tooltip>
                 <AnimatePresence>
                   {isResourcesOpen && (
                     <motion.div
@@ -1197,6 +1204,11 @@ export default function App() {
                 {user ? (
                   <>
                     <div className="relative group">
+                    <Tooltip 
+                      title="Account" 
+                      content="View history, settings & plan status"
+                      position="bottom"
+                    >
                       <Link 
                         id="tab-account"
                         to="/account"
@@ -1211,15 +1223,7 @@ export default function App() {
                           referrerPolicy="no-referrer"
                         />
                       </Link>
-
-                      {/* Tooltip */}
-                      <div className="absolute top-full right-0 mt-3 w-40 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-[160]">
-                        <div className="bg-gray-900 text-white p-3 rounded-2xl shadow-2xl relative">
-                          <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 rotate-45" />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Account</p>
-                          <p className="text-[9px] font-bold text-gray-300 leading-relaxed">View history, settings & plan status</p>
-                        </div>
-                      </div>
+                    </Tooltip>
                     </div>
                     
                     <button 
@@ -1397,7 +1401,7 @@ export default function App() {
               <Login 
                 onTryGuest={() => {
                   setIsGuest(true);
-                  localStorage.setItem('morph_is_guest', 'true');
+                  safeStorage.setItem('morph_is_guest', 'true');
                 }} 
                 onLogin={performGoogleLogin}
                 theme={theme} 

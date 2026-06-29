@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { safeStorage } from '../lib/safeStorage';
 
 interface Step {
   targetId: string;
@@ -130,11 +131,13 @@ export default function InteractiveTour() {
   }, [isVisible, updateCoords]);
 
   useEffect(() => {
-    const hasSeenTour = localStorage.getItem('has_seen_tour_v1');
+    const hasSeenTour = safeStorage.getItem('has_seen_tour_v1');
+    const pausedStep = safeStorage.getItem('tour_paused_step');
+    
     if (!hasSeenTour) {
       const timer = setTimeout(() => {
         setIsVisible(true);
-        setCurrentStep(0);
+        setCurrentStep(pausedStep ? parseInt(pausedStep) : 0);
       }, 3000);
       return () => clearTimeout(timer);
     }
@@ -144,6 +147,7 @@ export default function InteractiveTour() {
     const handleRestart = () => {
       setIsVisible(true);
       setCurrentStep(0);
+      safeStorage.removeItem('tour_paused_step');
     };
     window.addEventListener('restart-tour', handleRestart);
     return () => window.removeEventListener('restart-tour', handleRestart);
@@ -189,12 +193,19 @@ export default function InteractiveTour() {
 
   const handleComplete = () => {
     setIsVisible(false);
-    localStorage.setItem('has_seen_tour_v1', 'true');
+    safeStorage.setItem('has_seen_tour_v1', 'true');
+    safeStorage.removeItem('tour_paused_step');
   };
 
   const handleSkip = () => {
     setIsVisible(false);
-    localStorage.setItem('has_seen_tour_v1', 'true');
+    safeStorage.setItem('has_seen_tour_v1', 'true');
+    safeStorage.removeItem('tour_paused_step');
+  };
+
+  const handlePause = () => {
+    setIsVisible(false);
+    safeStorage.setItem('tour_paused_step', currentStep.toString());
   };
 
   const tooltipRef = React.useRef<HTMLDivElement>(null);
@@ -252,7 +263,7 @@ export default function InteractiveTour() {
   return (
     <div className="fixed inset-0 z-[1000] pointer-events-none transition-all duration-300">
       {/* Dimmed Background with Hole */}
-      <div className="absolute inset-0 bg-black/60 dark:bg-black/85 pointer-events-auto" style={{ 
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-[2px] pointer-events-auto" style={{ 
         clipPath: `polygon(
           0% 0%, 
           0% 100%, 
@@ -268,14 +279,15 @@ export default function InteractiveTour() {
       }} />
 
       {/* Target Highlight Ring */}
-      <div 
-        style={{ 
-          top: coords.top - 4, 
-          left: coords.left - (isMobile ? 2 : 4), 
-          width: coords.width + (isMobile ? 4 : 8), 
-          height: coords.height + 8 
+      <motion.div 
+        initial={false}
+        animate={{
+          top: coords.top - 8,
+          left: coords.left - (isMobile ? 4 : 8),
+          width: coords.width + (isMobile ? 8 : 16),
+          height: coords.height + 16
         }}
-        className="absolute border-2 border-indigo-400 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.5)] z-[1001] transition-all duration-100"
+        className="absolute border-2 border-indigo-500/50 rounded-2xl shadow-[0_0_40px_rgba(99,102,241,0.3)] z-[1001] pointer-events-none"
       />
 
       {/* Tooltip Content */}
@@ -289,56 +301,70 @@ export default function InteractiveTour() {
           className="absolute z-[1002] w-fit min-w-[260px] max-w-[calc(100vw-2rem)] md:max-w-[320px] pointer-events-auto"
           style={tooltipStyle}
         >
-          <div className="bg-[var(--bg-primary)] rounded-[28px] md:rounded-[32px] p-5 md:p-6 shadow-2xl border border-[var(--border-color)]">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 md:w-10 md:h-10 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                <step.icon className="w-4 h-4 md:w-5 md:h-5" />
+          <div className="bg-white dark:bg-gray-900 rounded-[24px] md:rounded-[32px] p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-gray-800 ring-1 ring-black/5 dark:ring-white/5 backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm border border-indigo-100/50 dark:border-indigo-900/50">
+                  <step.icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">{step.title}</h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-[0.2em]">Step {currentStep + 1} of {TOUR_STEPS.length}</span>
+                    <div className="w-1 h-1 bg-gray-300 dark:bg-gray-700 rounded-full" />
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">Tutorial</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex-grow">
-                <h3 className="text-base md:text-lg font-black text-[var(--text-primary)] tracking-tight leading-none">{step.title}</h3>
-                <p className="text-[9px] md:text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest mt-1">Step {currentStep + 1} of {TOUR_STEPS.length}</p>
-              </div>
-              <button 
-                onClick={handleSkip}
-                className="p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors shrink-0"
-                title="Skip Tour"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                <button 
+                  onClick={handlePause}
+                  className="p-2 text-gray-400 hover:text-indigo-600 transition-colors shrink-0"
+                  title="Pause Tour"
+                >
+                  <Clock className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={handleSkip}
+                  className="p-2 -mr-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors shrink-0"
+                  title="Dismiss Forever"
+                >
+                  <X className="w-5 h-5" />
+                </button>
             </div>
 
-            <p className="text-[var(--text-secondary)] text-xs md:text-sm font-medium leading-relaxed mb-6 line-clamp-3 md:line-clamp-none">
+            <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base font-medium leading-relaxed mb-8">
               {step.content}
             </p>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex gap-1 shrink-0">
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex gap-1.5 shrink-0">
                 {TOUR_STEPS.map((_, i) => (
                   <div 
                     key={i} 
                     className={cn(
-                      "w-1 md:w-1.5 h-1 md:h-1.5 rounded-full transition-all duration-300",
-                      i === currentStep ? "bg-indigo-600 w-3 md:w-4" : "bg-[var(--bg-secondary)] border border-[var(--border-color)]"
+                      "h-1.5 rounded-full transition-all duration-500",
+                      i === currentStep ? "bg-indigo-600 w-6" : "bg-gray-100 dark:bg-gray-800 w-1.5"
                     )} 
                   />
                 ))}
               </div>
               
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-3 items-center">
                 {currentStep > 0 && (
                   <button 
                     onClick={handleBack}
-                    className="p-1.5 md:p-2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
                   </button>
                 )}
                 <button 
                   onClick={handleNext}
-                  className="flex items-center gap-2 px-4 md:px-6 py-2 md:py-2.5 bg-indigo-600 text-white rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 whitespace-nowrap"
+                  className="group flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 dark:shadow-none hover:translate-y-[-2px] active:translate-y-0"
                 >
-                  {currentStep === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
-                  {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />}
+                  {currentStep === TOUR_STEPS.length - 1 ? 'Get Started' : 'Next Step'}
+                  {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                 </button>
               </div>
             </div>
@@ -347,7 +373,7 @@ export default function InteractiveTour() {
           {/* Arrow */}
           {!isMobile && (
             <div className={cn(
-              "absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-[var(--bg-primary)] border-l border-t border-[var(--border-color)] rotate-45 -z-10",
+              "absolute left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-900 border-l border-t border-gray-100 dark:border-gray-800 rotate-45 -z-10",
               position === 'bottom' ? "-top-2 border-l-0 border-t-0" : "-bottom-2 border-r-0 border-b-0"
             )} style={{
               clipPath: position === 'bottom' ? 'polygon(0% 0%, 100% 0%, 50% 50%)' : 'polygon(50% 50%, 100% 100%, 0% 100%)',

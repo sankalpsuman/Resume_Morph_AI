@@ -9,6 +9,7 @@ import {
   Github, Loader2, LogIn
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { safeStorage } from '../lib/safeStorage';
 import { APP_VERSION } from '../constants';
 import { auth, db, ensureConnection } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
@@ -52,7 +53,7 @@ export default function Login({ onTryGuest, onLogin, theme, toggleTheme, isLogin
     ensureConnection();
     // Disabled auto-popup for cleaner Welcome experience
     /*
-    const hasSeenPopup = localStorage.getItem('hasSeenNewFeaturePopup');
+    const hasSeenPopup = safeStorage.getItem('hasSeenNewFeaturePopup');
     if (!hasSeenPopup) {
       const timer = setTimeout(() => setShowNewFeaturePopup(true), 2000);
       return () => clearTimeout(timer);
@@ -139,7 +140,7 @@ export default function Login({ onTryGuest, onLogin, theme, toggleTheme, isLogin
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/60 backdrop-blur-xl"
-              onClick={() => { setShowNewFeaturePopup(false); localStorage.setItem('hasSeenNewFeaturePopup', 'true'); }}
+              onClick={() => { setShowNewFeaturePopup(false); safeStorage.setItem('hasSeenNewFeaturePopup', 'true'); }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -178,7 +179,7 @@ export default function Login({ onTryGuest, onLogin, theme, toggleTheme, isLogin
                   </div>
                 </div>
                 <button 
-                  onClick={() => { setShowNewFeaturePopup(false); localStorage.setItem('hasSeenNewFeaturePopup', 'true'); }}
+                  onClick={() => { setShowNewFeaturePopup(false); safeStorage.setItem('hasSeenNewFeaturePopup', 'true'); }}
                   className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl shadow-indigo-500/20"
                 >
                   Enter Workspace

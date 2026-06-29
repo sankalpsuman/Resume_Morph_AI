@@ -13,6 +13,7 @@ import { db, auth } from '../firebase';
 import { loginWithGoogle, loginWithGithub } from '../lib/auth';
 import { cn } from '../lib/utils';
 import { handleFirestoreError, OperationType } from '../lib/firestore';
+import { safeStorage } from '../lib/safeStorage';
 
 interface FeedbackItem {
   id: string;
@@ -122,7 +123,7 @@ export default function Feedback({ user: propUser, isAdmin: propIsAdmin }: { use
       }
 
       // Record in local storage for instant feedback sync
-      localStorage.setItem('morph_user_submitted_feedback', 'true');
+      safeStorage.setItem('morph_user_submitted_feedback', 'true');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'feedbacks');
     } finally {

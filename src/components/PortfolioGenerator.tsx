@@ -66,6 +66,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import jsPDF from 'jspdf';
 import * as htmlToImage from 'html-to-image';
 import { cn } from '../lib/utils';
+import { safeStorage } from '../lib/safeStorage';
 import { extractTextFromAny, generatePortfolioContent, withRetry } from '../lib/gemini';
 import { PortfolioContent, PortfolioTemplate } from '../types';
 
@@ -104,7 +105,7 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
   const [isGenerating, setIsGenerating] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioContent | null>(null);
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
-    return localStorage.getItem('hasUsedFreeMorph') === 'true';
+    return safeStorage.getItem('hasUsedFreeMorph') === 'true';
   });
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isLoginPendingForDownload, setIsLoginPendingForDownload] = useState(false);
@@ -863,7 +864,7 @@ export default function PortfolioGenerator({ onFullscreenChange, user, onLogin }
       // Track free morph if guest
       if (!user) {
         setHasUsedFreeMorph(true);
-        localStorage.setItem('hasUsedFreeMorph', 'true');
+        safeStorage.setItem('hasUsedFreeMorph', 'true');
         // Show login prompt after a short delay so they see the result first
         setTimeout(() => {
           setShowLoginPrompt(true);

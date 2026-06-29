@@ -29,6 +29,10 @@ import {
 } from '../lib/gemini';
 import { wrapResumeHtml } from '../lib/resumeTemplates';
 
+import Tooltip from './Tooltip';
+
+import { safeStorage } from '../lib/safeStorage';
+
 import { PLANS, APP_VERSION } from '../constants';
 
 interface FileData {
@@ -102,12 +106,18 @@ const StatsBar = React.memo(({
       isLimitReached ? "border-rose-200 dark:border-rose-900/30" : "border-[var(--border-color)]"
     )}>
       <div className="flex items-center gap-4 md:gap-5">
-        <div className={cn(
-          "w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-[22px] flex items-center justify-center shadow-lg transition-all shrink-0",
-          isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
-        )}>
-          <Zap className="w-5 h-5 md:w-7 md:h-7 text-white fill-white" />
-        </div>
+        <Tooltip 
+          title="Morph Engine" 
+          content="The cognitive AI engine that powers your resume architecture and style cloning."
+          position="bottom"
+        >
+          <div className={cn(
+            "w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-[22px] flex items-center justify-center shadow-lg transition-all shrink-0",
+            isLimitReached ? "bg-rose-500 shadow-rose-100 dark:shadow-none" : "bg-indigo-600 shadow-indigo-100 dark:shadow-none"
+          )}>
+            <Zap className="w-5 h-5 md:w-7 md:h-7 text-white fill-white" />
+          </div>
+        </Tooltip>
         <div className="flex-grow">
           <p className="text-[8px] md:text-[10px] font-black text-[var(--text-tertiary)] uppercase tracking-[0.2em] mb-0.5 md:mb-1">Morph Engine Status</p>
           <div className="flex items-center gap-2 md:gap-3">
@@ -134,33 +144,39 @@ const StatsBar = React.memo(({
       
       <div className="hidden lg:block h-14 w-px bg-[var(--border-color)] mx-2" />
       
-      <div className="flex items-center justify-between gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2 md:py-2.5 rounded-[16px] md:rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            "w-7 h-7 md:w-8 md:h-8 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all",
-            strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
-          )}>
-            <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+      <Tooltip 
+        title="Strict Layout" 
+        content="Enforces a pixel-perfect structural match between your content and the reference layout DNA."
+        position="bottom"
+      >
+        <div className="flex items-center justify-between gap-4 bg-[var(--bg-tertiary)] px-4 md:px-5 py-2 md:py-2.5 rounded-[16px] md:rounded-[20px] border border-[var(--border-color)] hover:border-indigo-500/20 transition-all group">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-7 h-7 md:w-8 md:h-8 rounded-[10px] md:rounded-xl flex items-center justify-center transition-all",
+              strictLayout ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 dark:shadow-none" : "bg-[var(--bg-primary)] text-[var(--text-tertiary)]"
+            )}>
+              <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[8px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
+              <span className="text-[6px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
+            </div>
           </div>
-          <div className="flex flex-col text-left">
-            <span className="text-[8px] md:text-[10px] font-black text-[var(--text-primary)] uppercase tracking-widest leading-none">Strict Layout</span>
-            <span className="text-[6px] md:text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1 opacity-70 group-hover:opacity-100 transition-opacity">Structural Mirror</span>
-          </div>
+          <button 
+            onClick={() => setStrictLayout(!strictLayout)}
+            className={cn(
+              "w-9 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
+              strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
+            )}
+          >
+            <motion.div 
+              initial={false}
+              animate={{ x: strictLayout ? (window.innerWidth < 768 ? 18 : 24) : 4 }}
+              className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
+            />
+          </button>
         </div>
-        <button 
-          onClick={() => setStrictLayout(!strictLayout)}
-          className={cn(
-            "w-9 h-5 md:w-12 md:h-6 rounded-full transition-all relative shrink-0",
-            strictLayout ? "bg-indigo-600" : "bg-[var(--border-color)]"
-          )}
-        >
-          <motion.div 
-            initial={false}
-            animate={{ x: strictLayout ? (window.innerWidth < 768 ? 18 : 24) : 4 }}
-            className="absolute top-0.5 md:top-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-white rounded-full shadow-md"
-          />
-        </button>
-      </div>
+      </Tooltip>
 
       <div className="hidden lg:block h-14 w-px bg-gray-200/50 mx-2" />
       
@@ -244,7 +260,7 @@ const ResumeIframe = React.memo(React.forwardRef<HTMLIFrameElement, { html: stri
 
 function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, isGuest }: ResumeBuilderProps) {
   const [hasUsedFreeMorph, setHasUsedFreeMorph] = useState(() => {
-    return localStorage.getItem('hasUsedFreeMorph') === 'true';
+    return safeStorage.getItem('hasUsedFreeMorph') === 'true';
   });
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isGuestBooting, setIsGuestBooting] = useState(false);
@@ -692,7 +708,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
   const checkUsageLimits = (actionType: 'morph' | 'check') => {
     if (!userData) return true;
 
-    const hasSubmittedFeedback = userData.hasReviewed || localStorage.getItem('morph_user_submitted_feedback') === 'true';
+    const hasSubmittedFeedback = userData.hasReviewed || safeStorage.getItem('morph_user_submitted_feedback') === 'true';
 
     if (actionType === 'morph' && userData.morphCount === 1 && !hasSubmittedFeedback && !isPremium) {
       setShowFeedbackModal(true);
@@ -816,7 +832,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       });
 
       // 3. Mark in local storage to prevent redundancy
-      localStorage.setItem('morph_user_submitted_feedback', 'true');
+      safeStorage.setItem('morph_user_submitted_feedback', 'true');
 
       setShowFeedbackModal(false);
       // Now user can try morphing again
@@ -833,7 +849,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     if (!user) {
       if (isGuest) {
         // Guest mode one-time check
-        const hasUsedFreeMorph = localStorage.getItem('morph_guest_free_used') === 'true';
+        const hasUsedFreeMorph = safeStorage.getItem('morph_guest_free_used') === 'true';
         if (hasUsedFreeMorph) {
           setIsPendingGeneration(true);
           if (onLogin) onLogin();
@@ -890,7 +906,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       if (!user) {
         // Guest just used their one free morph
         if (isGuest) {
-          localStorage.setItem('morph_guest_free_used', 'true');
+          safeStorage.setItem('morph_guest_free_used', 'true');
         }
         
         // Post-morph login trigger as per requirement

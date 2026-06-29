@@ -1,0 +1,16 @@
+{
+  "short_name": "ResumeMorph",
+  "name": "Resume Morph AI",
+  "description": "Morph your resume into any design with AI.",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/isometric/512/document.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff"
+}
