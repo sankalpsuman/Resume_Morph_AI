@@ -1198,27 +1198,31 @@ export default function App() {
               </div>
 
               {/* Account / User Section */}
-              <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-[var(--border-color)]">
+              <div className="flex items-center gap-2 pl-2 md:pl-4 border-l border-[var(--border-color)] shrink-0">
                 {user ? (
                   <>
-                    <div className="relative group">
+                    <div className="relative group shrink-0">
                     <Tooltip 
                       title="Account" 
                       content="View history, settings & plan status"
                       position="bottom"
+                      className="shrink-0"
                     >
                       <Link 
                         id="tab-account"
                         to="/account"
                         onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden block"
+                        className="relative p-0.5 rounded-xl bg-[var(--bg-primary)] shadow-lg border border-[var(--border-color)] transition-transform active:scale-95 overflow-hidden flex items-center justify-center shrink-0 w-9 h-9 md:w-10 md:h-10"
                       >
                         <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <img 
-                          src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || '')}&background=6366f1&color=fff`} 
+                          src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=6366f1&color=fff`} 
                           alt="Profile" 
-                          className="w-8 h-8 md:w-9 md:h-9 rounded-lg object-cover relative z-10"
+                          className="w-full h-full rounded-lg object-cover relative z-10 shrink-0"
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=6366f1&color=fff`;
+                          }}
                         />
                       </Link>
                     </Tooltip>
