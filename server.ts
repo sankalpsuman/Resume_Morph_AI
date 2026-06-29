@@ -15,14 +15,24 @@ dotenv.config();
 setLogLevel('error');
 
 // Read Firebase config
-const firebaseConfigRaw = fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf-8');
-const firebaseConfig = JSON.parse(firebaseConfigRaw);
+let firebaseApp: any = null;
+let db: any = null;
 
-// Initialize Firebase SDK for server
-const firebaseApp = initializeApp(firebaseConfig);
-const db = initializeFirestore(firebaseApp, {
-  experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId || '(default)');
+try {
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    const firebaseConfigRaw = fs.readFileSync(configPath, 'utf-8');
+    const firebaseConfig = JSON.parse(firebaseConfigRaw);
+
+    // Initialize Firebase SDK for server
+    firebaseApp = initializeApp(firebaseConfig);
+    db = initializeFirestore(firebaseApp, {
+      experimentalForceLongPolling: true,
+    }, firebaseConfig.firestoreDatabaseId || '(default)');
+  }
+} catch (err) {
+  console.error("Error reading firebase config or initializing:", err);
+}
 
 // Robust __dirname for both ESM and CJS
 let __dirnameOverride: string;
@@ -306,7 +316,7 @@ const getMetadata = async (req: Request) => {
   if (urlPath.startsWith('/resume/')) {
     const parts = urlPath.split('?')[0].split('/');
     const resumeId = parts[parts.length - 1];
-    if (resumeId) {
+    if (resumeId && db) {
       try {
         const resumesRef = collectionGroup(db, 'resumes');
         const q = query(resumesRef, where('id', '==', resumeId));
