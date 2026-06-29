@@ -46,25 +46,8 @@ const upload = multer({
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json());
 app.use(cors());
-
-// Explicitly serve logo.png to ensure it's always available for link previews
-app.get("/logo.png", (req, res) => {
-  const possiblePaths = [
-    path.join(process.cwd(), 'public', 'logo.png'),
-    path.join(process.cwd(), 'dist', 'logo.png'),
-    path.join(__dirnameOverride, 'logo.png'),
-    path.join(__dirnameOverride, 'public', 'logo.png'),
-  ];
-  
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      return res.sendFile(p);
-    }
-  }
-  res.status(404).send('Logo not found');
-});
+app.use(express.json());
 
 // Handle invalid/malformed JSON payloads gracefully with JSON responses instead of HTML error pages
 app.use((err: any, req: Request, res: Response, next: any) => {
@@ -386,7 +369,6 @@ const getMetadata = async (req: Request) => {
 };
 
 const injectMetadata = (html: string, metadata: any) => {
-  console.log(`[Metadata] Injecting: title="${metadata.title}", url="${metadata.url}"`);
   return html
     .replace(/__TITLE__/g, () => String(metadata.title || 'Resume Morph AI'))
     .replace(/__DESCRIPTION__/g, () => String(metadata.description || 'AI-powered resume transformation tool'))
@@ -444,13 +426,13 @@ async function startServer() {
   } else {
     // Production Assets & Routing
     let distPath = path.resolve(__dirnameOverride);
-    if (isVercel && !fs.existsSync(path.join(distPath, 'app.html'))) {
+    if (isVercel && !fs.existsSync(path.join(distPath, 'index.html'))) {
       const vPath = path.join(process.cwd(), 'dist');
-      if (fs.existsSync(path.join(vPath, 'app.html'))) {
+      if (fs.existsSync(path.join(vPath, 'index.html'))) {
         distPath = vPath;
       } else {
         const rootPath = path.join(process.cwd());
-        if (fs.existsSync(path.join(rootPath, 'app.html'))) {
+        if (fs.existsSync(path.join(rootPath, 'index.html'))) {
           distPath = rootPath;
         }
       }
@@ -470,8 +452,6 @@ async function startServer() {
 
       try {
         const searchPaths = [
-          path.join(distPath, 'app.html'),
-          path.join(process.cwd(), 'dist', 'app.html'),
           path.join(distPath, 'index.html'),
           path.join(process.cwd(), 'dist', 'index.html'),
           path.join(process.cwd(), 'index.html'),
