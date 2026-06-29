@@ -73,12 +73,12 @@
   }
 
   body {
-    @apply bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased overflow-x-hidden transition-colors duration-300;
+    @apply bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased transition-colors duration-300;
   }
   
   /* Prevent horizontal scroll on mobile */
   .min-h-screen {
-    overflow-x: hidden;
+    overflow-x: auto;
   }
 
   @media print {

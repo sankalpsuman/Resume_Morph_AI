@@ -25,7 +25,6 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
     html {
       height: 100%;
       background: #f1f5f9;
-      overflow-x: hidden;
     }
     body { 
       font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
@@ -79,7 +78,6 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      overflow-x: hidden;
       position: relative;
     }
     /* Compatibility with old templates that might not have .page yet */
@@ -112,7 +110,6 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
       padding: 40px 0 !important;
       box-sizing: border-box;
       min-height: 100vh;
-      overflow-x: hidden;
     }
     .preview-mode #resume-preview {
       transform-origin: top center;
