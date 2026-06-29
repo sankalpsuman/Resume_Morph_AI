@@ -46,8 +46,25 @@ const upload = multer({
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(cors());
 app.use(express.json());
+app.use(cors());
+
+// Explicitly serve logo.png to ensure it's always available for link previews
+app.get("/logo.png", (req, res) => {
+  const possiblePaths = [
+    path.join(process.cwd(), 'public', 'logo.png'),
+    path.join(process.cwd(), 'dist', 'logo.png'),
+    path.join(__dirnameOverride, 'logo.png'),
+    path.join(__dirnameOverride, 'public', 'logo.png'),
+  ];
+  
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return res.sendFile(p);
+    }
+  }
+  res.status(404).send('Logo not found');
+});
 
 // Handle invalid/malformed JSON payloads gracefully with JSON responses instead of HTML error pages
 app.use((err: any, req: Request, res: Response, next: any) => {
@@ -281,212 +298,134 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   next(err);
 });
 
+// Professional Brand Image
+const LOGO_IMAGE = "https://resume-morph.vercel.app/logo.png";
+
+// Metadata logic
+const getMetadata = async (req: Request) => {
+  let urlPath = req.originalUrl || req.url || '/';
+  const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
+  if (matchedPath && !matchedPath.startsWith('/api')) {
+    urlPath = matchedPath;
+  }
+  
+  const protocol = (req.headers['x-forwarded-proto'] || 'https') as string;
+  const host = (req.headers['host'] || 'resume-morph.vercel.app') as string;
+  const baseUrl = `${protocol}://${host.split(',')[0].trim()}`.replace(/\/+$/, "");
+  
+  const defaultMeta = {
+    title: "Resume Morph AI",
+    description: "AI-powered resume transformation tool",
+    image: LOGO_IMAGE,
+    url: `${baseUrl}${urlPath.split('?')[0]}`.replace(/\/+$/, "") || baseUrl
+  };
+
+  if (urlPath.startsWith('/resume/')) {
+    const parts = urlPath.split('?')[0].split('/');
+    const resumeId = parts[parts.length - 1];
+    if (resumeId) {
+      try {
+        const resumesRef = collectionGroup(db, 'resumes');
+        const q = query(resumesRef, where('id', '==', resumeId));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const data = querySnapshot.docs[0].data();
+          const candidateName = data.name || 'Untitled Resume';
+          const role = data.role || 'Professional';
+          const yoe = data.yoe;
+          
+          let desc = `View ${candidateName}'s professional resume and experience.`;
+          if (yoe && role) {
+            desc = `${yoe} of experience as a ${role}. View full resume and skills.`;
+          } else if (role) {
+            desc = `Experienced ${role}. View full professional resume and skills.`;
+          }
+
+          return {
+            ...defaultMeta,
+            title: `${candidateName} – ${role} Resume`,
+            description: desc,
+            image: LOGO_IMAGE,
+          };
+        }
+      } catch (error) {
+        console.error(`[Metadata] Failed to fetch resume ${resumeId}:`, error);
+      }
+    }
+  }
+
+  if (urlPath.includes('/portfolio')) {
+    return {
+      ...defaultMeta,
+      title: "Portfolio Generator | Resume Morph AI",
+      description: "Convert your resume into a stunning professional portfolio website instantly with AI.",
+      image: LOGO_IMAGE
+    };
+  }
+
+  if (urlPath.includes('/contact')) {
+    return {
+      ...defaultMeta,
+      title: "Contact & Help Desk | Resume Morph AI",
+      description: "Get in touch with our customer success and technical developer architects.",
+      image: LOGO_IMAGE
+    };
+  }
+
+  if (urlPath.includes('/feedback')) {
+    return {
+      ...defaultMeta,
+      title: "Submit Community Feedback | Resume Morph AI",
+      description: "Shape the future of Resume Morph by suggesting features and modules directly to developers.",
+      image: LOGO_IMAGE
+    };
+  }
+
+  return defaultMeta;
+};
+
+const injectMetadata = (html: string, metadata: any) => {
+  console.log(`[Metadata] Injecting: title="${metadata.title}", url="${metadata.url}"`);
+  return html
+    .replace(/__TITLE__/g, () => String(metadata.title || 'Resume Morph AI'))
+    .replace(/__DESCRIPTION__/g, () => String(metadata.description || 'AI-powered resume transformation tool'))
+    .replace(/__IMAGE__/g, () => String(metadata.image || LOGO_IMAGE))
+    .replace(/__URL__/g, () => String(metadata.url || 'https://resume-morph.vercel.app'));
+};
+
+let cachedTemplate: string | null = null;
+const getTemplate = async (indexPath: string, vite?: any, url?: string) => {
+  if (process.env.NODE_ENV !== "production" && !isVercel) {
+    let template = fs.readFileSync(indexPath, 'utf-8');
+    if (vite && url) {
+      return await vite.transformIndexHtml(url, template);
+    }
+    return template;
+  }
+  
+  if (cachedTemplate) return cachedTemplate;
+  if (fs.existsSync(indexPath)) {
+    cachedTemplate = fs.readFileSync(indexPath, 'utf-8');
+    return cachedTemplate;
+  }
+  return "";
+};
+
 // Start listening and register asset/Vite middlewares
 async function startServer() {
-  const getMetadata = async (req: Request) => {
-    let urlPath = req.originalUrl || req.url || '/';
-    const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
-    if (matchedPath && !matchedPath.startsWith('/api')) {
-      urlPath = matchedPath;
-    }
-    // Better host detection for Cloud Run / Proxies
-    const forwardedHost = req.headers['x-forwarded-host'] as string;
-    const host = forwardedHost || req.get('host') || 'resumemorph.ai';
-    const protocol = (req.headers['x-forwarded-proto'] as string) || (req.secure ? 'https' : 'http');
-    const baseUrl = `${protocol}://${host.split(',')[0].trim()}`.replace(/\/+$/, ""); // Ensure no trailing slash
-    
-    // Professional Brand Image
-    const LOGO_IMAGE = "https://resume-morph.vercel.app/logo.png";
-
-    const defaultMeta = {
-      title: "Resume Morph AI",
-      description: "AI-powered resume transformation tool",
-      image: LOGO_IMAGE,
-      url: `${baseUrl}${urlPath.split('?')[0]}`.replace(/\/+$/, "") || baseUrl // Construct canonical URL safely
-    };
-
-    if (urlPath.startsWith('/resume/')) {
-      const parts = urlPath.split('?')[0].split('/');
-      const resumeId = parts[parts.length - 1];
-      if (resumeId) {
-        try {
-          const resumesRef = collectionGroup(db, 'resumes');
-          const q = query(resumesRef, where('id', '==', resumeId));
-          const querySnapshot = await getDocs(q);
-          
-          if (!querySnapshot.empty) {
-            const data = querySnapshot.docs[0].data();
-            const candidateName = data.name || 'Untitled Resume';
-            const role = data.role || 'Professional';
-            const yoe = data.yoe;
-            
-            let desc = `View ${candidateName}'s professional resume and experience.`;
-            if (yoe && role) {
-              desc = `${yoe} of experience as a ${role}. View full resume and skills.`;
-            } else if (role) {
-              desc = `Experienced ${role}. View full professional resume and skills.`;
-            }
-
-            return {
-              ...defaultMeta,
-              title: `${candidateName} – ${role} Resume`,
-              description: desc,
-              image: LOGO_IMAGE,
-            };
-          }
-        } catch (error) {
-          console.error(`[Metadata] Failed to fetch resume ${resumeId}:`, error);
-        }
-      }
-    }
-
-    if (urlPath.includes('/portfolio')) {
-      return {
-        ...defaultMeta,
-        title: "AI Portfolio Generator | Build Your Personal Brand | Resume Morph",
-        description: "Instantly transform your resume into a stunning, responsive portfolio website. Showcase your work with style.",
-        image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-    
-    if (urlPath.includes('/smart-editor')) {
-      return {
-        ...defaultMeta,
-        title: "Smart Resume Editor | ATS-Optimized Refinement",
-        description: "Live ATS scoring and AI-powered content improvement. Ensure your resume passes every recruiter filter with ease.",
-        image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/tracker')) {
-      return {
-        ...defaultMeta,
-        title: "Job Application Tracker | Organize Your Search",
-        description: "Keep track of every resume sent, every interview scheduled, and every offer received in one central dashboard.",
-        image: "https://images.unsplash.com/photo-1454165833767-027546981f6?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/cover-letter')) {
-      return {
-        ...defaultMeta,
-        title: "AI Cover Letter Generator | Personalized for Every Job",
-        description: "Create compelling cover letters tailored specifically to each role and company in seconds.",
-        image: "https://images.unsplash.com/photo-1512485696566-29a94a859464?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/assistant') || urlPath.includes('/ai-assistant')) {
-      return {
-        ...defaultMeta,
-        title: "AI Career Coach | Mock Interviews & Growth",
-        description: "Level up your career with AI-driven mock interviews, feedback, and expert guidance from your Morph Career Coach.",
-        image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/guide') || urlPath.includes('/user-guide') || urlPath.includes('/resources')) {
-      return {
-        ...defaultMeta,
-        title: "Resources & Guide | Master the Morph Platform",
-        description: "Everything you need to know about building the perfect resume and portfolio with Resume Morph AI.",
-        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/about')) {
-      return {
-        ...defaultMeta,
-        title: "About Resume Morph AI | The Future of Career Tech",
-        description: "Learn about the mission and technology behind the platform that's helping thousands transform their careers.",
-        image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=0.8&w=1200&h=630"
-      };
-    }
-
-    if (urlPath.includes('/privacy') || urlPath.includes('/privacy-policy')) {
-      return {
-        ...defaultMeta,
-        title: "Privacy Policy | Resume Morph AI",
-        description: "Review our commitment to securing your career data and maintaining personal information integrity.",
-        image: LOGO_IMAGE
-      };
-    }
-
-    if (urlPath.includes('/terms') || urlPath.includes('/terms-of-service') || urlPath.includes('/terms-and-conditions')) {
-      return {
-        ...defaultMeta,
-        title: "Terms of Service | Resume Morph AI",
-        description: "Read the user agreements and operational terms of the Resume Morph career optimization system.",
-        image: LOGO_IMAGE
-      };
-    }
-
-    if (urlPath.includes('/account')) {
-      return {
-        ...defaultMeta,
-        title: "My Account & Career Plan | Resume Morph AI",
-        description: "Manage your premium membership settings, history logs, and account details securely.",
-        image: LOGO_IMAGE
-      };
-    }
-
-    if (urlPath.includes('/contact')) {
-      return {
-        ...defaultMeta,
-        title: "Contact & Help Desk | Resume Morph AI",
-        description: "Get in touch with our customer success and technical developer architects.",
-        image: LOGO_IMAGE
-      };
-    }
-
-    if (urlPath.includes('/feedback')) {
-      return {
-        ...defaultMeta,
-        title: "Submit Community Feedback | Resume Morph AI",
-        description: "Shape the future of Resume Morph by suggesting features and modules directly to developers.",
-        image: LOGO_IMAGE
-      };
-    }
-
-    return defaultMeta;
-  };
-
-  const injectMetadata = (html: string, metadata: any) => {
-    return html
-      .replace(/__TITLE__/g, () => String(metadata.title))
-      .replace(/__DESCRIPTION__/g, () => String(metadata.description))
-      .replace(/__IMAGE__/g, () => String(metadata.image))
-      .replace(/__URL__/g, () => String(metadata.url));
-  };
-
-  let cachedTemplate: string | null = null;
-  const getTemplate = (indexPath: string, vite?: any, url?: string) => {
-    if (process.env.NODE_ENV !== "production") {
-      let template = fs.readFileSync(indexPath, 'utf-8');
-      if (vite && url) {
-        return vite.transformIndexHtml(url, template);
-      }
-      return Promise.resolve(template);
-    }
-    
-    if (cachedTemplate) return Promise.resolve(cachedTemplate);
-    cachedTemplate = fs.readFileSync(indexPath, 'utf-8');
-    return Promise.resolve(cachedTemplate);
-  };
-
-  // Vite Integration
-  if (process.env.NODE_ENV !== "production") {
+  // Vite Integration (Development Only)
+  if (process.env.NODE_ENV !== "production" && !isVercel) {
     // Dynamic import to avoid crash in production if vite is missing
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
-    
+
     app.use(vite.middlewares);
 
-    // Development path for metadata testing
-    app.use('*', async (req, res, next) => {
+    app.get('*', async (req, res, next) => {
       const url = req.originalUrl;
       // Skip API and assets
       if (url.startsWith('/api') || url.includes('.')) return next();
@@ -494,10 +433,8 @@ async function startServer() {
       try {
         const indexPath = path.resolve(getRoot(), 'index.html');
         const template = await getTemplate(indexPath, vite, url);
-        
         const metadata = await getMetadata(req);
         const html = injectMetadata(template, metadata);
-        
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
@@ -505,18 +442,15 @@ async function startServer() {
       }
     });
   } else {
-    // In production, server runs from dist/server.cjs
-    // Assets are in the same folder (dist/) or in ../dist if running as a Vercel function in api/
+    // Production Assets & Routing
     let distPath = path.resolve(__dirnameOverride);
-    
-    // Vercel Function specific path resolution
-    if (isVercel && !fs.existsSync(path.join(distPath, 'index.html'))) {
+    if (isVercel && !fs.existsSync(path.join(distPath, 'app.html'))) {
       const vPath = path.join(process.cwd(), 'dist');
-      if (fs.existsSync(path.join(vPath, 'index.html'))) {
+      if (fs.existsSync(path.join(vPath, 'app.html'))) {
         distPath = vPath;
       } else {
         const rootPath = path.join(process.cwd());
-        if (fs.existsSync(path.join(rootPath, 'index.html'))) {
+        if (fs.existsSync(path.join(rootPath, 'app.html'))) {
           distPath = rootPath;
         }
       }
@@ -526,19 +460,18 @@ async function startServer() {
     app.use(express.static(distPath, { index: false }));
 
     app.get('*', async (req, res, next) => {
-      // Extract original URL on Vercel or fallback to req.originalUrl/req.url
       let url = req.originalUrl || req.url || '/';
       const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
       if (matchedPath && !matchedPath.startsWith('/api')) {
         url = matchedPath;
       }
 
-      // Skip API and assets that weren't caught by express.static
       if (url.startsWith('/api') || url.includes('.')) return next();
 
       try {
-        // Try multiple potential index.html locations for maximum deployment resilience
         const searchPaths = [
+          path.join(distPath, 'app.html'),
+          path.join(process.cwd(), 'dist', 'app.html'),
           path.join(distPath, 'index.html'),
           path.join(process.cwd(), 'dist', 'index.html'),
           path.join(process.cwd(), 'index.html'),
@@ -560,8 +493,8 @@ async function startServer() {
           const html = injectMetadata(template, metadata);
           res.set('Cache-Control', 'public, max-age=3600').send(html);
         } else {
-          console.error("[Morph Engine] Critical Error: index.html build artifact not found in any expected location.", { searched: searchPaths });
-          res.status(404).send('Application build not found. Please refresh or contact support.');
+          console.error("[Morph Engine] Critical Error: index.html build artifact not found.");
+          res.status(404).send('Application build not found.');
         }
       } catch (err) {
         console.error("Template read error:", err);
