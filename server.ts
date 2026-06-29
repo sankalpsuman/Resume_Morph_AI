@@ -369,11 +369,23 @@ const getMetadata = async (req: Request) => {
 };
 
 const injectMetadata = (html: string, metadata: any) => {
+  const title = String(metadata.title || 'ResumeMorphAI');
+  const description = String(metadata.description || 'AI-powered resume transformation tool');
+  const image = String(metadata.image || LOGO_IMAGE);
+  const url = String(metadata.url || 'https://resume-morph.vercel.app/');
+
   return html
-    .replace(/__TITLE__/g, () => String(metadata.title || 'ResumeMorphAI'))
-    .replace(/__DESCRIPTION__/g, () => String(metadata.description || 'AI-powered resume transformation tool'))
-    .replace(/__IMAGE__/g, () => String(metadata.image || LOGO_IMAGE))
-    .replace(/__URL__/g, () => String(metadata.url || 'https://resume-morph.vercel.app'));
+    .replace(/<title>[^<]*<\/title>/i, `<title>${title}</title>`)
+    .replace(/<meta name="description" content="[^"]*"/i, `<meta name="description" content="${description}"`)
+    .replace(/<meta property="og:title" content="[^"]*"/i, `<meta property="og:title" content="${title}"`)
+    .replace(/<meta property="og:description" content="[^"]*"/i, `<meta property="og:description" content="${description}"`)
+    .replace(/<meta property="og:image" content="[^"]*"/i, `<meta property="og:image" content="${image}"`)
+    .replace(/<meta property="og:url" content="[^"]*"/i, `<meta property="og:url" content="${url}"`)
+    .replace(/<meta name="twitter:title" content="[^"]*"/i, `<meta name="twitter:title" content="${title}"`)
+    .replace(/<meta name="twitter:description" content="[^"]*"/i, `<meta name="twitter:description" content="${description}"`)
+    .replace(/<meta name="twitter:image" content="[^"]*"/i, `<meta name="twitter:image" content="${image}"`)
+    .replace(/<meta name="twitter:url" content="[^"]*"/i, `<meta name="twitter:url" content="${url}"`)
+    .replace(/<link rel="canonical" href="[^"]*"/i, `<link rel="canonical" href="${url}"`);
 };
 
 let cachedTemplate: string | null = null;
