@@ -297,7 +297,7 @@ const getMetadata = async (req: Request) => {
   const baseUrl = `${protocol}://${host.split(',')[0].trim()}`.replace(/\/+$/, "");
   
   const defaultMeta = {
-    title: "Resume Morph AI",
+    title: "ResumeMorphAI",
     description: "AI-powered resume transformation tool",
     image: LOGO_IMAGE,
     url: `${baseUrl}${urlPath.split('?')[0]}`.replace(/\/+$/, "") || baseUrl
@@ -341,7 +341,7 @@ const getMetadata = async (req: Request) => {
   if (urlPath.includes('/portfolio')) {
     return {
       ...defaultMeta,
-      title: "Portfolio Generator | Resume Morph AI",
+      title: "Portfolio Generator | ResumeMorphAI",
       description: "Convert your resume into a stunning professional portfolio website instantly with AI.",
       image: LOGO_IMAGE
     };
@@ -350,7 +350,7 @@ const getMetadata = async (req: Request) => {
   if (urlPath.includes('/contact')) {
     return {
       ...defaultMeta,
-      title: "Contact & Help Desk | Resume Morph AI",
+      title: "Contact & Help Desk | ResumeMorphAI",
       description: "Get in touch with our customer success and technical developer architects.",
       image: LOGO_IMAGE
     };
@@ -359,7 +359,7 @@ const getMetadata = async (req: Request) => {
   if (urlPath.includes('/feedback')) {
     return {
       ...defaultMeta,
-      title: "Submit Community Feedback | Resume Morph AI",
+      title: "Submit Community Feedback | ResumeMorphAI",
       description: "Shape the future of Resume Morph by suggesting features and modules directly to developers.",
       image: LOGO_IMAGE
     };
@@ -370,7 +370,7 @@ const getMetadata = async (req: Request) => {
 
 const injectMetadata = (html: string, metadata: any) => {
   return html
-    .replace(/__TITLE__/g, () => String(metadata.title || 'Resume Morph AI'))
+    .replace(/__TITLE__/g, () => String(metadata.title || 'ResumeMorphAI'))
     .replace(/__DESCRIPTION__/g, () => String(metadata.description || 'AI-powered resume transformation tool'))
     .replace(/__IMAGE__/g, () => String(metadata.image || LOGO_IMAGE))
     .replace(/__URL__/g, () => String(metadata.url || 'https://resume-morph.vercel.app'));
