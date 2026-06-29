@@ -524,8 +524,8 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isLoginProgress, isAd
                             <FileText className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="font-bold text-xs text-[var(--text-primary)] mb-0.5 group-hover:text-indigo-600">{res.name}</p>
-                            <p className="text-[10px] text-[var(--text-tertiary)] font-semibold">{new Date(res.timestamp).toLocaleDateString()}</p>
+                            <p className="font-bold text-xs text-[var(--text-primary)] mb-0.5 group-hover:text-indigo-600">{res.name} - {res.id.substring(0, 6).toUpperCase()}</p>
+                            <p className="text-[10px] text-[var(--text-tertiary)] font-semibold">Resume ID: {res.id}</p>
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-[var(--text-tertiary)] group-hover:translate-x-0.5 transition-transform" />

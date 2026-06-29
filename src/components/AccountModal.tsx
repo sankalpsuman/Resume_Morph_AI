@@ -557,13 +557,10 @@ export default function AccountModal({
                         <FileText className="w-7 h-7 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="font-black text-[var(--text-primary)] text-base">{resume.name}</p>
+                        <p className="font-black text-[var(--text-primary)] text-base">{resume.name} - {resume.id.substring(0, 6).toUpperCase()}</p>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">
-                            {(() => {
-                              const d = resume.timestamp?.toDate ? resume.timestamp.toDate() : new Date(resume.timestamp || Date.now());
-                              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                            })()}
+                            ID: {resume.id}
                           </span>
                           <div className="w-1 h-1 bg-[var(--border-color)] rounded-full" />
                           <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">

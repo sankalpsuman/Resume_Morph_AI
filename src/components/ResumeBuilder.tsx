@@ -1689,8 +1689,8 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
     history.forEach((resume: any) => {
       items.push({
         id: `resume-${resume.id}`,
-        title: resume.name || 'Untitled Resume',
-        subtitle: `Saved on ${resume.savedAt ? new Date(resume.savedAt.toDate?.() || resume.savedAt).toLocaleDateString() : 'N/A'}`,
+        title: `${resume.name || 'Untitled Resume'} - ${resume.id.substring(0, 6).toUpperCase()}`,
+        subtitle: `Resume ID: ${resume.id}`,
         category: 'Saved Resumes',
         icon: FileText,
         action: async () => {
@@ -2375,7 +2375,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                       <option value="">{isLoadingHistoryItem ? 'Fetching content...' : (userData?.resumeHistory?.length ? `Select a saved resume (${userData.resumeHistory.length})` : 'No saved resumes')}</option>
                       {(userData?.resumeHistory || []).map((resume: any) => (
                         <option key={resume.id} value={resume.id}>
-                          {resume.name} ({new Date(resume.timestamp || resume.savedAt?.toDate?.() || Date.now()).toLocaleDateString()})
+                          {resume.name} - {resume.id.substring(0, 6).toUpperCase()}
                         </option>
                       ))}
                     </select>
@@ -3141,7 +3141,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
                           <FileText className="w-5 h-5 text-[var(--text-tertiary)] group-hover:text-indigo-600 shrink-0" />
-                          <span className="text-sm font-bold text-[var(--text-primary)] truncate">{resume.name}</span>
+                          <span className="text-sm font-bold text-[var(--text-primary)] truncate">{resume.name} - {resume.id.substring(0, 6).toUpperCase()}</span>
                         </div>
                         <RefreshCw className="w-4 h-4 text-[var(--border-color)] group-hover:text-indigo-400 shrink-0" />
                       </button>
