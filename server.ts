@@ -463,45 +463,18 @@ async function startServer() {
     console.log(`[Morph Engine] Serving production assets from: ${distPath}`);
     app.use(express.static(distPath, { index: false }));
 
-    app.get('*', async (req, res, next) => {
-      let url = req.originalUrl || req.url || '/';
-      const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
-      if (matchedPath && !matchedPath.startsWith('/api')) {
-        url = matchedPath;
+    app.get('*', (req, res) => {
+      if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
       }
 
-      if (url.startsWith('/api')) return next();
+      const indexPath = path.join(process.cwd(), 'dist', 'index.html');
 
-      try {
-        const searchPaths = [
-          path.join(distPath, 'index.html'),
-          path.join(process.cwd(), 'dist', 'index.html'),
-          path.join(process.cwd(), 'index.html'),
-          path.join(__dirnameOverride, 'index.html'),
-          path.join(__dirnameOverride, '..', 'dist', 'index.html')
-        ];
-
-        let indexPath = "";
-        for (const p of searchPaths) {
-          if (fs.existsSync(p)) {
-            indexPath = p;
-            break;
-          }
-        }
-
-        if (indexPath) {
-          const template = await getTemplate(indexPath);
-          const metadata = await getMetadata(req);
-          const html = injectMetadata(template, metadata);
-          res.set('Cache-Control', 'public, max-age=3600').send(html);
-        } else {
-          console.error("[Morph Engine] Critical Error: index.html build artifact not found.");
-          res.status(404).send('Application build not found.');
-        }
-      } catch (err) {
-        console.error("Template read error:", err);
-        res.status(500).send("Internal Server Error");
+      if (!fs.existsSync(indexPath)) {
+        return res.status(500).send('index.html not found');
       }
+
+      res.sendFile(indexPath);
     });
   }
 
