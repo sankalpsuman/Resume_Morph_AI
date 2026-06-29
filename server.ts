@@ -422,7 +422,7 @@ async function startServer() {
     app.get('*', async (req, res, next) => {
       const url = req.originalUrl;
       // Skip API and assets
-      if (url.startsWith('/api') || url.includes('.')) return next();
+      if (url.startsWith('/api')) return next();
 
       try {
         const indexPath = path.resolve(getRoot(), 'index.html');
@@ -460,7 +460,7 @@ async function startServer() {
         url = matchedPath;
       }
 
-      if (url.startsWith('/api') || url.includes('.')) return next();
+      if (url.startsWith('/api')) return next();
 
       try {
         const searchPaths = [
