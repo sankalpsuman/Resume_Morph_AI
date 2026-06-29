@@ -114,7 +114,8 @@ service cloud.firestore {
 
       // Resumes subcollection for large content storage
       match /resumes/{resumeId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if true;
+        allow write: if isOwner(userId) || isAdmin();
       }
     }
 

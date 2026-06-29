@@ -7,12 +7,22 @@ import dotenv from "dotenv";
 import multer from "multer";
 import { sendWelcomeEmail, isValidEmail } from "./src/lib/sendWelcomeEmail.js";
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, collection, onSnapshot, doc, updateDoc, setLogLevel } from "firebase/firestore";
+import { initializeFirestore, collectionGroup, query, where, getDocs, setLogLevel } from "firebase/firestore";
 
 dotenv.config();
 
 // Silence internal SDK warning logs (like stream idle timeouts) while keeping real errors
 setLogLevel('error');
+
+// Read Firebase config
+const firebaseConfigRaw = fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf-8');
+const firebaseConfig = JSON.parse(firebaseConfigRaw);
+
+// Initialize Firebase SDK for server
+const firebaseApp = initializeApp(firebaseConfig);
+const db = initializeFirestore(firebaseApp, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Robust __dirname for both ESM and CJS
 let __dirnameOverride: string;
@@ -273,7 +283,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 
 // Start listening and register asset/Vite middlewares
 async function startServer() {
-  const getMetadata = (req: Request) => {
+  const getMetadata = async (req: Request) => {
     let urlPath = req.originalUrl || req.url || '/';
     const matchedPath = (req.headers['x-matched-path'] || req.headers['x-now-route-source']) as string;
     if (matchedPath && !matchedPath.startsWith('/api')) {
@@ -286,14 +296,49 @@ async function startServer() {
     const baseUrl = `${protocol}://${host.split(',')[0].trim()}`.replace(/\/+$/, ""); // Ensure no trailing slash
     
     // Professional Brand Image
-    const LOGO_IMAGE = "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=0.8&w=1200&h=630";
+    const LOGO_IMAGE = "https://resume-morph.vercel.app/logo.png";
 
     const defaultMeta = {
-      title: "Resume Morph AI | Transform Your Career with AI",
-      description: "Morph your resume into any design with AI. Clone layouts from images, optimize for ATS, and chat with your resume architect to refine every detail.",
+      title: "Resume Morph AI",
+      description: "AI-powered resume transformation tool",
       image: LOGO_IMAGE,
       url: `${baseUrl}${urlPath.split('?')[0]}`.replace(/\/+$/, "") || baseUrl // Construct canonical URL safely
     };
+
+    if (urlPath.startsWith('/resume/')) {
+      const parts = urlPath.split('?')[0].split('/');
+      const resumeId = parts[parts.length - 1];
+      if (resumeId) {
+        try {
+          const resumesRef = collectionGroup(db, 'resumes');
+          const q = query(resumesRef, where('id', '==', resumeId));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const data = querySnapshot.docs[0].data();
+            const candidateName = data.name || 'Untitled Resume';
+            const role = data.role || 'Professional';
+            const yoe = data.yoe;
+            
+            let desc = `View ${candidateName}'s professional resume and experience.`;
+            if (yoe && role) {
+              desc = `${yoe} of experience as a ${role}. View full resume and skills.`;
+            } else if (role) {
+              desc = `Experienced ${role}. View full professional resume and skills.`;
+            }
+
+            return {
+              ...defaultMeta,
+              title: `${candidateName} – ${role} Resume`,
+              description: desc,
+              image: LOGO_IMAGE,
+            };
+          }
+        } catch (error) {
+          console.error(`[Metadata] Failed to fetch resume ${resumeId}:`, error);
+        }
+      }
+    }
 
     if (urlPath.includes('/portfolio')) {
       return {
@@ -450,7 +495,7 @@ async function startServer() {
         const indexPath = path.resolve(getRoot(), 'index.html');
         const template = await getTemplate(indexPath, vite, url);
         
-        const metadata = getMetadata(req);
+        const metadata = await getMetadata(req);
         const html = injectMetadata(template, metadata);
         
         res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
@@ -511,7 +556,7 @@ async function startServer() {
 
         if (indexPath) {
           const template = await getTemplate(indexPath);
-          const metadata = getMetadata(req);
+          const metadata = await getMetadata(req);
           const html = injectMetadata(template, metadata);
           res.set('Cache-Control', 'public, max-age=3600').send(html);
         } else {

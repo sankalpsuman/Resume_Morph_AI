@@ -656,6 +656,10 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       // Save full content to subcollection
       const resumeDocRef = doc(db, 'users', auth.currentUser.uid, 'resumes', resumeId);
       const saveContentPromise = setDoc(resumeDocRef, {
+        id: resumeId,
+        name: name || 'Untitled Resume',
+        role: resumeMetadata?.profile || 'Professional', // Extract role
+        yoe: resumeMetadata?.yoe || '', // Extract years of experience
         html: wrappedHtml,
         originalText: contentFile?.text || '',
         updatedAt: serverTimestamp()

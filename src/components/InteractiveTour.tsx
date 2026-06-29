@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, Layout, Globe, FileText, Briefcase, User, Info, CheckCircle, Eye, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface Step {
