@@ -540,7 +540,12 @@ export default function AccountModal({
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-[var(--text-primary)] tracking-tight">Recent Activity</h3>
-                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Your latest resume transformations</p>
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest flex items-center gap-2">
+                    Your latest resume transformations
+                    <span className="bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1 normal-case tracking-normal">
+                      <AlertCircle className="w-3 h-3" /> Auto-deletes after 5 days
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>

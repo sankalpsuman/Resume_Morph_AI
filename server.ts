@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import multer from "multer";
 import { sendWelcomeEmail, isValidEmail } from "./src/lib/sendWelcomeEmail.js";
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, collectionGroup, query, where, getDocs, setLogLevel } from "firebase/firestore";
+import { getFirestore, collectionGroup, query, where, getDocs, setLogLevel } from "firebase/firestore";
 
 dotenv.config();
 
@@ -26,9 +26,9 @@ try {
 
     // Initialize Firebase SDK for server
     firebaseApp = initializeApp(firebaseConfig);
-    db = initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-    }, firebaseConfig.firestoreDatabaseId || '(default)');
+    db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+      ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(firebaseApp);
   }
 } catch (err) {
   console.error("Error reading firebase config or initializing:", err);
@@ -431,8 +431,10 @@ async function startServer() {
 
     app.get('*', async (req, res, next) => {
       const url = req.originalUrl;
-      // Skip API and assets
-      if (url.startsWith('/api')) return next();
+      // Skip API, assets, and source files so we don't accidentally return index.html for them
+      if (url.startsWith('/api') || url.match(/\.(js|jsx|ts|tsx|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/)) {
+        return next();
+      }
 
       try {
         const indexPath = path.resolve(getRoot(), 'index.html');
@@ -463,9 +465,15 @@ async function startServer() {
     console.log(`[Morph Engine] Serving production assets from: ${distPath}`);
     app.use(express.static(distPath, { index: false }));
 
-    app.get('*', (req, res) => {
-      if (req.originalUrl.startsWith('/api')) {
+    app.get('*', (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api')) {
         return res.status(404).json({ error: 'API route not found' });
+      }
+      
+      // Do not serve index.html for assets to prevent MIME type errors
+      if (url.match(/\.(js|jsx|ts|tsx|css|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)(\?.*)?$/)) {
+        return next();
       }
 
       const indexPath = path.join(process.cwd(), 'dist', 'index.html');

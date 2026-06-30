@@ -2326,8 +2326,18 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                     <History className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-[var(--text-primary)] tracking-tight">Saved Versions</h3>
-                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">Load from History</p>
+                    <h3 className="text-sm font-black text-[var(--text-primary)] tracking-tight flex items-center gap-2 mb-1">
+                      Saved Versions
+                      <span className="hidden sm:flex bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 normal-case tracking-normal">
+                        <AlertCircle className="w-2.5 h-2.5" /> 5d auto-delete
+                      </span>
+                    </h3>
+                    <p className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest flex items-center gap-2">
+                      Load from History
+                      <span className="sm:hidden flex bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[9px] px-1.5 py-0.5 rounded items-center gap-1 normal-case tracking-normal">
+                        <AlertCircle className="w-2.5 h-2.5" /> 5d delete
+                      </span>
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
@@ -3126,7 +3136,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
                   <p className="text-sm sm:text-base text-[var(--text-secondary)] font-medium">
                     {(() => {
                       const currentPlan = PLANS.find(p => p.id === (userData?.plan || 'free')) || PLANS[0];
-                      return `Your ${currentPlan.name} plan allows up to ${currentPlan.historyLimit} saved resumes in your history.`;
+                      return `Your ${currentPlan.name} plan allows up to ${currentPlan.historyLimit} saved resumes. Note: Resumes auto-delete after 5 days of inactivity.`;
                     })()}
                   </p>
                 </div>

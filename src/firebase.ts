@@ -8,7 +8,7 @@ import {
 import { 
   doc, 
   getDocFromServer, 
-  initializeFirestore,
+  getFirestore,
   setLogLevel
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -22,11 +22,10 @@ const app = initializeApp(firebaseConfig);
 // Initialize Auth
 export const auth = getAuth(app);
 
-// Initialize Firestore with settings to handle potential connection issues
-// experimentalForceLongPolling forces standard HTTP long-polling immediately to bypass stream/proxy blocks.
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId || '(default)');
+// Initialize Firestore
+export const db = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
 
 // Silence internal SDK warning logs (like stream idle timeouts) while keeping real errors
 setLogLevel('error');

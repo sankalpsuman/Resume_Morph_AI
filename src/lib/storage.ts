@@ -32,8 +32,8 @@ export async function uploadWithRetry(
       
       if (!isRetryable || attempt > maxRetries) {
         const dataSize = data ? (typeof data === 'string' ? data.length : 'unknown') : 0;
-        console.error(`Storage upload failed after ${attempt} attempts (Size: ${dataSize} bytes):`, error.code || error.message);
-        throw error;
+        console.warn(`[Storage Backup] Upload skipped (Size: ${dataSize} bytes):`, error.code || error.message);
+        return; // Resolve gracefully instead of throwing to prevent unhandled rejections
       }
       
       // Exponential backoff
@@ -74,7 +74,7 @@ export async function deleteWithRetry(
                          error.message?.includes('retry');
       
       if (!isRetryable || attempt > maxRetries) {
-        console.error(`Storage delete failed after ${attempt} attempts:`, error.code || error.message);
+        console.warn(`[Storage Backup] Delete skipped:`, error.code || error.message);
         return; 
       }
       

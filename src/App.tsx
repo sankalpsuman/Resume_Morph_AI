@@ -17,7 +17,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
       try {
         return await componentImport();
       } catch (retryError) {
-        console.error("Dynamic import retry failed. Reloading the page...", retryError);
+        console.warn("Dynamic import retry failed. Reloading the page...", retryError);
         window.location.reload();
         return new Promise(() => {}); // keeps suspension state active during reload
       }
@@ -401,9 +401,15 @@ export default function App() {
           await setDoc(userRef, initialData);
           setUserData(initialData);
           setLoading(false);
-        } catch (err) {
-          console.error("Failed to initialize user data:", err);
-          handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+        } catch (err: any) {
+          if (err?.code === 'unavailable' || err?.message?.includes('offline')) {
+            console.warn(`[Subscription] Client is offline or connecting. Delaying profile initialization for ${user.uid}.`);
+            // We can assume they are a free user for now until connection is established
+            setUserData(null); // Will trigger UI to show limited state or wait
+          } else {
+            console.error("Failed to initialize user data:", err);
+            handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
+          }
           setLoading(false);
         }
       }

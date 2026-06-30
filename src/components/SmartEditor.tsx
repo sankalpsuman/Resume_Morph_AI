@@ -509,8 +509,11 @@ function SmartEditor({ userData, user, onUpgrade, onLogin, isLoginProgress, isAd
               {/* Saved Resume History Shortcuts */}
               {userData?.resumeHistory && userData.resumeHistory.length > 0 && (
                 <div className="max-w-xl mx-auto border-t border-[var(--border-color)] pt-8 mt-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] text-center mb-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-tertiary)] flex items-center justify-center gap-2 mb-4">
                     Or select an existing draft
+                    <span className="bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full flex items-center gap-1 normal-case tracking-normal">
+                      <AlertCircle className="w-2.5 h-2.5" /> Auto-deletes after 5 days
+                    </span>
                   </p>
                   <div className="grid grid-cols-1 gap-3">
                     {userData.resumeHistory.map((res: any) => (
