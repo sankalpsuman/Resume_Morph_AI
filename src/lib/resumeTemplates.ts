@@ -338,6 +338,10 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
         root.innerHTML = window._originalHTML;
       }
 
+      // Clean up any existing pagination artifacts that might have leaked into _originalHTML
+      const artifacts = root.querySelectorAll('.page-number-float, .page-break-indicator');
+      artifacts.forEach(a => a.remove());
+
       root.style.transform = 'none';
       root.style.width = '794px';
       root.style.opacity = '0';
@@ -479,7 +483,14 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
                   splitIdx = i + 1;
                 } else {
                   // Standard element level split determination
-                  if (i > 0 && isHeader(children[i-1])) {
+                  // Safety: if the very first element overflows, moving it to next page 
+                  // only helps if the current page has a header taking up space.
+                  // If we're already on a sub-page (no header) or it's just too big, 
+                  // we must keep it here to avoid infinite pagination loops.
+                  const hasHeader = !!currentPage.querySelector('.resume-header, .profile-header, header');
+                  if (i === 0 && !hasHeader) {
+                    splitIdx = -1;
+                  } else if (i > 0 && isHeader(children[i-1])) {
                     splitIdx = i - 1;
                   } else {
                     splitIdx = i;
@@ -505,7 +516,7 @@ export function wrapResumeHtml(contentHtml: string, options: { name?: string, is
             }
           }
           currentPageIdx++;
-          if (currentPageIdx > 20) break;
+          if (currentPageIdx > 40) break; // Increased safety limit slightly for very long legitimate resumes
         }
 
         // Remove trailing empty pages

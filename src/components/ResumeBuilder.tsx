@@ -58,6 +58,20 @@ function extractRawHtml(wrappedHtml: string): string {
       const doc = parser.parseFromString(wrappedHtml, 'text/html');
       const previewEl = doc.getElementById('resume-preview');
       if (previewEl) {
+        const pages = previewEl.querySelectorAll('.page');
+        if (pages.length > 0) {
+          // Extract content from pages to get back to "raw" HTML
+          return Array.from(pages).map(p => {
+            const content = p.querySelector('.content');
+            if (content) {
+              // Clean up pagination artifacts if they leaked in
+              const artifacts = content.querySelectorAll('.page-number-float, .page-break-indicator');
+              artifacts.forEach(a => a.remove());
+              return content.innerHTML;
+            }
+            return p.innerHTML;
+          }).join('\n').trim();
+        }
         return previewEl.innerHTML.trim();
       }
     } catch (e) {
