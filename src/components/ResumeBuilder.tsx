@@ -340,6 +340,7 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
   const [linkedinText, setLinkedinText] = useState('');
   const [isImportingLinkedIn, setIsImportingLinkedIn] = useState(false);
   const [isLoadingHistoryItem, setIsLoadingHistoryItem] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
 
   // Measure Left Panel Height
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -1147,8 +1148,6 @@ function ResumeBuilder({ userData, onUpgrade, user, onLogin, isLoginProgress, is
       setIsGenerating(false);
     }
   };
-
-  const [showShareToast, setShowShareToast] = useState(false);
 
   const handleShare = () => {
     if (!generatedHtml) return;

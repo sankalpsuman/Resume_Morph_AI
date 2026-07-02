@@ -1,0 +1,43 @@
+64:          return Array.from(pages).map(p => {
+70:              return content.innerHTML;
+72:            return p.innerHTML;
+75:        return previewEl.innerHTML.trim();
+88:          return wrappedHtml.substring(tagEndIdx + 1, endContainerIdx).trim();
+93:  return wrappedHtml;
+115:  return (
+150:                return `${currentPlan.name} Plan`;
+232:  return (
+275:    return localStorage.getItem('hasUsedFreeMorph') === 'true';
+367:    return () => {
+452:    return () => window.removeEventListener('message', handleMessage);
+480:    return () => scrollArea.removeEventListener('scroll', handleScroll);
+486:    return wrapResumeHtml(cleanHtml, { 
+501:      return () => clearTimeout(timer);
+732:      return false;
+738:      return false;
+741:    return true;
+775:      return "AI configuration is missing. Please contact support.";
+778:      return "Daily AI limit reached or service is busy. Please try again later.";
+781:      return "The Morph Engine is overloaded. Please try again in a few moments.";
+789:      return message;
+792:    return fallback;
+1178:    return new Promise((resolve, reject) => {
+1189:      return `${firstName}.${ext}`;
+1191:    return `morph-resume.${ext}`;
+1229:      return new Promise(resolve => {
+1321:      return pdf;
+1356:      return pdf;
+1459:        return new Promise(resolve => {
+1485:        return await html2canvas(target as HTMLElement, {
+1505:      return null;
+1769:    return items;
+1775:    return commandItems.filter(item => 
+1810:    return () => {
+1838:    return () => {
+1843:  return (
+3153:                      return `Your ${currentPlan.name} plan allows up to ${currentPlan.historyLimit} saved resumes. Note: Resumes auto-delete after 5 days of inactivity.`;
+3254:                    return Object.entries(categories).map(([categoryName, items]) => (
+3265:                            return (
+3538:    return () => {
+3560:  return (
+3626:  return (
